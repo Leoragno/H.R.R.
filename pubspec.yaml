@@ -20,10 +20,9 @@ dependencies:
   # Backend / Supabase
   supabase_flutter: ^2.5.6
 
-  # Firebase (push, analytics, crash)
+  # Firebase (push, crash)
   firebase_core: ^3.3.0
   firebase_messaging: ^15.0.4
-  firebase_analytics: ^11.2.1
   firebase_crashlytics: ^4.0.4
 
   # Maps & Location
@@ -47,19 +46,13 @@ dependencies:
   image: ^4.2.0
 
   # Utils
-  freezed_annotation: ^3.0.0
-  json_annotation: ^4.9.0
   equatable: ^2.0.5
   dio: ^5.5.0+1
-  flutter_secure_storage: ^9.2.2
-  intl: ^0.19.0
   logger: ^2.4.0
   connectivity_plus: ^6.0.5
   shared_preferences: ^2.3.2
   uuid: ^4.4.2
   flutter_dotenv: ^5.1.0
-  glass_kit: ^3.0.0
-  shimmer: ^3.0.0
   google_fonts: ^6.2.1
 
 dev_dependencies:
@@ -67,8 +60,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
   build_runner: ^2.4.13
-  freezed: ^3.0.0
-  json_serializable: ^6.9.0
   riverpod_generator: ^2.6.4
   custom_lint: ^0.7.5
   riverpod_lint: ^2.6.4
