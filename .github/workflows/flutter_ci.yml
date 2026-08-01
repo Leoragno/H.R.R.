@@ -1,0 +1,45 @@
+name: Flutter CI
+
+# Gate obbligatorio prima del merge — vedi CONTRIBUTING.md.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Format · Analyze · Lint · Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Versione pinnata sulla Flutter usata in sviluppo (3.41.6 / Dart
+      # 3.11.4) per riproducibilità — un bump del canale stable a caso
+      # non deve rompere la CI a sorpresa.
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.6'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Il codice generato (*.g.dart di riverpod_generator) è committato
+      # nel repo (non è in .gitignore), quindi qui non serve un passo
+      # `build_runner build` — flutter analyze/test usano direttamente i
+      # file già presenti nel checkout.
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Riverpod lint (custom_lint)
+        run: dart run custom_lint
+
+      - name: Run tests
+        run: flutter test

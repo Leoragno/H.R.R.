@@ -1,0 +1,85 @@
+name: hrr_app
+description: "HRR - Trasforma ogni viaggio in un'esperienza racing"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.2.0
+
+  # Backend / Supabase
+  supabase_flutter: ^2.5.6
+
+  # Firebase (push, analytics, crash)
+  firebase_core: ^3.3.0
+  firebase_messaging: ^15.0.4
+  firebase_analytics: ^11.2.1
+  firebase_crashlytics: ^4.0.4
+
+  # Maps & Location
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.1
+
+  # Animations
+  flutter_animate: ^4.5.0
+  lottie: ^3.1.2
+  rive: ^0.13.13
+
+  # Images
+  cached_network_image: ^3.4.0
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+  path_provider: ^2.1.6
+
+  # ML / Car recognition
+  tflite_flutter: ^0.11.0
+  image: ^4.2.0
+
+  # Utils
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+  equatable: ^2.0.5
+  dio: ^5.5.0+1
+  flutter_secure_storage: ^9.2.2
+  intl: ^0.19.0
+  logger: ^2.4.0
+  connectivity_plus: ^6.0.5
+  shared_preferences: ^2.3.2
+  uuid: ^4.4.2
+  flutter_dotenv: ^5.1.0
+  glass_kit: ^3.0.0
+  shimmer: ^3.0.0
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.13
+  freezed: ^3.0.0
+  json_serializable: ^6.9.0
+  riverpod_generator: ^2.6.4
+  custom_lint: ^0.7.5
+  riverpod_lint: ^2.6.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/lottie/
+    - assets/rive/
+    - assets/icons/
+    - .env
+  # Orbitron/Inter sono serviti via google_fonts (vedi core/theme/app_theme.dart)
+  # invece di file .ttf committati — nessun binario di font da gestire.
