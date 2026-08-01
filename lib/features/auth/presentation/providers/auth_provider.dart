@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/network/supabase_provider.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
@@ -11,10 +11,6 @@ import '../../domain/repositories/auth_repository.dart';
 part 'auth_provider.g.dart';
 
 // ---- DI wiring ----------------------------------------------------------
-
-@riverpod
-SupabaseClient supabaseClient(SupabaseClientRef ref) =>
-    Supabase.instance.client;
 
 @riverpod
 AuthRemoteDatasource authRemoteDatasource(AuthRemoteDatasourceRef ref) {
