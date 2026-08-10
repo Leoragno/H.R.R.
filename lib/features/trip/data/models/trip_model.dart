@@ -1,7 +1,10 @@
+import '../../domain/entities/route_point.dart';
 import '../../domain/entities/trip.dart';
 
-/// DTO che rispecchia la tabella `trips` (colonna `route` PostGIS esclusa
-/// di proposito: non è consumata lato client in questa fase).
+/// DTO che rispecchia la tabella `trips`. La colonna `route` (PostGIS
+/// geography) non viene letta direttamente: il client legge invece il
+/// computed field `route_geojson` (vedi 0007_trip_route.sql), che
+/// evita di dover decodificare la WKB lato Dart.
 class TripModel {
   final String id;
   final String driverId;
@@ -15,6 +18,7 @@ class TripModel {
   final int xpEarned;
   final int repEarned;
   final TripStatus status;
+  final List<RoutePoint> route;
 
   const TripModel({
     required this.id,
@@ -29,6 +33,7 @@ class TripModel {
     required this.xpEarned,
     required this.repEarned,
     required this.status,
+    this.route = const [],
   });
 
   factory TripModel.fromJson(Map<String, dynamic> json) {
@@ -47,7 +52,21 @@ class TripModel {
       xpEarned: json['xp_earned'] as int? ?? 0,
       repEarned: json['rep_earned'] as int? ?? 0,
       status: tripStatusFromString(json['status'] as String? ?? 'active'),
+      route: _routeFromGeoJson(json['route_geojson']),
     );
+  }
+
+  /// `route_geojson` è un LineString GeoJSON standard: coordinate in
+  /// ordine [lng, lat], da invertire per ottenere i nostri RoutePoint.
+  static List<RoutePoint> _routeFromGeoJson(dynamic geojson) {
+    if (geojson is! Map) return const [];
+    final coords = geojson['coordinates'];
+    if (coords is! List) return const [];
+    return [
+      for (final c in coords)
+        if (c is List && c.length >= 2)
+          RoutePoint((c[1] as num).toDouble(), (c[0] as num).toDouble()),
+    ];
   }
 
   Trip toEntity() => Trip(
@@ -63,5 +82,6 @@ class TripModel {
         xpEarned: xpEarned,
         repEarned: repEarned,
         status: status,
+        route: route,
       );
 }

@@ -12,6 +12,14 @@ class ProfileModel {
   final int rep;
   final String title;
   final String? crewId;
+  final String? vehicleBrand;
+  final String? vehicleModel;
+  final String? country;
+  final String accentColor;
+  final String? mascotId;
+  final double totalKm;
+  final int totalTrips;
+  final double drivingScore;
 
   const ProfileModel({
     required this.id,
@@ -23,6 +31,14 @@ class ProfileModel {
     required this.rep,
     required this.title,
     this.crewId,
+    this.vehicleBrand,
+    this.vehicleModel,
+    this.country,
+    this.accentColor = '#35e0ff',
+    this.mascotId,
+    this.totalKm = 0,
+    this.totalTrips = 0,
+    this.drivingScore = 5.0,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
@@ -36,6 +52,14 @@ class ProfileModel {
       rep: (json['rep'] as num?)?.toInt() ?? 0,
       title: json['title'] as String? ?? 'Rookie Driver',
       crewId: json['crew_id'] as String?,
+      vehicleBrand: json['vehicle_brand'] as String?,
+      vehicleModel: json['vehicle_model'] as String?,
+      country: json['country'] as String?,
+      accentColor: json['accent_color'] as String? ?? '#35e0ff',
+      mascotId: json['mascot_id'] as String?,
+      totalKm: (json['total_km'] as num?)?.toDouble() ?? 0,
+      totalTrips: json['total_trips'] as int? ?? 0,
+      drivingScore: (json['driving_score'] as num?)?.toDouble() ?? 5.0,
     );
   }
 
@@ -49,6 +73,11 @@ class ProfileModel {
         'rep': rep,
         'title': title,
         'crew_id': crewId,
+        'vehicle_brand': vehicleBrand,
+        'vehicle_model': vehicleModel,
+        'country': country,
+        'accent_color': accentColor,
+        'mascot_id': mascotId,
       };
 
   AppUser toEntity() => AppUser(
@@ -61,5 +90,13 @@ class ProfileModel {
         rep: rep,
         title: title,
         crewId: crewId,
+        vehicleBrand: vehicleBrand,
+        vehicleModel: vehicleModel,
+        country: country,
+        accentColor: accentColor,
+        mascotId: mascotId,
+        totalKm: totalKm,
+        totalTrips: totalTrips,
+        drivingScore: drivingScore,
       );
 }

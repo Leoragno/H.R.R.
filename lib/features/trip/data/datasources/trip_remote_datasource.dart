@@ -1,6 +1,17 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../domain/entities/route_point.dart';
 import '../models/trip_model.dart';
+
+/// Colonna calcolata (0007_trip_route.sql) da includere in ogni select
+/// che debba mostrare il percorso (cronologia/dettaglio viaggio).
+const _selectWithRoute = '*, route_geojson';
+
+String? _routeToWkt(List<RoutePoint> route) {
+  if (route.length < 2) return null;
+  final coords = route.map((p) => '${p.lng} ${p.lat}').join(', ');
+  return 'LINESTRING($coords)';
+}
 
 /// Unico punto della feature Trip che importa supabase_flutter.
 class TripRemoteDatasource {
@@ -28,6 +39,7 @@ class TripRemoteDatasource {
     required int durationSeconds,
     required double avgSpeedKmh,
     required double maxSpeedKmh,
+    List<RoutePoint> route = const [],
   }) async {
     final res = await _client.rpc('complete_trip', params: {
       'p_trip_id': tripId,
@@ -35,6 +47,7 @@ class TripRemoteDatasource {
       'p_duration_seconds': durationSeconds,
       'p_avg_speed_kmh': avgSpeedKmh,
       'p_max_speed_kmh': maxSpeedKmh,
+      'p_route_wkt': _routeToWkt(route),
     });
 
     final Map<String, dynamic> row = res is List
@@ -53,7 +66,7 @@ class TripRemoteDatasource {
   Future<List<TripModel>> recentTrips(String driverId, {int limit = 20}) async {
     final rows = await _client
         .from('trips')
-        .select()
+        .select(_selectWithRoute)
         .eq('driver_id', driverId)
         .eq('status', 'completed')
         .order('started_at', ascending: false)
@@ -64,7 +77,11 @@ class TripRemoteDatasource {
   }
 
   Future<TripModel> tripById(String tripId) async {
-    final row = await _client.from('trips').select().eq('id', tripId).single();
+    final row = await _client
+        .from('trips')
+        .select(_selectWithRoute)
+        .eq('id', tripId)
+        .single();
     return TripModel.fromJson(row);
   }
 }

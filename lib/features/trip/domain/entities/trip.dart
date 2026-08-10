@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'route_point.dart';
+
 enum TripStatus { active, completed, discarded }
 
 TripStatus tripStatusFromString(String value) {
@@ -23,6 +25,7 @@ class Trip extends Equatable {
   final int xpEarned;
   final int repEarned;
   final TripStatus status;
+  final List<RoutePoint> route;
 
   const Trip({
     required this.id,
@@ -37,6 +40,7 @@ class Trip extends Equatable {
     required this.xpEarned,
     required this.repEarned,
     required this.status,
+    this.route = const [],
   });
 
   @override
@@ -53,5 +57,6 @@ class Trip extends Equatable {
         xpEarned,
         repEarned,
         status,
+        route,
       ];
 }

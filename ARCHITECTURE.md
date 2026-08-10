@@ -140,9 +140,46 @@ XP/REP, con soglie anti-cheat su velocità media/distanza) e per le tabelle
 aggiunte alla pubblicazione realtime.
 
 ### Fase 3 — Community
-- Car Spotting (feed, upload foto, riconoscimento AI, like/dislike/commenti)
-- Classifiche (globale/amici/crew, filtri settimana/mese/sempre)
+- [x] Car Spotting (2026-08-01) — feed, upload foto, rating a stelle
+      (sostituisce like/dislike, vedi `0004_car_spotting_ratings.sql`),
+      commenti, creazione spot a 4 step (inserimento manuale marca/
+      modello — il riconoscimento AI/TFLite resta predisposto ma non
+      collegato, rimandato a Fase 3 successiva insieme a telemetria/
+      G-force). Tutti gli eventi (`PhotoUploaded`, `CarSpotted`,
+      `RatingGiven`, `CommentAdded`) pubblicati sul Mission Engine.
+- [x] Classifica globale (2026-08-01) — RPC `leaderboard_global` in
+      `0005_mission_templates_car_spotting.sql`, filtri
+      settimana/mese/sempre (aggregato server-side su `xp_events`,
+      mai letto/scritto direttamente dal client). "Classifica amici"
+      e "classifica locale" restano da fare: richiedono rispettivamente
+      il grafo amicizie (`friendships` esiste in schema, zero
+      feature/UI) e dati di posizione strutturati (oggi
+      `spots.location_label` è testo libero, non geocoded).
 - Profilo pubblico, ricerca utenti, amicizie
+
+### Fase 3.5 — Gioca (conquista territorio via GPS)
+- [x] Gioca (2026-08-06) — griglia esagonale fissa (coordinate assiali
+      `q,r`, origine e hex-size condivisi 1:1 client/server, vedi
+      `lib/features/game/domain/hex_grid.dart`), conquista rivendicando le
+      celle attraversate mentre la schermata è aperta (flusso GPS
+      indipendente da Trip Live: qui è conquista ambientale, non un
+      viaggio con inizio/fine esplicito). Backend in
+      `supabase/migrations/0008_territory_game.sql`:
+      `territory_cells` (possesso corrente) + `territory_claim_log`
+      (storico claim/furti, alimenta le classifiche a finestra
+      temporale), RPC `claim_territory_cells` (unico punto di scrittura,
+      security definer, `for update` per serializzare due giocatori sulla
+      stessa cella), `territory_cells_near` (mappa), `territory_standings`
+      + `territory_cell_count`. Realtime su `territory_cells` per vedere i
+      furti altrui mentre si è sulla schermata.
+      Scope deliberatamente ridotto rispetto al mockup (Guida.dc.html
+      righe 720-1928): i tab classifica "Amici"/"Italy" NON sono stati
+      riportati — stessa scelta già fatta per `leaderboard_global`
+      (richiedono grafo amicizie/dati di posizione strutturati, nessuno
+      dei due disponibile). Il "club" del mockup mappa 1:1 su
+      `crews`/`crew_id`, già reale in schema. Nessun evento pubblicato sul
+      Mission Engine per ora (nessun mission_template referenzia il
+      territorio): da valutare in un giro successivo.
 
 ### Fase 4 — Crew & Social
 - Crew (creazione, gestione membri, livello crew)
@@ -161,11 +198,14 @@ aggiunte alla pubblicazione realtime.
       esistono e sono idempotenti ma vanno richiamati manualmente/da SQL —
       pg_cron/Edge Function/GitHub Actions non ancora collegati, per scelta
       esplicita: lo scheduling resta un layer separato da decidere)
-- [ ] Emettitori reali per la maggior parte dei `MissionEvent` (solo
-      `TripStarted`/`TripCompleted` sono cablati end-to-end da `trip_live_
-      provider.dart`; `PhotoUploaded`/`LikeReceived`/`CarSpotted`/ecc. sono
-      definiti e già gestiti da `record_mission_event`, ma nessuna feature
-      li pubblica ancora — Car Spotting/Crew/Eventi/Amicizie sono placeholder)
+- [x] Emettitori Car Spotting (2026-08-01) — `PhotoUploaded`/`CarSpotted`/
+      `RatingGiven`/`CommentAdded` pubblicati end-to-end da
+      `car_spotting_controller.dart`; mission_templates aggiornati in
+      `0005_mission_templates_car_spotting.sql` così `photo_uploaded`/
+      `rating_given` fanno avanzare missioni reali (prima erano loggati
+      ma inutilizzati). `LikeReceived`/`FriendAdded`/`CrewJoined`/ecc.
+      restano definiti ma non pubblicati — Crew/Eventi/Amicizie sono
+      ancora placeholder (Fase 3/4).
 - Notifiche push (FCM) + centro notifiche in-app — `record_mission_event`/
   `claim_mission`/`evaluate_achievements` scrivono già in `notifications`
   (realtime), manca solo la consegna push (nessuna config Firebase reale)
@@ -175,10 +215,11 @@ aggiunte alla pubblicazione realtime.
 
 ## 6. Prossimo passo consigliato
 
-Fase 1 e Fase 2 sono complete e verificate (`flutter analyze` pulito,
-`flutter test` verde, `flutter build apk --debug` compila). Prossimo blocco:
-**Fase 3 — Car Spotting** (feed, upload foto, riconoscimento auto via
-TFLite, like/dislike/commenti) seguita da Classifiche e Profilo pubblico.
+Fase 1, Fase 2 e la prima parte di Fase 3 (Car Spotting + Classifica
+globale) sono complete e verificate (`flutter analyze` pulito, `flutter
+test` verde). Prossimo blocco: riconoscimento auto via TFLite (oggi
+inserimento manuale, predisposto ma non collegato), poi Profilo pubblico
+e grafo amicizie (necessari per "classifica amici").
 
 ## 7. Setup necessario prima di eseguire l'app
 
@@ -189,9 +230,10 @@ crash reporting non funzioneranno):
 - `.env` (copiato da `.env.example`): `SUPABASE_URL`/`SUPABASE_ANON_KEY` reali.
 - `lib/firebase_options.dart`: rigenera con `flutterfire configure` dopo aver
   creato un progetto Firebase (serve per Messaging/Analytics/Crashlytics).
-- Applica le migration in ordine: `supabase db push` (0001 poi 0002) —
+- Applica le migration in ordine: `supabase db push` (0001 → 0008) —
   la 0002 mette `profiles` nella pubblicazione realtime, senza cui l'HUD
-  pilota non riceve aggiornamenti live. Il bucket Storage `car-photos` e
+  pilota non riceve aggiornamenti live; la 0008 fa lo stesso per
+  `territory_cells` (tab Gioca). Il bucket Storage `car-photos` e
   la tabella `cars` restano nello schema ma non sono più usati dal client
   dopo la rimozione del Garage (vedi nota in Fase 2).
 

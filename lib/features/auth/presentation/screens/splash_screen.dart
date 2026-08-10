@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/hrr_wordmark.dart';
 import '../providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -37,45 +37,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.guidaBg,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: AppColors.gradientPrimary,
-              ).createShader(bounds),
-              child: Text(
-                'HRR',
-                style: AppTheme.orbitron(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 64,
-                  color: Colors.white,
-                  letterSpacing: 4,
-                ),
-              ),
-            ).animate().fadeIn(duration: 500.ms).scale(
+            const HrrWordmark(fontSize: 64)
+                .animate()
+                .fadeIn(duration: 500.ms)
+                .scale(
                   begin: const Offset(0.8, 0.8),
                   end: const Offset(1, 1),
                   curve: Curves.easeOutBack,
                 ),
-            const SizedBox(height: 12),
-            const Text(
-              'HEAT RACERS',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-                letterSpacing: 6,
-                fontWeight: FontWeight.w600,
-              ),
-            ).animate().fadeIn(delay: 300.ms, duration: 500.ms),
             const SizedBox(height: 48),
             SizedBox(
               width: 120,
               child: LinearProgressIndicator(
                 backgroundColor: AppColors.surfaceGlass,
-                valueColor: const AlwaysStoppedAnimation(AppColors.neonCyan),
+                valueColor: const AlwaysStoppedAnimation(AppColors.guidaCyan),
                 minHeight: 3,
                 borderRadius: BorderRadius.circular(4),
               ),

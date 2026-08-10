@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../entities/app_user.dart';
 
 /// Contract implemented by the data layer. Presentation/domain code
@@ -21,4 +23,30 @@ abstract class AuthRepository {
   Future<AppUser> signInWithGoogle();
   Future<AppUser> signInWithApple();
   Future<void> signOut();
+
+  /// Salva marca/modello del veicolo principale — usato sia
+  /// dall'onboarding "il tuo ride" post-registrazione sia dal picker
+  /// veicolo in Impostazioni.
+  Future<AppUser> updateVehicle({
+    required String userId,
+    required String brand,
+    required String model,
+  });
+
+  /// Aggiorna i campi opzionali di Impostazioni — solo quelli non-null
+  /// vengono scritti, gli altri restano invariati.
+  Future<AppUser> updateProfileSettings({
+    required String userId,
+    String? username,
+    String? country,
+    String? accentColor,
+    String? mascotId,
+  });
+
+  /// Carica la nuova foto profilo e aggiorna `avatarUrl`.
+  Future<AppUser> updateAvatar({
+    required String userId,
+    required Uint8List photoBytes,
+    required String photoExtension,
+  });
 }

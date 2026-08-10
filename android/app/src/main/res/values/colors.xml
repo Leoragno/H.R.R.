@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stesso accento ciano dell'app (AppColors.guidaCyan) — colore di
+         sfondo dell'icona monocromatica nella barra di stato/notifiche. -->
+    <color name="notification_accent">#FF35E0FF</color>
+</resources>

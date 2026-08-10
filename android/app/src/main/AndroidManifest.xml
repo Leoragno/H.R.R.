@@ -4,8 +4,15 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- Foreground service per il tracking GPS della guida a schermo bloccato/app
+         in background: la notifica persistente mantiene il tracking "in foreground"
+         agli occhi del sistema, senza richiedere ACCESS_BACKGROUND_LOCATION. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
-        android:label="hrr_app"
+        android:label="H.R.R."
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -35,6 +42,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Canale di notifica di default per FCM: senza questo, su Android 8+
+             il sistema può non mostrare le push in background/app terminata
+             perché il plugin non sa su quale NotificationChannel pubblicarle. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="hrr_default_channel" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

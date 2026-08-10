@@ -23,6 +23,42 @@ class AppTheme {
         letterSpacing: letterSpacing,
       );
 
+  /// Titoli/numeri grandi delle schermate riskinnate col nuovo design
+  /// "Guida" (componente_guida_driving_handoff/) — non sostituisce Orbitron,
+  /// riservato al logo HRR e ai contesti HUD già esistenti.
+  static TextStyle chakraPetch({
+    FontWeight fontWeight = FontWeight.w700,
+    double? fontSize,
+    Color color = AppColors.textPrimary,
+    double? letterSpacing,
+    FontStyle? fontStyle,
+  }) =>
+      GoogleFonts.chakraPetch(
+        fontWeight: fontWeight,
+        fontSize: fontSize,
+        color: color,
+        letterSpacing: letterSpacing,
+        fontStyle: fontStyle,
+      );
+
+  /// Body/testo delle schermate riskinnate col nuovo design "Guida".
+  static TextStyle archivo({
+    FontWeight fontWeight = FontWeight.w400,
+    double? fontSize,
+    Color color = AppColors.textPrimary,
+    double? letterSpacing,
+    double? height,
+    FontStyle? fontStyle,
+  }) =>
+      GoogleFonts.archivo(
+        fontWeight: fontWeight,
+        fontSize: fontSize,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: height,
+        fontStyle: fontStyle,
+      );
+
   static ThemeData get dark {
     final baseTextTheme = GoogleFonts.interTextTheme(
         ThemeData(brightness: Brightness.dark).textTheme);

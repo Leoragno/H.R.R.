@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "968773926384",
+    "project_id": "hrr-ac9f6",
+    "storage_bucket": "hrr-ac9f6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:968773926384:android:ffee2a48ed96dc8409b135",
+        "android_client_info": {
+          "package_name": "com.hrr.app.hrr_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3AlK0246tmB6svJlVNNf-lI2XNJdHKuk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

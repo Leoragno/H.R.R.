@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Hrr App</string>
+	<string>H.R.R.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -34,6 +34,11 @@
 	<string>HRR usa la fotocamera per scattare foto delle tue auto e per il Car Spotting.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>HRR accede alla libreria foto per scegliere immagini delle tue auto e per il Car Spotting.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

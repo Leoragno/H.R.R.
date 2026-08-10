@@ -11,6 +11,14 @@ class AppUser extends Equatable {
   final int rep;
   final String title;
   final String? crewId;
+  final String? vehicleBrand;
+  final String? vehicleModel;
+  final String? country;
+  final String accentColor;
+  final String? mascotId;
+  final double totalKm;
+  final int totalTrips;
+  final double drivingScore;
 
   const AppUser({
     required this.id,
@@ -22,9 +30,34 @@ class AppUser extends Equatable {
     required this.rep,
     required this.title,
     this.crewId,
+    this.vehicleBrand,
+    this.vehicleModel,
+    this.country,
+    this.accentColor = '#35e0ff',
+    this.mascotId,
+    this.totalKm = 0,
+    this.totalTrips = 0,
+    this.drivingScore = 5.0,
   });
 
   @override
-  List<Object?> get props =>
-      [id, username, displayName, avatarUrl, level, xp, rep, title, crewId];
+  List<Object?> get props => [
+        id,
+        username,
+        displayName,
+        avatarUrl,
+        level,
+        xp,
+        rep,
+        title,
+        crewId,
+        vehicleBrand,
+        vehicleModel,
+        country,
+        accentColor,
+        mascotId,
+        totalKm,
+        totalTrips,
+        drivingScore,
+      ];
 }

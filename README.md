@@ -44,16 +44,22 @@ flutter run
 - **Fine Viaggio**: XP/REP calcolati **server-side** dalla RPC `complete_trip`
   (mai dal client), anti-cheat su velocità/distanza sospette, anteprima
   percorso, animazioni risultati
-- Scaffold coerenti per le restanti schermate (Car Spotting, Crew, Chat,
-  Classifiche, Missioni, Eventi, Impostazioni, Notifiche — pronte per Fase 3+)
+- **Missioni**: Mission Engine event-driven server-authoritative (daily/
+  weekly/seasonal/secret), Battle Pass UI collegata a dati reali
+- **Car Spotting**: feed, upload foto, rating a stelle, commenti,
+  classifica "top auto" — collegato al Mission Engine (marca/modello
+  inseriti a mano, riconoscimento AI predisposto ma non collegato)
+- **Classifica globale**: filtri sempre/mese/settimana su XP reale
+- Scaffold coerenti per le restanti schermate (Crew, Chat, Eventi,
+  Impostazioni, Notifiche — pronte per Fase 3+/4)
 - Piattaforme Android/iOS scaffoldate (`flutter create`); vedi §7 di
   `ARCHITECTURE.md` per le credenziali reali da configurare prima del run
 
 🚧 Da sviluppare nelle prossime iterazioni (vedi `ARCHITECTURE.md` §5):
 - Tracking GPS in **background** (schermo spento) — vedi `ARCHITECTURE.md` §5
   Fase 2 per l'alternativa a `background_locator_2` (rimosso, incompatibile)
-- Car Spotting + pipeline riconoscimento TFLite
-- Crew, chat realtime, classifiche, missioni, eventi
+- Pipeline riconoscimento auto via TFLite (oggi inserimento manuale)
+- Crew, chat realtime, eventi, profilo pubblico/amicizie (per "classifica amici")
 
 ## Note tecniche importanti
 

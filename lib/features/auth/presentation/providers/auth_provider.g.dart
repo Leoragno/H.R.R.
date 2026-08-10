@@ -82,7 +82,7 @@ final myProfileProvider = AutoDisposeStreamProvider<AppUser?>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MyProfileRef = AutoDisposeStreamProviderRef<AppUser?>;
-String _$authControllerHash() => r'99471138acdbc30813d1e9f06c024edd1a498cfb';
+String _$authControllerHash() => r'e9ffa788c05bff1574af00ff3f0ca6b897c88e71';
 
 /// Controller used by Login/Register screens to trigger actions and expose
 /// a loading/error state independent from the auth stream itself.

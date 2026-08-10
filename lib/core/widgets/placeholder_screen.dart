@@ -8,14 +8,20 @@ import '../theme/app_colors.dart';
 class PlaceholderScreen extends StatelessWidget {
   final String title;
   final IconData icon;
+  final List<Widget>? actions;
 
-  const PlaceholderScreen({super.key, required this.title, required this.icon});
+  const PlaceholderScreen({
+    super.key,
+    required this.title,
+    required this.icon,
+    this.actions,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(title), actions: actions),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,700&family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #04050a; }
+  body { font-family: "Chakra Petch", Archivo, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #35e0ff; }
+  a:hover { color: #9dd4ff; }
+</style>
+</helmet>
+<div style="min-height: 100vh; width: 1620px; box-sizing: border-box; padding: 56px 56px 80px; background: radial-gradient(120% 40% at 50% 0%, #101a38 0%, #070a14 60%, #04050a 100%); color: #fff;">
+  <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; flex-wrap: wrap;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 18px;">
+        <span style="position: relative; display: flex; align-items: baseline; transform: skewX(-11deg); padding-left: 10px;">
+          <span style="position: absolute; left: -8px; top: 50%; width: 6px; height: 52px; margin-top: -26px; background: linear-gradient(180deg, #14e6ff, #ff2fd0); box-shadow: 0 0 20px rgba(20,230,255,0.7);"></span>
+          <span style="font-size: 72px; font-weight: 700; font-style: italic; letter-spacing: -0.055em; line-height: 1; background: linear-gradient(112deg, #ffffff 0%, #9be9ff 32%, #14e6ff 60%, #ff2fd0 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 26px rgba(20,230,255,0.4)) drop-shadow(0 0 34px rgba(255,47,208,0.3));">HRR</span>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 6px; padding-left: 16px; border-left: 1px solid rgba(157,212,255,0.22);">
+          <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.4em; color: #14e6ff;">HEAT</span>
+          <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.3em; color: #8fa3bd;">RACERS</span>
+        </span>
+      </div>
+      <div style="font-size: 46px; font-weight: 700; font-style: italic; letter-spacing: -0.02em; margin-top: 22px;">Mockup — tutte le schermate</div>
+      <div style="font-size: 18px; color: #8fa3bd; margin-top: 12px; max-width: 620px; text-wrap: pretty;">Ogni frame è l'app reale e interattiva, fissata su una schermata. Prova i gesti direttamente nei frame.</div>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <sc-for list="{{ legend }}" as="tag" hint-placeholder-count="4">
+        <span style="display: flex; align-items: center; gap: 8px; background: rgba(16,22,40,0.82); border: 1px solid rgba(157,212,255,0.14); border-radius: 999px; padding: 10px 16px; font-size: 14px; color: #cfdcec; backdrop-filter: blur(10px);">
+          <span style="width: 9px; height: 9px; border-radius: 999px; background: {{ tag.color }};"></span>
+          <span>{{ tag.label }}</span>
+        </span>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-for list="{{ groups }}" as="group" hint-placeholder-count="3">
+    <div style="margin-top: 56px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-size: 13px; letter-spacing: 0.2em; color: {{ group.color }};">{{ group.kicker }}</span>
+        <span style="flex: 1; height: 1px; background: linear-gradient(90deg, rgba(157,212,255,0.28), transparent);"></span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 34px; margin-top: 26px;">
+        <sc-for list="{{ group.frames }}" as="frame" hint-placeholder-count="3">
+          <div style="width: 460px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <span style="font-size: 21px; font-weight: 700;">{{ frame.title }}</span>
+              <span style="font-size: 13px; color: #68788f;">{{ frame.badge }}</span>
+            </div>
+            <div style="font-size: 14px; color: #8fa3bd; line-height: 1.5; min-height: 42px; text-wrap: pretty;">{{ frame.note }}</div>
+            <div style="position: relative; border-radius: 34px; padding: 10px; background: linear-gradient(160deg, rgba(157,212,255,0.2), rgba(139,92,255,0.14) 55%, rgba(6,8,16,0.6)); box-shadow: 0 30px 70px rgba(0,0,0,0.6);">
+              <div style="position: relative; height: 780px; border-radius: 26px; overflow: hidden; background: #04050a; box-shadow: inset 0 0 0 1px rgba(157,212,255,0.12);">
+                <dc-import name="Guida" screen="{{ frame.screen }}" variant="{{ frame.variant }}" hint-size="100%,100%" style="position: absolute; inset: 0;"></dc-import>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    const groups = [
+      {
+        kicker: "ONBOARDING",
+        color: "#35e0ff",
+        frames: [
+          { title: "Accedi", badge: "01", screen: "signin", variant: "empty", note: "Email + password, occhio mostra/nascondi, errori corallo inline." },
+          { title: "Registrati", badge: "02", screen: "signup", variant: "empty", note: "Username, email, requisiti password, conferma e accettazione termini." },
+          { title: "Il tuo ride", badge: "03", screen: "ride", variant: "empty", note: "Marca e modello dell'auto principale, con progresso di onboarding." },
+        ],
+      },
+      {
+        kicker: "GUIDA",
+        color: "#2f6bff",
+        frames: [
+          { title: "Guida — nessuna guida", badge: "04", screen: "guida", variant: "empty", note: "Mappa notturna, bottom sheet trascinabile su tre stati, CTA Drive." },
+          { title: "Guida — storico", badge: "05", screen: "guida", variant: "completed", note: "Lista guide con anteprima del tracciato, distanza·durata e top speed." },
+          { title: "Speedometer", badge: "06", screen: "speedometer", variant: "completed", note: "Tachimetro HUD con arco per fascia di velocità e telemetrie live." },
+        ],
+      },
+      {
+        kicker: "GIOCO E COMMUNITY",
+        color: "#8b5cff",
+        frames: [
+          { title: "Gioca", badge: "07", screen: "gioca", variant: "completed", note: "Griglia esagonale di territori, card giocatore e pannello classifiche." },
+          { title: "Classifiche", badge: "08", screen: "classifiche", variant: "completed", note: "Filtri ambito e metrica, riga utente evidenziata, invito amici." },
+          { title: "Spot", badge: "09", screen: "spot", variant: "completed", note: "Feed Spot con voto stelle, rarità votata dalla community e podio." },
+          { title: "Impostazioni", badge: "10", screen: "impostazioni", variant: "completed", note: "Profilo, veicolo, paese, colore e stato account." },
+        ],
+      },
+    ];
+    return {
+      groups,
+      legend: [
+        { label: "Dark premium + glass", color: "#35e0ff" },
+        { label: "Accenti neon misurati", color: "#2f6bff" },
+        { label: "Gesti: edge-swipe musica", color: "#8b5cff" },
+        { label: "Frames interattivi", color: "#ff2d55" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

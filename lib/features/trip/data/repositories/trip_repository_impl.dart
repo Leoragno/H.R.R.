@@ -1,3 +1,4 @@
+import '../../domain/entities/route_point.dart';
 import '../../domain/entities/trip.dart';
 import '../../domain/repositories/trip_repository.dart';
 import '../datasources/trip_remote_datasource.dart';
@@ -20,6 +21,7 @@ class TripRepositoryImpl implements TripRepository {
     required int durationSeconds,
     required double avgSpeedKmh,
     required double maxSpeedKmh,
+    List<RoutePoint> route = const [],
   }) async {
     final trip = await _remote.completeTrip(
       tripId: tripId,
@@ -27,6 +29,7 @@ class TripRepositoryImpl implements TripRepository {
       durationSeconds: durationSeconds,
       avgSpeedKmh: avgSpeedKmh,
       maxSpeedKmh: maxSpeedKmh,
+      route: route,
     );
     return trip.toEntity();
   }

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/music/presentation/widgets/music_drawer.dart';
+import '../../features/rival/presentation/widgets/rival_overlay.dart';
 import '../router/app_router.dart';
 import '../theme/app_colors.dart';
+import 'notification_toast_overlay.dart';
 
-/// Persistent shell hosting the bottom navigation bar for the 7 primary tabs.
+/// Persistent shell hosting the bottom navigation bar for the primary tabs.
+/// Profilo non è un tab: si apre dall'avatar in alto a destra nelle
+/// singole tab (ProfileAvatarButton).
 /// Wraps every ShellRoute destination so scroll position / state per tab
 /// is preserved (GoRouter ShellRoute keeps each branch's Navigator alive).
 class MainShell extends StatelessWidget {
@@ -12,13 +17,8 @@ class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.child});
 
   static const _tabs = [
-    (route: AppRoutes.home, icon: Icons.speed_rounded, label: 'Home'),
-    (
-      route: AppRoutes.missions,
-      icon: Icons.track_changes_rounded,
-      label: 'Missions'
-    ),
-    (route: AppRoutes.map, icon: Icons.map_rounded, label: 'Mappa'),
+    (route: AppRoutes.home, icon: Icons.map_rounded, label: 'Guida'),
+    (route: AppRoutes.game, icon: Icons.hexagon_outlined, label: 'Gioca'),
     (
       route: AppRoutes.carSpotting,
       icon: Icons.camera_alt_rounded,
@@ -30,7 +30,6 @@ class MainShell extends StatelessWidget {
       label: 'Classifica'
     ),
     (route: AppRoutes.crew, icon: Icons.groups_rounded, label: 'Crew'),
-    (route: AppRoutes.profile, icon: Icons.person_rounded, label: 'Profilo'),
   ];
 
   int _indexForLocation(String location) {
@@ -45,7 +44,8 @@ class MainShell extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: child,
+      drawer: const MusicDrawer(),
+      body: RivalOverlay(child: NotificationToastOverlay(child: child)),
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border)),

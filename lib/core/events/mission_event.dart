@@ -173,3 +173,44 @@ class ReactionReceived extends MissionEvent {
   Map<String, dynamic> toPayload() =>
       {...super.toPayload(), 'reaction_type': reactionType};
 }
+
+/// Car Spotting: chi vota un'auto riceve credito per "hai votato N auto"
+/// — auto-attribuito, pubblicato dal client dopo un voto riuscito.
+class RatingGiven extends MissionEvent {
+  final double rating;
+
+  RatingGiven(
+      {required super.profileId,
+      required this.rating,
+      super.idempotencyKey,
+      super.occurredAt});
+
+  @override
+  String get type => 'rating_given';
+
+  @override
+  Map<String, dynamic> toPayload() => {...super.toPayload(), 'rating': rating};
+}
+
+/// Car Spotting: il proprietario dello spot riceve credito quando la sua
+/// auto viene valutata. Presente qui solo per documentare il vocabolario
+/// eventi del Mission Engine — non va mai pubblicato dal client, perché
+/// `record_mission_event` accredita sempre `auth.uid()` (chi vota, non
+/// chi possiede lo spot). Generato esclusivamente dal trigger DB
+/// `on_spot_rating_given` in 0004_car_spotting_ratings.sql, che chiama
+/// `_record_mission_event_for` con l'id del proprietario.
+class RatingReceived extends MissionEvent {
+  final double rating;
+
+  RatingReceived(
+      {required super.profileId,
+      required this.rating,
+      super.idempotencyKey,
+      super.occurredAt});
+
+  @override
+  String get type => 'rating_received';
+
+  @override
+  Map<String, dynamic> toPayload() => {...super.toPayload(), 'rating': rating};
+}

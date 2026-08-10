@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: #05070b; }
+  body { font-family: Archivo, "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #35e0ff; }
+  a:hover { color: #8beeff; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  * { scrollbar-width: none; }
+  @keyframes hrr-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes hrr-fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes hrr-glow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  @keyframes hrr-shimmer { 0% { background-position: -200px 0; } 100% { background-position: 260px 0; } }
+  button { transition: transform 150ms cubic-bezier(.22,1,.36,1), background-color 200ms ease, box-shadow 200ms ease, opacity 200ms ease; touch-action: manipulation; }
+  button:active:not(:disabled) { transform: scale(.96); }
+  button:disabled { opacity: .4; cursor: default; }
+  input, textarea, select { font-family: inherit; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+</style>
+</helmet>
+<div style="height: 100dvh; display: flex; justify-content: center; background: #05070b; overflow: hidden;">
+  <div style="position: relative; width: 100%; max-width: 440px; height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: radial-gradient(120% 60% at 50% 0%, #10203c 0%, #070a10 55%, #05070b 100%); color: #fff;">
+
+    <div style="position: absolute; left: -80px; top: -60px; width: 300px; height: 300px; border-radius: 999px; background: radial-gradient(circle, rgba(47,107,255,0.32), transparent 70%); filter: blur(10px); pointer-events: none;"></div>
+    <div style="position: absolute; right: -70px; top: 180px; width: 260px; height: 260px; border-radius: 999px; background: radial-gradient(circle, rgba(255,122,26,0.22), transparent 70%); filter: blur(10px); pointer-events: none;"></div>
+
+    <div style="position: relative; flex: none; padding: 22px 20px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;">
+      <div>
+        <div style="font-family: 'Chakra Petch', Archivo, sans-serif; font-size: 30px; font-weight: 700; letter-spacing: 0.06em; line-height: 1; background: linear-gradient(92deg, #ffffff 0%, #9dd4ff 48%, #35e0ff 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">CAR SPOTTING</div>
+        <div style="font-size: 15px; color: #8fa3bd; margin-top: 8px; letter-spacing: 0.01em;">Trova. Fotografa. Valuta.</div>
+      </div>
+      <div style="display: flex; gap: 10px; flex: none;">
+        <button type="button" onClick="{{ toggleSearch }}" style="width: 44px; height: 44px; border-radius: 14px; border: 1px solid rgba(120,170,255,0.28); background: rgba(16,26,44,0.72); backdrop-filter: blur(12px); color: #9dd4ff; display: grid; place-items: center; cursor: pointer;" aria-label="Cerca">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg>
+        </button>
+        <button type="button" onClick="{{ toggleFilter }}" style="width: 44px; height: 44px; border-radius: 14px; border: 1px solid rgba(120,170,255,0.28); background: rgba(16,26,44,0.72); backdrop-filter: blur(12px); color: #9dd4ff; display: grid; place-items: center; cursor: pointer;" aria-label="Filtra">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <sc-if value="{{ searchOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: none; padding: 0 20px 12px;">
+        <input value="{{ query }}" onInput="{{ onQuery }}" placeholder="Marca, modello, città…" style="width: 100%; box-sizing: border-box; background: rgba(12,20,34,0.9); border: 1px solid rgba(120,170,255,0.3); border-radius: 14px; padding: 14px 16px; color: #fff; font-size: 16px; outline: none;" />
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ filterOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: none; display: flex; gap: 8px; overflow-x: auto; padding: 0 20px 12px;">
+        <sc-for list="{{ filters }}" as="chip" hint-placeholder-count="4">
+          <button type="button" onClick="{{ chip.onSelect }}" style="flex: none; background: {{ chip.bg }}; color: {{ chip.color }}; border: 1px solid {{ chip.border }}; border-radius: 999px; padding: 10px 16px; font-family: inherit; font-size: 14px; font-weight: 700; letter-spacing: 0.04em; cursor: pointer;">{{ chip.label }}</button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <div style="flex: none; display: flex; gap: 10px; padding: 0 20px 14px;">
+      <div style="flex: 1; display: flex; align-items: center; gap: 12px; background: rgba(12,20,34,0.78); border: 1px solid rgba(120,170,255,0.18); border-radius: 16px; padding: 12px 14px; backdrop-filter: blur(12px);">
+        <span style="width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(140deg, #2f6bff, #35e0ff); display: grid; place-items: center; flex: none; color: #04121f; font-weight: 900; font-size: 13px;">XP</span>
+        <div style="min-width: 0;">
+          <div style="font-size: 19px; font-weight: 800; line-height: 1;">{{ xp }}</div>
+          <div style="font-size: 12px; color: #8fa3bd; margin-top: 3px;">{{ levelLabel }}</div>
+        </div>
+      </div>
+      <div style="flex: 1; display: flex; align-items: center; gap: 12px; background: rgba(12,20,34,0.78); border: 1px solid rgba(255,140,60,0.22); border-radius: 16px; padding: 12px 14px; backdrop-filter: blur(12px);">
+        <span style="width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(140deg, #ff7a1a, #ffb35c); display: grid; place-items: center; flex: none; color: #2a1200;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.5 5.4 5.8.7-4.3 4 1.2 5.8-5.2-2.9-5.2 2.9L8 13.1 3.7 9.1l5.8-.7z"></path></svg>
+        </span>
+        <div style="min-width: 0;">
+          <div style="font-size: 19px; font-weight: 800; line-height: 1;">{{ spotCount }}</div>
+          <div style="font-size: 12px; color: #8fa3bd; margin-top: 3px;">Spot trovati</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-height: 0; box-sizing: border-box; overflow-y: auto; padding: 0 20px 24px; display: flex; flex-direction: column; gap: 18px;">
+      <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: none; border-radius: 22px; overflow: hidden; border: 1px solid rgba(120,170,255,0.14); background: rgba(10,16,28,0.7);">
+          <div style="height: 220px; background: linear-gradient(90deg, #0e1626 25%, #16203a 50%, #0e1626 75%); background-size: 400px 100%; animation: hrr-shimmer 1.1s linear infinite;"></div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="height: 22px; width: 60%; border-radius: 8px; background: #16203a;"></div>
+            <div style="height: 14px; width: 40%; border-radius: 8px; background: #121a2e;"></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-for list="{{ spots }}" as="spot" hint-placeholder-count="2">
+        <div style="position: relative; flex: none; border-radius: 22px; overflow: hidden; border: 1px solid rgba(120,170,255,0.16); background: linear-gradient(180deg, rgba(14,22,38,0.94), rgba(8,12,20,0.94)); box-shadow: 0 18px 44px rgba(0,0,0,0.5); animation: hrr-fade 340ms cubic-bezier(.22,1,.36,1) both;">
+          <div style="position: relative; height: 230px; overflow: hidden;">
+            <image-slot id="{{ spot.slotId }}" shape="rect" placeholder="{{ spot.slotHint }}"></image-slot>
+            <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,7,11,0.92) 0%, rgba(5,7,11,0.12) 46%, rgba(5,7,11,0.34) 100%); pointer-events: none;"></div>
+            <div style="position: absolute; left: 14px; top: 14px; display: flex; gap: 8px; pointer-events: none;">
+              <span style="background: {{ spot.rarityBg }}; border: 1px solid {{ spot.rarityBorder }}; color: {{ spot.rarityColor }}; border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; white-space: nowrap; backdrop-filter: blur(10px);">{{ spot.rarityLabel }}</span>
+            </div>
+            <button type="button" onClick="{{ spot.onFav }}" style="position: absolute; right: 14px; top: 14px; width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); background: rgba(6,10,18,0.7); color: {{ spot.favColor }}; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(10px);" aria-label="Preferiti">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="{{ spot.favFill }}" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-9.4A4.1 4.1 0 0 1 12 8a4.1 4.1 0 0 1 7 2.6C19 15.6 12 20 12 20z"></path></svg>
+            </button>
+            <div style="position: absolute; left: 16px; right: 16px; bottom: 14px; pointer-events: none;">
+              <div style="font-family: 'Chakra Petch', Archivo, sans-serif; font-size: 25px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.1;">{{ spot.title }}</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 14px; color: #b7c7db;">
+                <span>{{ spot.year }}</span>
+                <span style="width: 4px; height: 4px; border-radius: 999px; background: #4d5e78;"></span>
+                <span>{{ spot.color }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="width: 32px; height: 32px; border-radius: 999px; background: linear-gradient(140deg, #2f6bff, #7b3bff); flex: none;"></span>
+              <span style="font-size: 15px; color: #cddcee;">{{ spot.author }}</span>
+              <span style="width: 4px; height: 4px; border-radius: 999px; background: #3d4b62;"></span>
+              <button type="button" onClick="{{ spot.onPlace }}" style="display: flex; align-items: center; gap: 5px; background: transparent; border: none; color: #35e0ff; font-family: inherit; font-size: 15px; cursor: pointer; padding: 0;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>
+                <span>{{ spot.place }}</span>
+              </button>
+            </div>
+
+            <div style="border-radius: 16px; border: 1px solid rgba(120,170,255,0.16); background: rgba(9,15,26,0.8); padding: 14px;">
+              <div style="font-size: 11px; letter-spacing: 0.16em; color: #7b8ea8;">VALUTAZIONE COMMUNITY</div>
+              <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
+                <div style="display: flex; gap: 3px;">
+                  <sc-for list="{{ spot.stars }}" as="star" hint-placeholder-count="5">
+                    <span style="position: relative; width: 26px; height: 26px; display: block;">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="#1d2740" style="position: absolute; inset: 0;"><path d="M12 3l2.6 5.6 6 .7-4.5 4.2 1.3 5.9-5.4-3.1-5.4 3.1 1.3-5.9L3.4 9.3l6-.7z"></path></svg>
+                      <span style="position: absolute; inset: 0; overflow: hidden; width: {{ star.fill }};">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="#ffb703" style="display: block;"><path d="M12 3l2.6 5.6 6 .7-4.5 4.2 1.3 5.9-5.4-3.1-5.4 3.1 1.3-5.9L3.4 9.3l6-.7z"></path></svg>
+                      </span>
+                      <button type="button" onClick="{{ star.voteHalf }}" style="position: absolute; left: 0; top: 0; width: 50%; height: 100%; background: transparent; border: none; padding: 0; cursor: pointer;" aria-label="Mezza stella"></button>
+                      <button type="button" onClick="{{ star.voteFull }}" style="position: absolute; right: 0; top: 0; width: 50%; height: 100%; background: transparent; border: none; padding: 0; cursor: pointer;" aria-label="Stella intera"></button>
+                    </span>
+                  </sc-for>
+                </div>
+                <div style="display: flex; align-items: baseline; gap: 7px;">
+                  <span style="font-size: 26px; font-weight: 900; line-height: 1;">{{ spot.avg }}</span>
+                  <span style="font-size: 13px; color: #7b8ea8;">{{ spot.votesLabel }}</span>
+                </div>
+              </div>
+              <div style="font-size: 13px; color: {{ spot.voteHintColor }}; margin-top: 10px;">{{ spot.voteHint }}</div>
+            </div>
+
+            <div style="border-radius: 16px; border: 1px solid rgba(255,140,60,0.2); background: linear-gradient(140deg, rgba(30,17,8,0.9), rgba(12,10,16,0.9)); padding: 14px;">
+              <div style="font-size: 11px; letter-spacing: 0.16em; color: #b08258;">RARITÀ</div>
+              <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
+                <div style="display: flex; gap: 5px;">
+                  <sc-for list="{{ spot.rarityIcons }}" as="ic" hint-placeholder-count="5">
+                    <button type="button" onClick="{{ ic.onVote }}" style="background: transparent; border: none; padding: 4px 2px; color: {{ ic.color }}; opacity: {{ ic.opacity }}; display: grid; place-items: center; cursor: pointer;" aria-label="Vota rarità">
+                      <svg width="26" height="14" viewBox="0 0 86 42" fill="currentColor"><path d="M6 30 C4 24 6 20 12 18 L24 8 C27 5.6 31 4.5 35 4.5 L52 4.5 C57 4.5 61 6 65 9 L74 17 C80 18.5 83 21 83 26 L83 30 C83 31.6 82 32.5 80.5 32.5 L72 32.5 L72 29 L18 29 L18 32.5 L9 32.5 C7.2 32.5 6.3 31.7 6 30 Z"></path><circle cx="23" cy="32" r="6"></circle><circle cx="66" cy="32" r="6"></circle></svg>
+                    </button>
+                  </sc-for>
+                </div>
+                <div style="display: flex; align-items: baseline; gap: 8px;">
+                  <span style="font-size: 19px; font-weight: 800; color: {{ spot.rarityColor }};">{{ spot.rarityLabel }}</span>
+                  <span style="font-size: 13px; color: #8f7a66;">{{ spot.rarityVotesLabel }}</span>
+                </div>
+              </div>
+              <div style="font-size: 13px; color: {{ spot.rarityHintColor }}; margin-top: 10px;">{{ spot.rarityHint }}</div>
+              <div style="font-size: 13px; color: #a08a72; margin-top: 6px;">{{ spot.rarityWhy }}</div>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="button" onClick="{{ spot.onOpen }}" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 9px; background: rgba(47,107,255,0.16); border: 1px solid rgba(47,107,255,0.4); border-radius: 14px; padding: 14px; color: #9dd4ff; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; min-height: 50px;" style-hover="background: rgba(47,107,255,0.26);">
+                <span>Dettagli auto</span>
+              </button>
+              <button type="button" onClick="{{ spot.onShare }}" style="flex: none; width: 52px; display: grid; place-items: center; background: rgba(16,26,44,0.8); border: 1px solid rgba(120,170,255,0.24); border-radius: 14px; color: #9dd4ff; cursor: pointer; min-height: 50px;" aria-label="Condividi">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8.5 7.5L12 4l3.5 3.5"></path><path d="M5 14v5h14v-5"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+
+      <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+        <div style="text-align: center; color: #7b8ea8; font-size: 16px; padding: 40px 0;">Nessuno Spot trovato con questi criteri.</div>
+      </sc-if>
+    </div>
+
+    <div style="position: relative; flex: none; background: rgba(7,10,17,0.92); border-top: 1px solid rgba(120,170,255,0.14); backdrop-filter: blur(16px); display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; padding: 8px 6px calc(12px + env(safe-area-inset-bottom));">
+      <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="5">
+        <button type="button" onClick="{{ tab.onSelect }}" style="display: flex; flex-direction: column; align-items: center; gap: 5px; background: transparent; border: none; padding: 6px 0; cursor: pointer; font-family: inherit; min-height: 56px;">
+          <span style="width: {{ tab.pillW }}; height: {{ tab.pillH }}; border-radius: 999px; display: grid; place-items: center; background: {{ tab.pillBg }}; border: 1px solid {{ tab.pillBorder }}; color: {{ tab.color }}; box-shadow: {{ tab.glow }}; margin-top: {{ tab.lift }};">{{ tab.icon }}</span>
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: {{ tab.labelColor }};">{{ tab.label }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <button type="button" onClick="{{ openCreate }}" style="position: absolute; right: 18px; bottom: 96px; width: 64px; height: 64px; border-radius: 999px; border: none; background: linear-gradient(140deg, #35e0ff, #2f6bff 55%, #7b3bff); color: #04121f; display: grid; place-items: center; cursor: pointer; box-shadow: 0 14px 34px rgba(47,107,255,0.5);" aria-label="Nuovo Spot">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+    </button>
+
+    <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+      <div style="position: absolute; left: 20px; right: 20px; bottom: 170px; z-index: 40; display: flex; align-items: center; gap: 12px; background: rgba(10,18,32,0.94); border: 1px solid rgba(53,224,255,0.4); border-radius: 16px; padding: 14px 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.6); animation: hrr-fade 260ms cubic-bezier(.22,1,.36,1) both;">
+        <span style="width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(140deg, #35e0ff, #2f6bff); display: grid; place-items: center; flex: none; color: #04121f;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L9.5 18 20 6.5"></path></svg>
+        </span>
+        <span style="flex: 1; min-width: 0; font-size: 15px; font-weight: 700;">{{ toast }}</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ detail }}" hint-placeholder-val="{{ false }}">
+      <div style="position: absolute; inset: 0; z-index: 30; background: #05070b; box-sizing: border-box; overflow-y: auto; animation: hrr-fade 240ms ease-out both;">
+        <div style="position: relative; height: 300px;">
+          <image-slot id="{{ detailSlotId }}" shape="rect" placeholder="Foto dello Spot"></image-slot>
+          <div style="position: absolute; inset: 0; background: linear-gradient(to top, #05070b 2%, rgba(5,7,11,0.1) 55%, rgba(5,7,11,0.5) 100%); pointer-events: none;"></div>
+          <button type="button" onClick="{{ closeDetail }}" style="position: absolute; left: 16px; top: 16px; width: 46px; height: 46px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18); background: rgba(6,10,18,0.72); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(10px);" aria-label="Chiudi">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>
+          </button>
+          <div style="position: absolute; left: 20px; right: 20px; bottom: 18px; pointer-events: none;">
+            <div style="font-family: 'Chakra Petch', Archivo, sans-serif; font-size: 30px; font-weight: 700; line-height: 1.1;">{{ detailTitle }}</div>
+            <div style="font-size: 15px; color: #b7c7db; margin-top: 8px;">{{ detailSub }}</div>
+          </div>
+        </div>
+        <div style="padding: 18px 20px 40px; display: flex; flex-direction: column; gap: 12px;">
+          <sc-for list="{{ detailSpecs }}" as="row" hint-placeholder-count="6">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; background: rgba(12,20,34,0.8); border: 1px solid rgba(120,170,255,0.14); border-radius: 14px; padding: 14px 16px;">
+              <span style="font-size: 14px; color: #8fa3bd;">{{ row.label }}</span>
+              <span style="font-size: 16px; font-weight: 700;">{{ row.value }}</span>
+            </div>
+          </sc-for>
+          <div style="border-radius: 16px; border: 1px solid rgba(255,140,60,0.24); background: linear-gradient(140deg, rgba(30,17,8,0.9), rgba(12,10,16,0.9)); padding: 16px;">
+            <div style="font-size: 11px; letter-spacing: 0.16em; color: #b08258;">PERCHÉ QUESTA RARITÀ</div>
+            <div style="font-size: 15px; color: #d8c3ae; margin-top: 10px; line-height: 1.5;">{{ detailRarityWhy }}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-size: 11px; letter-spacing: 0.16em; color: #7b8ea8;">BADGE SBLOCCATI</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <sc-for list="{{ detailBadges }}" as="b" hint-placeholder-count="2">
+                <span style="background: rgba(47,107,255,0.16); border: 1px solid rgba(47,107,255,0.36); color: #9dd4ff; border-radius: 999px; padding: 9px 14px; font-size: 13px; font-weight: 700;">{{ b.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ createOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position: absolute; inset: 0; z-index: 34; background: rgba(3,5,9,0.72); backdrop-filter: blur(6px); display: flex; flex-direction: column; justify-content: flex-end;">
+        <div style="max-height: 92%; box-sizing: border-box; overflow-y: auto; background: linear-gradient(180deg, #0c1421 0%, #070a11 100%); border: 1px solid rgba(120,170,255,0.2); border-bottom: none; border-radius: 26px 26px 0 0; padding: 12px 20px 26px; animation: hrr-up 300ms cubic-bezier(.22,1,.36,1);">
+          <div style="display: flex; justify-content: center; padding: 6px 0 14px;">
+            <div style="width: 96px; height: 6px; border-radius: 999px; background: #29354d;"></div>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="font-family: 'Chakra Petch', Archivo, sans-serif; font-size: 23px; font-weight: 700; letter-spacing: 0.04em;">{{ createTitle }}</div>
+            <button type="button" onClick="{{ closeCreate }}" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(120,170,255,0.24); background: rgba(16,26,44,0.8); color: #9dd4ff; display: grid; place-items: center; cursor: pointer;" aria-label="Chiudi">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+            </button>
+          </div>
+
+          <sc-if value="{{ createStepPhoto }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top: 16px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(120,170,255,0.2); position: relative; height: 240px; background: #0a0f19;">
+              <image-slot id="{{ draftSlotId }}" shape="rect" placeholder="Trascina qui la foto dell'auto"></image-slot>
+              <div style="position: absolute; left: 14px; top: 14px; display: flex; align-items: center; gap: 8px; background: rgba(6,10,18,0.7); border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; padding: 7px 12px; font-size: 12px; letter-spacing: 0.08em; color: #9dd4ff; pointer-events: none; backdrop-filter: blur(8px);">
+                <span style="width: 8px; height: 8px; border-radius: 999px; background: #ff4444; animation: hrr-glow 1.4s ease-in-out infinite;"></span>
+                <span>LIVE</span>
+              </div>
+              <div style="position: absolute; inset: 14px; border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; pointer-events: none;"></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 14px;">
+              <button type="button" onClick="{{ shoot }}" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(140deg, #35e0ff, #2f6bff); border: none; border-radius: 16px; padding: 16px; color: #04121f; font-family: inherit; font-size: 16px; font-weight: 800; cursor: pointer; min-height: 56px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h4l1.5-2h7L17 8h4v11H3z"></path><circle cx="12" cy="13" r="3.4"></circle></svg>
+                <span>Scatta</span>
+              </button>
+              <button type="button" onClick="{{ shoot }}" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(16,26,44,0.85); border: 1px solid rgba(120,170,255,0.28); border-radius: 16px; padding: 16px; color: #9dd4ff; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; min-height: 56px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="3"></rect><path d="M6 16l4-4 3 3 2.5-2.5L19 16"></path></svg>
+                <span>Galleria</span>
+              </button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ createStepForm }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+              <sc-for list="{{ formFields }}" as="fld" hint-placeholder-count="8">
+                <label style="display: flex; flex-direction: column; gap: 7px;">
+                  <span style="font-size: 12px; letter-spacing: 0.1em; color: #7b8ea8;">{{ fld.label }}</span>
+                  <input value="{{ fld.value }}" onInput="{{ fld.onInput }}" placeholder="{{ fld.placeholder }}" style="width: 100%; box-sizing: border-box; background: rgba(9,15,26,0.9); border: 1px solid rgba(120,170,255,0.22); border-radius: 14px; padding: 14px 16px; color: #fff; font-size: 16px; outline: none;" />
+                </label>
+              </sc-for>
+              <div style="border-radius: 16px; border: 1px solid rgba(255,140,60,0.24); background: linear-gradient(140deg, rgba(30,17,8,0.9), rgba(12,10,16,0.9)); padding: 14px;">
+                <div style="font-size: 11px; letter-spacing: 0.16em; color: #b08258;">RARITÀ STIMATA</div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
+                  <div style="display: flex; gap: 5px;">
+                    <sc-for list="{{ draftRarityIcons }}" as="ic" hint-placeholder-count="5">
+                      <span style="color: {{ ic.color }}; opacity: {{ ic.opacity }}; display: grid; place-items: center;">
+                        <svg width="24" height="13" viewBox="0 0 86 42" fill="currentColor"><path d="M6 30 C4 24 6 20 12 18 L24 8 C27 5.6 31 4.5 35 4.5 L52 4.5 C57 4.5 61 6 65 9 L74 17 C80 18.5 83 21 83 26 L83 30 C83 31.6 82 32.5 80.5 32.5 L72 32.5 L72 29 L18 29 L18 32.5 L9 32.5 C7.2 32.5 6.3 31.7 6 30 Z"></path><circle cx="23" cy="32" r="6"></circle><circle cx="66" cy="32" r="6"></circle></svg>
+                      </span>
+                    </sc-for>
+                  </div>
+                  <span style="font-size: 18px; font-weight: 800; color: {{ draftRarityColor }};">{{ draftRarityLabel }}</span>
+                </div>
+                <div style="font-size: 13px; color: #a08a72; margin-top: 8px;">{{ draftRarityWhy }}</div>
+              </div>
+              <button type="button" onClick="{{ saveSpot }}" disabled="{{ saveDisabled }}" style="display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(140deg, #35e0ff, #2f6bff 60%, #7b3bff); border: none; border-radius: 16px; padding: 18px; color: #04121f; font-family: inherit; font-size: 17px; font-weight: 800; cursor: pointer; min-height: 58px; margin-top: 4px;">
+                <span>Pubblica Spot</span>
+              </button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:440,&quot;height&quot;:900},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#35e0ff&quot;,&quot;#2f6bff&quot;,&quot;#ff7a1a&quot;],&quot;default&quot;:&quot;#35e0ff&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Stile&quot;},&quot;showRarityWhy&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Contenuto&quot;},&quot;skeletonDelayMs&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:700,&quot;min&quot;:0,&quot;max&quot;:3000,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Comportamento&quot;}}">
+class Component extends DCLogic {
+  state = {
+    tab: "spotting", searchOpen: false, filterOpen: false, query: "", filter: "Tutti",
+    createOpen: false, step: "photo", detailId: null, toast: null, loading: true,
+    draft: { brand: "", model: "", trim: "", year: "", color: "", engine: "", power: "", notes: "" },
+    votes: {}, rarityVotes: {}, favs: {}, extra: [], xp: 1240,
+  };
+
+  componentDidMount() {
+    this._t = setTimeout(() => this.setState({ loading: false }), 700);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._t);
+    clearTimeout(this._toast);
+  }
+
+  flash(msg) {
+    clearTimeout(this._toast);
+    this.setState({ toast: msg });
+    this._toast = setTimeout(() => this.setState({ toast: null }), 2400);
+  }
+
+  base() {
+    return [
+      { id: "s1", brand: "BMW", model: "M4 Competition", trim: "xDrive", year: "2025", color: "Blu Estoril", engine: "3.0 biturbo I6", power: "530 CV", author: "Leonardo", place: "Milano", avg: 4.8, votes: 247, rarityAvg: 3.6, rarityVotes: 188, sightings: 34, notes: "Vista in Porta Nuova al tramonto." },
+      { id: "s2", brand: "Ferrari", model: "F40", trim: "", year: "1990", color: "Rosso Corsa", engine: "2.9 V8 biturbo", power: "478 CV", author: "Giulia", place: "Maranello", avg: 5.0, votes: 96, rarityAvg: 5.0, rarityVotes: 91, sightings: 1, notes: "Uscita dal museo, brividi." },
+      { id: "s3", brand: "Volkswagen", model: "Golf", trim: "1.6 TDI", year: "2016", color: "Grigio Urano", engine: "1.6 TDI", power: "115 CV", author: "Marco", place: "Torino", avg: 3.0, votes: 412, rarityAvg: 1.2, rarityVotes: 305, sightings: 2100, notes: "Parcheggio del supermercato." },
+      { id: "s4", brand: "Nissan", model: "Skyline GT-R", trim: "R34 V-Spec II", year: "2002", color: "Bayside Blue", engine: "2.6 RB26DETT", power: "280 CV", author: "Kenji", place: "Roma", avg: 4.9, votes: 158, rarityAvg: 4.6, rarityVotes: 141, sightings: 6, notes: "JDM meet, coda di gente." },
+    ];
+  }
+
+  all() {
+    return (this.state.extra || []).concat(this.base());
+  }
+
+  RARITY = [
+    { label: "COMUNE", color: "#9fb0c6", bg: "rgba(20,28,44,0.72)", border: "rgba(160,180,210,0.3)" },
+    { label: "NON COMUNE", color: "#7ee0a5", bg: "rgba(12,34,24,0.72)", border: "rgba(126,224,165,0.34)" },
+    { label: "RARA", color: "#7fc4ff", bg: "rgba(12,26,48,0.72)", border: "rgba(127,196,255,0.36)" },
+    { label: "MOLTO RARA", color: "#c79bff", bg: "rgba(26,16,44,0.72)", border: "rgba(199,155,255,0.38)" },
+    { label: "LEGGENDARIA", color: "#ffb703", bg: "rgba(38,24,4,0.78)", border: "rgba(255,183,3,0.44)" },
+  ];
+
+  EXOTIC = { ferrari: 4, lamborghini: 4, pagani: 5, bugatti: 5, mclaren: 4, porsche: 3, aston: 3, lotus: 3, alpine: 3, maserati: 3, bmw: 2, audi: 2, mercedes: 2, nissan: 2, toyota: 2, honda: 2, subaru: 2, mazda: 2, volkswagen: 1, fiat: 1, renault: 1, opel: 1, ford: 1, peugeot: 1 };
+  HALO = ["f40", "f50", "enzo", "gt-r", "gtr", "skyline", "supra", "rx-7", "nsx", "carrera gt", "gt3 rs", "integrale", "stradale", "quadrifoglio", "m4 csl", "cobra", "countach", "miura", "delta"];
+
+  // Rarity is computed: brand exclusivity + halo model + age + how many sightings exist.
+  rarityOf(spot) {
+    const brand = (spot.brand || "").toLowerCase().split(" ")[0];
+    const name = ((spot.model || "") + " " + (spot.trim || "")).toLowerCase();
+    let score = this.EXOTIC[brand] != null ? this.EXOTIC[brand] : 2;
+    const halo = this.HALO.some((h) => name.indexOf(h) >= 0);
+    if (halo) score += 1.6;
+    const year = parseInt(spot.year, 10);
+    if (year && year < 1995) score += 1.2;
+    else if (year && year < 2008) score += 0.6;
+    const s = spot.sightings == null ? 40 : spot.sightings;
+    if (s <= 2) score += 1.4;
+    else if (s <= 12) score += 0.9;
+    else if (s <= 60) score += 0.4;
+    else if (s > 800) score -= 0.9;
+    const power = parseInt(spot.power, 10);
+    if (power >= 600) score += 0.5;
+    const level = Math.max(1, Math.min(5, Math.round(score)));
+    const why = [];
+    if (this.EXOTIC[brand] >= 4) why.push("marca esclusiva");
+    if (halo) why.push("modello iconico");
+    if (year && year < 1995) why.push("oltre 30 anni");
+    if (s <= 2) why.push("solo " + s + " avvistamenti nel database");
+    else if (s <= 12) why.push(s + " avvistamenti nel database");
+    else if (s <= 60) why.push("avvistamenti poco frequenti (" + s + ")");
+    else if (s > 800) why.push(s + " avvistamenti registrati");
+    return { level, why: why.length ? why.join(" · ") : "modello diffuso · " + s + " avvistamenti" };
+  }
+
+  rarityIcons(level, spot) {
+    const look = this.RARITY[Math.max(1, Math.min(5, level)) - 1];
+    return [1, 2, 3, 4, 5].map((i) => ({
+      color: i <= level ? look.color : "#2a3448",
+      opacity: i <= level ? 1 : 0.55,
+      onVote: spot ? () => this.voteRarity(spot, i) : () => {},
+    }));
+  }
+
+  // Community rarity: the algorithmic estimate seeds the average, users' votes move it.
+  voteRarity(spot, level) {
+    if ((this.state.rarityVotes || {})[spot.id] != null) {
+      this.flash("Hai già valutato la rarità di questo Spot");
+      return;
+    }
+    const rarityVotes = Object.assign({}, this.state.rarityVotes);
+    rarityVotes[spot.id] = level;
+    this.setState({ rarityVotes, xp: this.state.xp + 10 });
+    this.flash("Rarità valutata · +10 XP");
+  }
+
+  communityRarity(spot, est) {
+    const seedVotes = spot.rarityVotes == null ? 0 : spot.rarityVotes;
+    const seedAvg = spot.rarityAvg == null ? est.level : spot.rarityAvg;
+    const mine = (this.state.rarityVotes || {})[spot.id];
+    // the estimate counts as one baseline vote so a brand-new Spot still has a level
+    let total = seedAvg * seedVotes + est.level;
+    let count = seedVotes + 1;
+    if (mine != null) { total += mine; count += 1; }
+    const avg = total / count;
+    return { avg, level: Math.max(1, Math.min(5, Math.round(avg))), votes: seedVotes + (mine != null ? 1 : 0), mine };
+  }
+
+  starsFor(value, spot) {
+    return [1, 2, 3, 4, 5].map((i) => {
+      const diff = value - (i - 1);
+      const fill = diff >= 1 ? "100%" : diff >= 0.5 ? "50%" : diff > 0 ? "50%" : "0%";
+      return {
+        fill,
+        voteHalf: () => this.vote(spot, i - 0.5),
+        voteFull: () => this.vote(spot, i),
+      };
+    });
+  }
+
+  vote(spot, value) {
+    if ((this.state.votes || {})[spot.id] != null) {
+      this.flash("Hai già valutato questo Spot");
+      return;
+    }
+    const votes = Object.assign({}, this.state.votes);
+    votes[spot.id] = value;
+    this.setState({ votes, xp: this.state.xp + 15 });
+    this.flash("Voto registrato · +15 XP");
+  }
+
+  displayed(spot) {
+    const mine = (this.state.votes || {})[spot.id];
+    if (mine == null) return { avg: spot.avg, count: spot.votes };
+    const total = spot.avg * spot.votes + mine;
+    const count = spot.votes + 1;
+    return { avg: total / count, count };
+  }
+
+  draftSpot() {
+    const d = this.state.draft;
+    return { brand: d.brand, model: d.model, trim: d.trim, year: d.year, power: d.power, sightings: this.sightingsFor(d.brand, d.model) };
+  }
+
+  sightingsFor(brand, model) {
+    const b = (brand || "").toLowerCase().split(" ")[0];
+    const known = { ferrari: 3, lamborghini: 4, pagani: 1, bugatti: 1, mclaren: 6, porsche: 40, bmw: 180, audi: 210, mercedes: 240, nissan: 60, toyota: 190, volkswagen: 1800, fiat: 2200, ford: 900 };
+    const base = known[b] != null ? known[b] : 120;
+    const halo = this.HALO.some((h) => (model || "").toLowerCase().indexOf(h) >= 0);
+    return halo ? Math.max(1, Math.round(base / 30)) : base;
+  }
+
+  navIcon(kind, active) {
+    const c = React.createElement;
+    const st = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round" };
+    if (kind === "home") return c("svg", st, c("path", { d: "M4 11l8-6.5 8 6.5" }), c("path", { d: "M6.5 10.5V20h11v-9.5" }));
+    if (kind === "board") return c("svg", st, c("path", { d: "M7 4h10v5a5 5 0 0 1-10 0V4z" }), c("path", { d: "M12 14v4M9 20h6" }));
+    if (kind === "spotting") {
+      return c("svg", { width: active ? 30 : 24, height: active ? 16 : 13, viewBox: "0 0 86 42", fill: "currentColor" },
+        c("path", { d: "M6 30 C4 24 6 20 12 18 L24 8 C27 5.6 31 4.5 35 4.5 L52 4.5 C57 4.5 61 6 65 9 L74 17 C80 18.5 83 21 83 26 L83 30 C83 31.6 82 32.5 80.5 32.5 L72 32.5 L72 29 L18 29 L18 32.5 L9 32.5 C7.2 32.5 6.3 31.7 6 30 Z" }),
+        c("circle", { cx: 23, cy: 32, r: 6 }), c("circle", { cx: 66, cy: 32, r: 6 }));
+    }
+    if (kind === "missions") return c("svg", st, c("path", { d: "M12 3l2.6 5.6 6 .7-4.5 4.2 1.3 5.9-5.4-3.1-5.4 3.1 1.3-5.9L3.4 9.3l6-.7z" }));
+    return c("svg", st, c("circle", { cx: 12, cy: 8.4, r: 3.4 }), c("path", { d: "M5 19c1.3-3.3 3.9-4.8 7-4.8s5.7 1.5 7 4.8" }));
+  }
+
+  renderVals() {
+    const d = this.state.draft;
+    const q = (this.state.query || "").toLowerCase().trim();
+    const filter = this.state.filter;
+    let spots = this.all().map((s) => {
+      const est = this.rarityOf(s);
+      const cr = this.communityRarity(s, est);
+      const r = { level: cr.level, why: est.why };
+      const shown = this.displayed(s);
+      const look = this.RARITY[cr.level - 1];
+      return { s, r, cr, shown, look };
+    });
+    if (q) spots = spots.filter((x) => (x.s.brand + " " + x.s.model + " " + x.s.place).toLowerCase().indexOf(q) >= 0);
+    if (filter === "Rare") spots = spots.filter((x) => x.r.level >= 4);
+    if (filter === "Preferiti") spots = spots.filter((x) => (this.state.favs || {})[x.s.id]);
+    if (filter === "Da votare") spots = spots.filter((x) => (this.state.votes || {})[x.s.id] == null);
+
+    const detailEntry = spots.concat().find ? this.all().find((s) => s.id === this.state.detailId) : null;
+    const detailEst = detailEntry ? this.rarityOf(detailEntry) : null;
+    const detailCr = detailEntry ? this.communityRarity(detailEntry, detailEst) : null;
+    const detailRar = detailEst;
+    const draftRar = this.rarityOf(this.draftSpot());
+    const draftLook = this.RARITY[draftRar.level - 1];
+    const xp = this.state.xp;
+
+    return {
+      xp: xp.toLocaleString("it-IT") + " XP",
+      levelLabel: "Livello " + (Math.floor(xp / 500) + 1) + " · Spotter",
+      spotCount: String(this.all().length),
+      loading: this.state.loading,
+      noResults: !this.state.loading && spots.length === 0,
+      searchOpen: this.state.searchOpen,
+      filterOpen: this.state.filterOpen,
+      query: this.state.query,
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      toggleSearch: () => this.setState((s) => ({ searchOpen: !s.searchOpen })),
+      toggleFilter: () => this.setState((s) => ({ filterOpen: !s.filterOpen })),
+      filters: ["Tutti", "Rare", "Preferiti", "Da votare"].map((label) => ({
+        label,
+        bg: label === filter ? "rgba(47,107,255,0.24)" : "rgba(12,20,34,0.8)",
+        color: label === filter ? "#9dd4ff" : "#8fa3bd",
+        border: label === filter ? "rgba(53,224,255,0.5)" : "rgba(120,170,255,0.18)",
+        onSelect: () => this.setState({ filter: label }),
+      })),
+      spots: spots.map((x) => {
+        const fav = !!(this.state.favs || {})[x.s.id];
+        const mine = (this.state.votes || {})[x.s.id];
+        return {
+          slotId: "hrr-" + x.s.id,
+          slotHint: x.s.brand + " " + x.s.model,
+          title: x.s.brand + " " + x.s.model + (x.s.trim ? " " + x.s.trim : ""),
+          year: x.s.year || "—",
+          color: x.s.color || "—",
+          author: "Pubblicata da " + x.s.author,
+          place: x.s.place,
+          avg: x.shown.avg.toFixed(1),
+          votesLabel: "(" + x.shown.count + " valutazioni)",
+          voteHint: mine == null ? "Tocca le stelle per votare (una sola volta)" : "Hai valutato questo Spot: " + mine.toFixed(1),
+          voteHintColor: mine == null ? "#7b8ea8" : "#7ee0a5",
+          stars: this.starsFor(x.shown.avg, x.s),
+          rarityIcons: this.rarityIcons(x.cr.level, x.s),
+          rarityVotesLabel: x.cr.avg.toFixed(1) + " · " + x.cr.votes + " valutazioni",
+          rarityHint: x.cr.mine == null ? "Tocca le auto per valutare la rarità (una sola volta)" : "Hai valutato la rarità: " + x.cr.mine,
+          rarityHintColor: x.cr.mine == null ? "#8f7a66" : "#7ee0a5",
+          rarityLabel: x.look.label,
+          rarityColor: x.look.color,
+          rarityBg: x.look.bg,
+          rarityBorder: x.look.border,
+          rarityWhy: x.r.why,
+          favColor: fav ? "#ff6b52" : "#cddcee",
+          favFill: fav ? "#ff6b52" : "none",
+          onFav: () => {
+            const favs = Object.assign({}, this.state.favs);
+            favs[x.s.id] = !favs[x.s.id];
+            this.setState({ favs });
+            this.flash(favs[x.s.id] ? "Aggiunto ai preferiti" : "Rimosso dai preferiti");
+          },
+          onShare: () => this.flash("Link dello Spot copiato"),
+          onPlace: () => this.flash("Avvistamento a " + x.s.place),
+          onOpen: () => this.setState({ detailId: x.s.id }),
+        };
+      }),
+      detail: !!detailEntry,
+      detailSlotId: detailEntry ? "hrr-" + detailEntry.id : "hrr-none",
+      detailTitle: detailEntry ? detailEntry.brand + " " + detailEntry.model : "",
+      detailSub: detailEntry ? detailEntry.year + " · " + detailEntry.color + " · " + detailEntry.place : "",
+      detailRarityWhy: detailEntry ? (this.RARITY[detailCr.level - 1].label + " · media community " + detailCr.avg.toFixed(1) + " su " + detailCr.votes + " valutazioni. Stima algoritmica: " + this.RARITY[detailEst.level - 1].label + " (" + detailEst.why + ").") : "",
+      detailSpecs: detailEntry ? [
+        ["Marca", detailEntry.brand], ["Modello", detailEntry.model],
+        ["Versione", detailEntry.trim || "—"], ["Anno", detailEntry.year || "—"],
+        ["Colore", detailEntry.color || "—"], ["Motore", detailEntry.engine || "—"],
+        ["Potenza", detailEntry.power || "—"], ["Note", detailEntry.notes || "—"],
+      ].map((r) => ({ label: r[0], value: r[1] })) : [],
+      detailBadges: detailEntry ? (detailCr.level >= 4
+        ? [{ label: "Auto rara avvistata" }, { label: "+120 XP" }]
+        : [{ label: "Spot registrato" }, { label: "+40 XP" }]) : [],
+      closeDetail: () => this.setState({ detailId: null }),
+
+      createOpen: this.state.createOpen,
+      createTitle: this.state.step === "photo" ? "NUOVO SPOT" : "INFO VEICOLO",
+      createStepPhoto: this.state.step === "photo",
+      createStepForm: this.state.step === "form",
+      draftSlotId: "hrr-draft",
+      openCreate: () => this.setState({ createOpen: true, step: "photo" }),
+      closeCreate: () => this.setState({ createOpen: false }),
+      shoot: () => this.setState({ step: "form" }),
+      formFields: [
+        ["Marca", "brand", "BMW", true],
+        ["Modello", "model", "M4 Competition", true],
+        ["Versione (opzionale)", "trim", "xDrive", false],
+        ["Anno (opzionale)", "year", "2025", false],
+        ["Colore", "color", "Blu Estoril", true],
+        ["Motore (opzionale)", "engine", "3.0 biturbo I6", false],
+        ["Potenza (opzionale)", "power", "530 CV", false],
+        ["Note personali (opzionale)", "notes", "Dove l'hai vista?", false],
+      ].map((fx) => ({
+        label: fx[0], placeholder: fx[2], value: d[fx[1]] || "",
+        onInput: (e) => this.setState({ draft: Object.assign({}, this.state.draft, { [fx[1]]: e.target.value }) }),
+      })),
+      draftRarityIcons: this.rarityIcons(draftRar.level, null),
+      draftRarityLabel: draftLook.label,
+      draftRarityColor: draftLook.color,
+      draftRarityWhy: draftRar.why,
+      saveDisabled: !(d.brand && d.model && d.color),
+      saveSpot: () => {
+        const rar = this.rarityOf(this.draftSpot());
+        const id = "u" + Date.now();
+        const spot = {
+          id, brand: d.brand, model: d.model, trim: d.trim, year: d.year, color: d.color,
+          engine: d.engine, power: d.power, notes: d.notes,
+          author: "Tu", place: "Posizione attuale", avg: 0, votes: 0, rarityAvg: null, rarityVotes: 0,
+          sightings: this.sightingsFor(d.brand, d.model),
+        };
+        this.setState({
+          extra: [spot].concat(this.state.extra),
+          createOpen: false, step: "photo",
+          xp: this.state.xp + (rar.level >= 4 ? 120 : 40),
+          draft: { brand: "", model: "", trim: "", year: "", color: "", engine: "", power: "", notes: "" },
+        });
+        this.flash(rar.level >= 4 ? "Spot rara pubblicata · +120 XP" : "Spot pubblicata · +40 XP");
+      },
+
+      toast: this.state.toast,
+      tabs: [
+        ["Home", "home"], ["Leaderboard", "board"], ["Car Spotting", "spotting"], ["Missioni", "missions"], ["Profilo", "profile"],
+      ].map((t) => {
+        const id = t[1];
+        const on = id === this.state.tab;
+        const hero = id === "spotting";
+        return {
+          label: t[0],
+          icon: this.navIcon(id, on && hero),
+          color: on ? (hero ? "#04121f" : "#9dd4ff") : "#63748d",
+          labelColor: on ? (hero ? "#35e0ff" : "#9dd4ff") : "#63748d",
+          pillW: hero ? "58px" : "48px",
+          pillH: hero ? "44px" : "34px",
+          pillBg: on ? (hero ? "linear-gradient(140deg, #35e0ff, #2f6bff)" : "rgba(47,107,255,0.16)") : "transparent",
+          pillBorder: on && !hero ? "rgba(53,224,255,0.34)" : "transparent",
+          glow: on && hero ? "0 8px 22px rgba(47,107,255,0.55)" : "none",
+          lift: hero ? "-8px" : "0",
+          onSelect: () => this.setState({ tab: id }),
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

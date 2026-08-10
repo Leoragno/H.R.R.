@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../providers/trip_live_provider.dart';
+import '../../domain/entities/route_point.dart';
+import '../utils/route_smoothing.dart';
 
 /// Disegna la forma del percorso (normalizzata, senza tile di mappa) come
 /// anteprima neon nella schermata di Fine Viaggio.
@@ -48,9 +49,10 @@ class _RoutePainter extends CustomPainter {
       return Offset(x, y);
     }
 
+    final smoothed = smoothRouteForDisplay(points);
     final path = Path()
-      ..moveTo(toOffset(points.first).dx, toOffset(points.first).dy);
-    for (final p in points.skip(1)) {
+      ..moveTo(toOffset(smoothed.first).dx, toOffset(smoothed.first).dy);
+    for (final p in smoothed.skip(1)) {
       final o = toOffset(p);
       path.lineTo(o.dx, o.dy);
     }

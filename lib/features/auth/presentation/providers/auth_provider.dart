@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/network/supabase_provider.dart';
+import '../../../notifications/presentation/providers/push_token_providers.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
@@ -89,7 +92,75 @@ class AuthController extends _$AuthController {
 
   Future<void> signOut() async {
     state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      // Va fatto PRIMA di chiudere la sessione Supabase: unregister_push_
+      // token si affida ad auth.uid(), che sparisce non appena signOut()
+      // completa. Se fallisce (Firebase non configurato, offline, ecc.)
+      // il logout procede comunque — il device resta registrato finché
+      // un altro account non lo "ruba" al login (register_push_token lo
+      // gestisce già), nessun impatto sull'utente che sta uscendo.
+      await _unregisterPushToken();
+      await ref.read(authRepositoryProvider).signOut();
+    });
+  }
+
+  Future<void> _unregisterPushToken() async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await ref.read(pushTokenRepositoryProvider).unregister(token);
+      }
+    } catch (_) {
+      // Vedi commento sopra in signOut().
+    }
+  }
+
+  Future<void> updateVehicle({
+    required String userId,
+    required String brand,
+    required String model,
+  }) async {
+    state = const AsyncLoading();
     state = await AsyncValue.guard(
-        () => ref.read(authRepositoryProvider).signOut());
+      () => ref.read(authRepositoryProvider).updateVehicle(
+            userId: userId,
+            brand: brand,
+            model: model,
+          ),
+    );
+  }
+
+  Future<void> updateProfileSettings({
+    required String userId,
+    String? username,
+    String? country,
+    String? accentColor,
+    String? mascotId,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => ref.read(authRepositoryProvider).updateProfileSettings(
+            userId: userId,
+            username: username,
+            country: country,
+            accentColor: accentColor,
+            mascotId: mascotId,
+          ),
+    );
+  }
+
+  Future<void> updateAvatar({
+    required String userId,
+    required Uint8List photoBytes,
+    required String photoExtension,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => ref.read(authRepositoryProvider).updateAvatar(
+            userId: userId,
+            photoBytes: photoBytes,
+            photoExtension: photoExtension,
+          ),
+    );
   }
 }

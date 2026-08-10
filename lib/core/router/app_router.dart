@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -5,16 +7,22 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/auth/presentation/screens/ride_onboarding_screen.dart';
+import '../../features/auth/presentation/screens/mascot_onboarding_screen.dart';
+import '../../features/game/presentation/screens/game_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
 import '../../features/trip/presentation/screens/trip_live_screen.dart';
 import '../../features/trip/presentation/screens/trip_summary_screen.dart';
 import '../../features/trip/presentation/screens/trip_detail_screen.dart';
-import '../../features/trip/presentation/providers/trip_live_provider.dart';
 import '../../features/leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../features/crew/presentation/screens/crew_screen.dart';
 import '../../features/chat/presentation/screens/crew_chat_screen.dart';
 import '../../features/car_spotting/presentation/screens/car_spotting_feed_screen.dart';
+import '../../features/car_spotting/presentation/screens/create_spot_screen.dart';
+import '../../features/car_spotting/presentation/screens/leaderboard_screen.dart'
+    as car_spotting;
+import '../../features/car_spotting/presentation/screens/spot_detail_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/missions/presentation/screens/missions_screen.dart';
 import '../../features/achievements/presentation/screens/achievements_screen.dart';
@@ -31,8 +39,11 @@ class AppRoutes {
   static const splash = '/';
   static const login = '/login';
   static const register = '/register';
+  static const rideOnboarding = '/onboarding/ride';
+  static const mascotOnboarding = '/onboarding/mascot';
 
   static const home = '/home';
+  static const game = '/game';
   static const map = '/map';
   static const tripLive = '/trip/live';
   static const tripSummary = '/trip/summary';
@@ -41,6 +52,9 @@ class AppRoutes {
   static const crew = '/crew';
   static const crewChat = '/crew/chat';
   static const carSpotting = '/car-spotting';
+  static const createSpot = '/car-spotting/create';
+  static const spotDetail = '/car-spotting/:spotId';
+  static const carSpottingLeaderboard = '/car-spotting-leaderboard';
   static const profile = '/profile';
   static const missions = '/missions';
   static const achievements = '/achievements';
@@ -49,22 +63,63 @@ class AppRoutes {
   static const notifications = '/notifications';
 }
 
-@riverpod
-GoRouter appRouter(AppRouterRef ref) {
-  final authState = ref.watch(authStateProvider);
+/// Fa da ponte fra i provider Riverpod osservati per il redirect
+/// (authState, myProfile) e `GoRouter.refreshListenable`, senza ricreare
+/// l'intero GoRouter ad ogni loro update. Prima la funzione appRouter
+/// faceva `ref.watch(...)` direttamente: ogni nuova emissione (es. lo
+/// stream realtime su `profiles` dopo un `complete_trip` che assegna
+/// XP) ricreava un GoRouter da zero con `initialLocation: splash`,
+/// buttando fuori l'utente dalla schermata corrente (es. il riepilogo
+/// del viaggio spariva subito dopo essere apparso). Con
+/// refreshListenable, GoRouter si limita a rivalutare `redirect` sullo
+/// stack di navigazione esistente.
+class _GoRouterRefreshNotifier extends ChangeNotifier {
+  _GoRouterRefreshNotifier(Ref ref) {
+    ref.listen(authStateProvider, (_, __) => notifyListeners());
+    ref.listen(myProfileProvider, (_, __) => notifyListeners());
+  }
+}
+
+@Riverpod(keepAlive: true)
+GoRouter appRouter(Ref ref) {
+  final refresh = _GoRouterRefreshNotifier(ref);
+  ref.onDispose(refresh.dispose);
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
+    refreshListenable: refresh,
     redirect: (context, state) {
+      final authState = ref.read(authStateProvider);
+      final myProfile = ref.read(myProfileProvider);
       final isLoggedIn = authState.valueOrNull != null;
       final isAuthRoute = state.matchedLocation == AppRoutes.login ||
           state.matchedLocation == AppRoutes.register;
       final isSplash = state.matchedLocation == AppRoutes.splash;
+      final isRideOnboarding =
+          state.matchedLocation == AppRoutes.rideOnboarding;
 
       if (isSplash) return null; // splash handles its own timed redirect
       if (!isLoggedIn && !isAuthRoute) return AppRoutes.login;
       if (isLoggedIn && isAuthRoute) return AppRoutes.home;
+
+      // Solo quando il profilo è caricato (evita un redirect-flicker per
+      // chi ha già un veicolo salvato mentre lo stream sta ancora
+      // emettendo il primo valore).
+      final needsVehicle = isLoggedIn &&
+          myProfile.hasValue &&
+          myProfile.value?.vehicleBrand == null;
+      if (needsVehicle && !isRideOnboarding) return AppRoutes.rideOnboarding;
+      if (!needsVehicle && isRideOnboarding) return AppRoutes.home;
+
+      final isMascotOnboarding =
+          state.matchedLocation == AppRoutes.mascotOnboarding;
+      final needsMascot = isLoggedIn &&
+          myProfile.hasValue &&
+          myProfile.value?.vehicleBrand != null && // solo dopo lo step veicolo
+          myProfile.value?.mascotId == null;
+      if (needsMascot && !isMascotOnboarding) return AppRoutes.mascotOnboarding;
+      if (!needsMascot && isMascotOnboarding) return AppRoutes.home;
       return null;
     },
     routes: [
@@ -72,13 +127,19 @@ GoRouter appRouter(AppRouterRef ref) {
       GoRoute(path: AppRoutes.login, builder: (c, s) => const LoginScreen()),
       GoRoute(
           path: AppRoutes.register, builder: (c, s) => const RegisterScreen()),
+      GoRoute(
+          path: AppRoutes.rideOnboarding,
+          builder: (c, s) => const RideOnboardingScreen()),
+      GoRoute(
+          path: AppRoutes.mascotOnboarding,
+          builder: (c, s) => const MascotOnboardingScreen()),
 
       // Full-screen routes (outside bottom-nav shell)
       GoRoute(
           path: AppRoutes.tripLive, builder: (c, s) => const TripLiveScreen()),
       GoRoute(
         path: AppRoutes.tripSummary,
-        builder: (c, s) => TripSummaryScreen(summary: s.extra as TripSummary),
+        builder: (c, s) => const TripSummaryScreen(),
       ),
       GoRoute(
         path: AppRoutes.tripDetail,
@@ -87,6 +148,19 @@ GoRouter appRouter(AppRouterRef ref) {
       ),
       GoRoute(
           path: AppRoutes.crewChat, builder: (c, s) => const CrewChatScreen()),
+      GoRoute(
+          path: AppRoutes.createSpot,
+          builder: (c, s) => const CreateSpotScreen()),
+      GoRoute(
+          path: AppRoutes.carSpottingLeaderboard,
+          builder: (c, s) => const car_spotting.CarSpottingLeaderboardScreen()),
+      GoRoute(
+        path: AppRoutes.spotDetail,
+        builder: (c, s) =>
+            SpotDetailScreen(spotId: s.pathParameters['spotId']!),
+      ),
+      GoRoute(
+          path: AppRoutes.profile, builder: (c, s) => const ProfileScreen()),
       GoRoute(
           path: AppRoutes.achievements,
           builder: (c, s) => const AchievementsScreen()),
@@ -102,6 +176,7 @@ GoRouter appRouter(AppRouterRef ref) {
         builder: (context, state, child) => MainShell(child: child),
         routes: [
           GoRoute(path: AppRoutes.home, builder: (c, s) => const HomeScreen()),
+          GoRoute(path: AppRoutes.game, builder: (c, s) => const GameScreen()),
           GoRoute(
               path: AppRoutes.missions,
               builder: (c, s) => const MissionsScreen()),
@@ -109,9 +184,6 @@ GoRouter appRouter(AppRouterRef ref) {
           GoRoute(
               path: AppRoutes.carSpotting,
               builder: (c, s) => const CarSpottingFeedScreen()),
-          GoRoute(
-              path: AppRoutes.profile,
-              builder: (c, s) => const ProfileScreen()),
           GoRoute(
               path: AppRoutes.leaderboard,
               builder: (c, s) => const LeaderboardScreen()),
