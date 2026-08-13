@@ -64,6 +64,49 @@ class HexGrid {
     return (3 * math.sqrt(3) / 2) * hexMeters * hexMeters / 1e6;
   }
 
+  /// Inversa di [cellOf]: coordinate geografiche del centro di [cell].
+  /// Usata per disegnare la cella come poligono reale sulla mappa (Fill
+  /// georeferenziato in game_map_background.dart) invece che come overlay
+  /// in pixel scollegabile da pan/zoom.
+  static (double lat, double lon) centerOf(HexCoord cell) {
+    final rOdd = cell.r % 2 != 0;
+    final north = cell.r * hexMeters * 1.5;
+    final east = (cell.q + (rOdd ? 0.5 : 0)) * hexMeters * 1.732;
+    final lat = _gridOriginLat + north / _metersPerDegreeLat;
+    final lon = _gridOriginLon +
+        east / (_metersPerDegreeLat * math.cos(lat * math.pi / 180));
+    return (lat, lon);
+  }
+
+  /// I 6 vertici di [cell] come coordinate geografiche (stesso orientamento
+  /// "pointy-top", vertici a -30°+60k°, già usato in pixel dal vecchio
+  /// painter), leggermente ristretti (0.94×) per lasciare un filo di
+  /// margine visibile fra celle adiacenti sulla mappa reale.
+  static List<(double lat, double lon)> polygonOf(HexCoord cell) {
+    final (centerLat, centerLon) = centerOf(cell);
+    final cosLat = math.cos(centerLat * math.pi / 180);
+    const radius = hexMeters * 0.94;
+    return [
+      for (var k = 0; k < 6; k++)
+        _cornerLatLon(centerLat, centerLon, cosLat, radius, k),
+    ];
+  }
+
+  static (double lat, double lon) _cornerLatLon(
+    double centerLat,
+    double centerLon,
+    double cosLat,
+    double radius,
+    int k,
+  ) {
+    final angle = (math.pi / 180) * (60 * k - 30);
+    final eastM = radius * math.cos(angle);
+    final northM = -radius * math.sin(angle);
+    final lat = centerLat + northM / _metersPerDegreeLat;
+    final lon = centerLon + eastM / (_metersPerDegreeLat * cosLat);
+    return (lat, lon);
+  }
+
   /// Offset (in raggi esagono) di [cell] rispetto a [focus], per il
   /// rendering: stessa formula di `playHexes` nel mockup, generalizzata
   /// a qualunque dimensione in pixel scelga il painter.

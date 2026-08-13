@@ -6,22 +6,36 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/car_glyph_icon.dart';
 import '../../../../core/widgets/notification_bell_button.dart';
 import '../../../../core/widgets/profile_avatar_button.dart';
+import '../../../../core/widgets/recenter_button.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/game_controller.dart';
 import '../widgets/game_map_background.dart';
-import '../widgets/hex_map_painter.dart';
 import '../widgets/territory_panel.dart';
 
 /// Tab "Gioca": conquista territorio via GPS a esagoni (mockup
 /// Guida.dc.html righe 720-835). Le celle si rivendicano camminando/
 /// guidando mentre questa schermata è aperta — flusso GPS indipendente
 /// da quello di Trip Live (concettualmente diverso: qui è conquista
-/// ambientale, non un viaggio con inizio/fine esplicito).
-class GameScreen extends ConsumerWidget {
+/// ambientale, non un viaggio con inizio/fine esplicito). La mappa sotto
+/// è liberamente navigabile (pan/zoom, come in Guida): la camera non
+/// segue più ogni fix GPS da sola, vedi _mapKey.recenter().
+class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GameScreen> createState() => _GameScreenState();
+}
+
+class _GameScreenState extends ConsumerState<GameScreen> {
+  final _mapKey = GlobalKey<GameMapBackgroundState>();
+
+  Future<void> _recenter(GameController controller) async {
+    await controller.recenterNow();
+    await _mapKey.currentState?.recenter();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(gameControllerProvider);
     final controller = ref.read(gameControllerProvider.notifier);
     final me = ref.watch(myProfileProvider).valueOrNull;
@@ -34,22 +48,15 @@ class GameScreen extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          GameMapBackground(lat: state.focusLat, lon: state.focusLon),
-          // Scrim per far risaltare gli esagoni colorati e i badge sopra
-          // le tile della mappa reale.
-          Container(color: Colors.black.withValues(alpha: 0.32)),
-          HexMapView(
-            focus: state.focus,
+          GameMapBackground(
+            key: _mapKey,
+            lat: state.focusLat,
+            lon: state.focusLon,
             cells: state.visibleCells,
             mode: state.mapMode,
             myProfileId: myId,
             myCrewId: me?.crewId,
           ),
-          if (state.focus != null)
-            const Align(
-              alignment: Alignment.center,
-              child: _PositionArrow(),
-            ),
           SafeArea(
             bottom: false,
             child: Padding(
@@ -95,7 +102,7 @@ class GameScreen extends ConsumerWidget {
           Positioned(
             right: 16,
             bottom: kTerritoryPanelCollapsedHeight + 18,
-            child: _RecenterButton(onTap: controller.recenterNow),
+            child: RecenterButton(onTap: () => _recenter(controller)),
           ),
           const TerritoryPanel(),
         ],
@@ -118,33 +125,6 @@ class GameScreen extends ConsumerWidget {
     return myLocalCount > bestRivalLocal
         ? 'RE DELLA ZONA'
         : 'SCALATORE DELLA ZONA';
-  }
-}
-
-// Marker "sei qui" sopra la griglia esagonale. Un'icona nuda dello stesso
-// colore ciano usato per le celle "mie" (vedi hex_map_painter._colorFor)
-// diventava invisibile appena l'utente rivendicava la propria cella
-// sotto: un badge scuro con bordo bianco dà sempre contrasto, qualunque
-// sia il colore dell'esagono sottostante.
-class _PositionArrow extends StatelessWidget {
-  const _PositionArrow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFF0B101E),
-        border: Border.all(color: Colors.white, width: 2.5),
-        boxShadow: const [
-          BoxShadow(color: Colors.black54, blurRadius: 6, spreadRadius: 1),
-        ],
-      ),
-      child: const Icon(Icons.navigation_rounded,
-          color: AppColors.guidaCyan, size: 20),
-    );
   }
 }
 
@@ -303,27 +283,6 @@ class _ZoneBadge extends StatelessWidget {
           const SizedBox(width: 8),
           const Text('♛', style: TextStyle(fontSize: 14)),
         ],
-      ),
-    );
-  }
-}
-
-class _RecenterButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _RecenterButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xD8121212),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: Icon(Icons.my_location_rounded, color: Colors.white, size: 26),
-        ),
       ),
     );
   }

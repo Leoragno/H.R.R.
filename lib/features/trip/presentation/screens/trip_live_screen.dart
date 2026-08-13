@@ -13,6 +13,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/neon_cta_button.dart';
+import '../../../../core/widgets/recenter_button.dart';
 import '../../../radar/domain/entities/radar_event.dart';
 import '../../../radar/presentation/providers/radar_proximity_provider.dart';
 import '../providers/crew_live_map_provider.dart';
@@ -414,12 +415,16 @@ class _MapView extends ConsumerStatefulWidget {
 }
 
 class _MapViewState extends ConsumerState<_MapView> {
-  static const _fallbackCenter = LatLng(41.9028, 12.4964); // Roma
+  static const _defaultZoom = 16.0;
 
   MapLibreMapController? _controller;
   Line? _routeLine;
-  CameraPosition _initialCamera =
-      const CameraPosition(target: _fallbackCenter, zoom: 15);
+  Circle? _meCircle;
+  // Centro camera iniziale: null finché non abbiamo una posizione vera (la
+  // mappa non viene montata prima, vedi build()) — mai un fallback fisso
+  // tipo "Roma", che mostrerebbe la città sbagliata finché non arriva un
+  // fix buono.
+  LatLng? _cameraCenter;
 
   // Marker + percorso degli altri membri della crew che stanno guidando ora
   // (vedi CrewLiveMapController), tenuti per profileId così un aggiornamento
@@ -433,20 +438,38 @@ class _MapViewState extends ConsumerState<_MapView> {
     _resolveInitialCamera();
   }
 
+  /// Il tracking è già partito in TripLiveScreen.initState prima ancora
+  /// che l'utente apra questa vista mappa: se TripLiveController ha già
+  /// un punto (già filtrato per accuratezza/jitter, vedi
+  /// TripLiveController._onPosition) lo riusiamo direttamente, senza una
+  /// seconda richiesta GPS indipendente. Solo se il tracking è appena
+  /// partito e non ha ancora nessun fix, forziamo una lettura fresca —
+  /// mai Geolocator.getLastKnownPosition(), che può restare in cache per
+  /// giorni e aprire la mappa sulla città sbagliata.
   Future<void> _resolveInitialCamera() async {
-    try {
-      final position = await Geolocator.getLastKnownPosition();
-      if (position == null || !mounted) return;
-      setState(() {
-        _initialCamera = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 16,
-        );
-      });
-    } catch (_) {
-      // Permesso non ancora concesso: resta sul centro di fallback, la
-      // mappa segue comunque la posizione appena myLocationEnabled parte.
+    final points = widget.state.routePoints;
+    if (points.isNotEmpty) {
+      _setCameraCenter(LatLng(points.last.lat, points.last.lng));
+      return;
     }
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      _setCameraCenter(LatLng(position.latitude, position.longitude));
+    } catch (_) {
+      // GPS lento/permesso non ancora confermato: restiamo in attesa, il
+      // primo punto buono di TripLiveController risolve comunque la
+      // mappa via didUpdateWidget sotto.
+    }
+  }
+
+  void _setCameraCenter(LatLng center) {
+    if (!mounted || _cameraCenter != null) return;
+    setState(() => _cameraCenter = center);
   }
 
   @override
@@ -454,6 +477,11 @@ class _MapViewState extends ConsumerState<_MapView> {
     super.didUpdateWidget(oldWidget);
     if (widget.state.routePoints.length != oldWidget.state.routePoints.length) {
       _updateRouteLine();
+      _updateMeMarker();
+      final points = widget.state.routePoints;
+      if (points.isNotEmpty) {
+        _setCameraCenter(LatLng(points.last.lat, points.last.lng));
+      }
     }
   }
 
@@ -479,12 +507,57 @@ class _MapViewState extends ConsumerState<_MapView> {
     }
   }
 
+  /// Marker "sei qui" pilotato dagli stessi punti già filtrati per
+  /// accuratezza/jitter usati per il percorso — al posto del pallino blu
+  /// nativo (myLocationEnabled), che legge il GPS grezzo del device senza
+  /// passare da questo filtro e "saltava" più di quanto mostrino
+  /// distanza/velocità già ripulite.
+  Future<void> _updateMeMarker() async {
+    final controller = _controller;
+    final points = widget.state.routePoints;
+    if (controller == null || points.isEmpty) return;
+    final last = points.last;
+    try {
+      final options = CircleOptions(
+        geometry: LatLng(last.lat, last.lng),
+        circleRadius: 8,
+        circleColor: '#35E0FF',
+        circleStrokeColor: '#FFFFFF',
+        circleStrokeWidth: 2.5,
+        circleOpacity: 0.95,
+      );
+      final existing = _meCircle;
+      if (existing == null) {
+        _meCircle = await controller.addCircle(options);
+      } else {
+        await controller.updateCircle(existing, options);
+      }
+    } catch (_) {
+      // Vedi commento in _syncCrewDrivers.
+    }
+  }
+
+  /// Ricentra la camera sulla posizione live corrente — la camera non
+  /// segue più ogni fix da sola (vedi myLocationEnabled: false sotto),
+  /// così l'utente resta libero di guardarsi intorno/zoomare senza che
+  /// si riaggiusti da sola ad ogni secondo.
+  Future<void> _recenterCamera() async {
+    final controller = _controller;
+    final points = widget.state.routePoints;
+    if (controller == null || points.isEmpty) return;
+    final last = points.last;
+    await controller.animateCamera(
+      CameraUpdate.newLatLngZoom(LatLng(last.lat, last.lng), _defaultZoom),
+    );
+  }
+
   void _onMapCreated(MapLibreMapController controller) {
     _controller = controller;
   }
 
   Future<void> _onStyleLoaded() async {
     await _updateRouteLine();
+    await _updateMeMarker();
     await _syncCrewDrivers(_mergedDrivers());
   }
 
@@ -571,21 +644,35 @@ class _MapViewState extends ConsumerState<_MapView> {
     ref.listen(friendLiveMapControllerProvider, (_, __) {
       _syncCrewDrivers(_mergedDrivers());
     });
+
+    final center = _cameraCenter;
+    if (center == null) {
+      // Nessuna posizione risolta ancora: meglio uno spinner che aprire la
+      // mappa su un centro sbagliato/arbitrario.
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.guidaCyan),
+      );
+    }
+
     return Stack(
       children: [
         Positioned.fill(
           child: MapLibreMap(
             styleString: dotenv.env['MAP_STYLE_URL'] ?? MapLibreStyles.demo,
-            initialCameraPosition: _initialCamera,
-            myLocationEnabled: true,
-            myLocationRenderMode: MyLocationRenderMode.compass,
-            myLocationTrackingMode: MyLocationTrackingMode.tracking,
+            initialCameraPosition:
+                CameraPosition(target: center, zoom: _defaultZoom),
+            myLocationEnabled: false,
             onMapCreated: _onMapCreated,
             // addLine prima che lo stile sia caricato lancia "Annotation
             // Manager has not been initialized" — va agganciato qui, non
             // in onMapCreated (che spara prima del caricamento stile).
             onStyleLoadedCallback: _onStyleLoaded,
           ),
+        ),
+        Positioned(
+          right: 18,
+          top: 18,
+          child: RecenterButton(onTap: _recenterCamera),
         ),
         Positioned(
           left: 18,

@@ -102,6 +102,12 @@ const _kViewRows = 17;
 // largo ~80 m da bordo a bordo, distanceFilter tiene il flusso leggero).
 const _kPositionDistanceFilterM = 12;
 
+// Fix troppo impreciso (tunnel, garage, edifici alti): scartato prima di
+// spostare focus/marker o rivendicare celle, altrimenti un singolo fix
+// rumoroso fa "saltare" la posizione sulla mappa — stesso filtro già
+// usato da TripLiveController._onPosition per la Guida.
+const _kMinGpsAccuracyM = 25.0;
+
 // keepAlive: la conquista territorio è un tracking ambientale continuo,
 // non legato alla schermata "Gioca" — deve restare attivo anche
 // navigando su altre tab o con l'app minimizzata (vedi
@@ -197,11 +203,18 @@ class GameController extends _$GameController {
     }
 
     try {
-      // Non supportato su web (geolocator_web lancia UnsupportedError):
-      // va bene, è solo un fix istantaneo "a freddo", il primo vero fix
-      // arriva comunque dallo stream sotto.
-      final last = await Geolocator.getLastKnownPosition();
-      if (last != null) await _onPosition(last);
+      // Fix fresco, non l'ultimo noto in cache (Geolocator.getLastKnownPosition
+      // può restare valido per giorni): all'apertura del gioco la visuale deve
+      // partire dalla posizione attuale, non da dove ti trovavi l'ultima volta.
+      // Non supportato su web (geolocator_web lancia UnsupportedError): va
+      // bene, il primo vero fix arriva comunque dallo stream sotto.
+      final current = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      await _onPosition(current);
     } catch (_) {}
 
     state = state.copyWith(gpsStatus: GameGpsStatus.tracking);
@@ -274,11 +287,9 @@ class GameController extends _$GameController {
     final cell = HexGrid.cellOf(position.latitude, position.longitude);
     final focusChanged = state.focus != cell;
 
-    if (cell != _lastClaimedCell) {
-      _lastClaimedCell = cell;
-      if (!_pendingClaims.contains(cell)) _pendingClaims.add(cell);
-    }
-
+    // Mappa/focus seguono comunque il GPS grezzo — meglio una posizione
+    // approssimata (o la mappa reale sotto, che si autocorregge da sola col
+    // fix successivo) che uno schermo vuoto in attesa di un fix perfetto.
     state = state.copyWith(
       focus: cell,
       focusLat: position.latitude,
@@ -286,6 +297,19 @@ class GameController extends _$GameController {
     );
     if (focusChanged) {
       unawaited(_refreshVisibleCells());
+    }
+
+    // La rivendicazione delle celle invece resta protetta dal filtro di
+    // accuratezza: un fix rumoroso non deve intaccare la proprietà reale
+    // di un esagono, anche se può muovere la camera di qualche metro senza
+    // conseguenze — stesso principio di TripLiveController._onPosition
+    // applicato a distanza/velocità.
+    final accuracy = position.accuracy;
+    if (accuracy.isFinite && accuracy > _kMinGpsAccuracyM) return;
+
+    if (cell != _lastClaimedCell) {
+      _lastClaimedCell = cell;
+      if (!_pendingClaims.contains(cell)) _pendingClaims.add(cell);
     }
 
     if (_pendingClaims.length >= 6) {
