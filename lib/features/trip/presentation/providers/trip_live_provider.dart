@@ -183,13 +183,33 @@ const _kZeroToHundredTargetKmh = 100.0;
 const _kZeroToHundredMaxAttemptSeconds = 60.0;
 const _kAccelMinDt = Duration(milliseconds: 500);
 const _kAccelMaxDt = Duration(seconds: 5);
+// Soglia di decelerazione "frenata dura", applicata alla derivata
+// velocità/tempo del GPS (vedi _onPosition) — mai all'accelerometro
+// grezzo: la sua magnitude non ha segno né direzione rispetto al verso di
+// marcia, quindi non distingue una frenata da una sterzata decisa, da
+// un'accelerata o da una buca (stesso ordine di grandezza per tutte).
+// Riusata anche come soglia minima "manovra dura" in _onUserAccel, sotto
+// la quale un campione dell'accelerometro non vale nemmeno la pena di
+// essere considerato come possibile picco G.
 const _kBrakingThresholdMs2 = 0.35 * 9.81;
-const _kBrakingMinSustain = Duration(milliseconds: 150);
 const _kBrakingCooldown = Duration(seconds: 2);
+// Un singolo campione anomalo dell'accelerometro (buca, telefono che
+// sbatte contro il supporto) alzerebbe il picco G per sempre, senza modo
+// di correggerlo (è un massimo monotono, vedi _onUserAccel): un vero
+// picco di guida (frenata/sterzata/accelerata decisa) resta sopra la
+// soglia di rumore per più di un campione, un urto isolato no.
+const _kAccelSpikeMinSustain = Duration(milliseconds: 150);
 const _kTurnThresholdDeg = 25.0;
 const _kTurnWindowTimeout = Duration(seconds: 4);
 const _kTurnCooldown = Duration(seconds: 3);
 const _kTurnGyroCorroborationRadS = 0.15;
+// Sotto questa velocità il bearing tra due fix consecutivi è dominato dal
+// rumore GPS (lo spostamento reale in ~1s è piccolo quanto o meno
+// dell'errore tipico di un fix, fino a _kMinGpsAccuracyM) — a quella
+// velocità comunque non si sta svoltando in marcia, solo manovrando a
+// passo d'uomo, quindi il campione va scartato invece di sporcare il
+// conteggio delle svolte.
+const _kMinTurnSpeedKmh = 10.0;
 
 // Filtri qualità/plausibilità sui fix GPS grezzi — senza questi, un
 // singolo fix rumoroso (tunnel, garage, palazzi alti, riaggancio GPS)
@@ -356,7 +376,8 @@ class TripLiveController extends _$TripLiveController {
   int _totalStops = 0;
 
   double _peakGForce = 0;
-  DateTime? _brakeAboveThresholdSince;
+  DateTime? _gSpikeSince;
+  double? _gSpikeCandidateMs2;
   DateTime? _lastBrakingEventAt;
   int _brakingEvents = 0;
 
@@ -737,7 +758,8 @@ class TripLiveController extends _$TripLiveController {
     _currentStopCounted = false;
     _totalStops = 0;
     _peakGForce = 0;
-    _brakeAboveThresholdSince = null;
+    _gSpikeSince = null;
+    _gSpikeCandidateMs2 = null;
     _lastBrakingEventAt = null;
     _brakingEvents = 0;
     _lastBearing = null;
@@ -763,6 +785,14 @@ class TripLiveController extends _$TripLiveController {
     // non con questo rumore.
     final accuracy = position.accuracy;
     if (accuracy.isFinite && accuracy > _kMinGpsAccuracyM) return;
+
+    final rawSpeedKmh = (position.speed.isFinite && position.speed > 0)
+        ? position.speed * 3.6
+        : 0.0;
+    // Tetto di plausibilità anche sulla velocità istantanea riportata dal
+    // GPS: senza questo un singolo fix anomalo alza maxSpeedKmh per
+    // sempre, senza alcun modo di correggerlo (è un massimo monotono).
+    final speedKmh = math.min(rawSpeedKmh, _kMaxPlausibleSpeedKmh);
 
     final last = _lastPosition;
     final lastAt = _lastPositionAt;
@@ -806,20 +836,25 @@ class TripLiveController extends _$TripLiveController {
       // Direzione delle svolte: solo da bearing GPS, mai dall'asse z del
       // giroscopio, che sarebbe "yaw" solo assumendo un montaggio fisso
       // del telefono nel veicolo — assunzione che non facciamo da nessuna
-      // parte in questo file.
-      final bearing = Geolocator.bearingBetween(
-        last.latitude,
-        last.longitude,
-        position.latitude,
-        position.longitude,
-      );
-      if (_lastBearing != null) {
-        var delta = bearing - _lastBearing!;
-        delta = ((delta + 180) % 360) - 180;
-        _turnAccumDeg += delta;
-        _turnWindowStart ??= now;
+      // parte in questo file. Sotto _kMinTurnSpeedKmh il bearing tra due
+      // fix è troppo rumoroso per essere affidabile (vedi costante) — si
+      // scarta il campione senza aggiornare _lastBearing, così il
+      // prossimo confronto utile resta comunque quello vero precedente.
+      if (speedKmh > _kMinTurnSpeedKmh) {
+        final bearing = Geolocator.bearingBetween(
+          last.latitude,
+          last.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        if (_lastBearing != null) {
+          var delta = bearing - _lastBearing!;
+          delta = ((delta + 180) % 360) - 180;
+          _turnAccumDeg += delta;
+          _turnWindowStart ??= now;
+        }
+        _lastBearing = bearing;
       }
-      _lastBearing = bearing;
     }
     _lastPosition = position;
     _lastPositionAt = now;
@@ -844,13 +879,6 @@ class TripLiveController extends _$TripLiveController {
         ..addAll(thinned);
     }
 
-    final rawSpeedKmh = (position.speed.isFinite && position.speed > 0)
-        ? position.speed * 3.6
-        : 0.0;
-    // Tetto di plausibilità anche sulla velocità istantanea riportata dal
-    // GPS: senza questo un singolo fix anomalo alza maxSpeedKmh per
-    // sempre, senza alcun modo di correggerlo (è un massimo monotono).
-    final speedKmh = math.min(rawSpeedKmh, _kMaxPlausibleSpeedKmh);
     state = state.copyWith(
       distanceKm: distanceKm,
       currentSpeedKmh: speedKmh,
@@ -912,10 +940,13 @@ class TripLiveController extends _$TripLiveController {
       _lastElevationM = elevationM;
     }
 
-    // Accelerazione/decelerazione max: derivata della velocità GPS su una
-    // finestra di 3 fix (attenua il rumore/quantizzazione di un singolo
-    // fix), non dagli assi grezzi dell'accelerometro — l'asse "avanti" del
-    // telefono rispetto al veicolo non è noto.
+    // Accelerazione/decelerazione max e conteggio frenate: derivata della
+    // velocità GPS su una finestra di 3 fix (attenua il rumore/
+    // quantizzazione di un singolo fix), non dagli assi grezzi
+    // dell'accelerometro — l'asse "avanti" del telefono rispetto al
+    // veicolo non è noto, quindi la sua magnitude non distingue una
+    // frenata da una sterzata decisa, un'accelerata o una buca (vedi
+    // _kBrakingThresholdMs2 e _onUserAccel).
     if (hadRealMotion) {
       _recentSpeedFixes.add(_SpeedFix(now, speedKmh / 3.6));
       if (_recentSpeedFixes.length > 3) _recentSpeedFixes.removeAt(0);
@@ -933,6 +964,14 @@ class TripLiveController extends _$TripLiveController {
           if (a < 0 &&
               (_maxDecelerationMs2 == null || a < _maxDecelerationMs2!)) {
             _maxDecelerationMs2 = a;
+          }
+          if (a <= -_kBrakingThresholdMs2) {
+            final cooledDown = _lastBrakingEventAt == null ||
+                now.difference(_lastBrakingEventAt!) > _kBrakingCooldown;
+            if (cooledDown) {
+              _brakingEvents++;
+              _lastBrakingEventAt = now;
+            }
           }
         }
       }
@@ -1042,21 +1081,28 @@ class TripLiveController extends _$TripLiveController {
   void _onUserAccel(UserAccelerometerEvent event) {
     final magnitude =
         math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
-    final g = magnitude / 9.81;
-    if (g > _peakGForce) _peakGForce = g;
-
     final now = DateTime.now();
-    if (magnitude > _kBrakingThresholdMs2) {
-      _brakeAboveThresholdSince ??= now;
-      final sustained = now.difference(_brakeAboveThresholdSince!);
-      final cooledDown = _lastBrakingEventAt == null ||
-          now.difference(_lastBrakingEventAt!) > _kBrakingCooldown;
-      if (sustained >= _kBrakingMinSustain && cooledDown) {
-        _brakingEvents++;
-        _lastBrakingEventAt = now;
+
+    // Un singolo campione anomalo (buca, telefono che sbatte contro il
+    // supporto, urto) alzerebbe il picco G per sempre senza modo di
+    // correggerlo (è un massimo monotono): un vero picco di guida
+    // (frenata/sterzata/accelerata decisa) resta sopra la soglia "hard
+    // maneuver" per più di un campione, un urto isolato no — si richiede
+    // che resti sopra per un breve intervallo sostenuto prima di
+    // accettarlo come nuovo picco.
+    if (magnitude >= _kBrakingThresholdMs2) {
+      _gSpikeSince ??= now;
+      final candidate = _gSpikeCandidateMs2;
+      if (candidate == null || magnitude > candidate) {
+        _gSpikeCandidateMs2 = magnitude;
+      }
+      if (now.difference(_gSpikeSince!) >= _kAccelSpikeMinSustain) {
+        final g = _gSpikeCandidateMs2! / 9.81;
+        if (g > _peakGForce) _peakGForce = g;
       }
     } else {
-      _brakeAboveThresholdSince = null;
+      _gSpikeSince = null;
+      _gSpikeCandidateMs2 = null;
     }
   }
 
