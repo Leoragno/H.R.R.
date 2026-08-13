@@ -18,6 +18,7 @@ import '../../features/trip/presentation/screens/trip_detail_screen.dart';
 import '../../features/leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../features/crew/presentation/screens/crew_screen.dart';
 import '../../features/chat/presentation/screens/crew_chat_screen.dart';
+import '../../features/friends/presentation/screens/friends_screen.dart';
 import '../../features/car_spotting/presentation/screens/car_spotting_feed_screen.dart';
 import '../../features/car_spotting/presentation/screens/create_spot_screen.dart';
 import '../../features/car_spotting/presentation/screens/leaderboard_screen.dart'
@@ -51,6 +52,7 @@ class AppRoutes {
   static const leaderboard = '/leaderboard';
   static const crew = '/crew';
   static const crewChat = '/crew/chat';
+  static const friends = '/friends';
   static const carSpotting = '/car-spotting';
   static const createSpot = '/car-spotting/create';
   static const spotDetail = '/car-spotting/:spotId';
@@ -148,6 +150,8 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
           path: AppRoutes.crewChat, builder: (c, s) => const CrewChatScreen()),
+      GoRoute(
+          path: AppRoutes.friends, builder: (c, s) => const FriendsScreen()),
       GoRoute(
           path: AppRoutes.createSpot,
           builder: (c, s) => const CreateSpotScreen()),

@@ -32,7 +32,8 @@ import '../../../trip/presentation/providers/crew_live_map_provider.dart';
 /// overlay) per restare fluidi durante pan/zoom anche con centinaia di
 /// punti.
 class HomeMapBackground extends ConsumerStatefulWidget {
-  const HomeMapBackground({super.key});
+  final ValueChanged<MapLibreMapController>? onMapCreated;
+  const HomeMapBackground({super.key, this.onMapCreated});
 
   static const _fallbackCenter = LatLng(41.9028, 12.4964); // Roma
 
@@ -289,8 +290,17 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
         initialCameraPosition: _initialCamera,
         myLocationEnabled: true,
         myLocationRenderMode: MyLocationRenderMode.compass,
-        myLocationTrackingMode: MyLocationTrackingMode.tracking,
-        onMapCreated: (c) => _controller = c,
+        // .none, non .tracking: qui (a differenza di TripLiveScreen durante
+        // una guida attiva) l'utente deve poter esplorare liberamente la
+        // mappa senza che ogni fix GPS gli riporti la camera addosso alla
+        // propria posizione — il pallino "io sono qui" resta comunque
+        // visibile (myLocationEnabled), il recenter è un'azione esplicita
+        // (vedi HomeScreen._RecenterButton via onMapCreated).
+        myLocationTrackingMode: MyLocationTrackingMode.none,
+        onMapCreated: (c) {
+          _controller = c;
+          widget.onMapCreated?.call(c);
+        },
         onStyleLoadedCallback: _onStyleLoaded,
         onCameraIdle: _onCameraIdle,
         onMapLongClick: _onMapLongPress,

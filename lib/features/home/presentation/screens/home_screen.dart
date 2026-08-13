@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -20,11 +22,42 @@ import '../widgets/home_map_background.dart';
 /// 152-282 (stato non-live: mappa + bottom sheet). Prende il posto del
 /// vecchio HUD pilota (rimosso per ora su richiesta) — era prima il
 /// contenuto del tab "Mappa", spostato qui e rinominato.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  MapLibreMapController? _mapController;
+
+  // La sheet trascinabile può collassare fino a questa frazione
+  // dell'altezza schermo (vedi minChildSize sotto): il FAB "centra" resta
+  // sempre appena sopra, qualunque sia la sua posizione attuale.
+  static const _sheetMinChildSize = 0.14;
+
+  Future<void> _recenter() async {
+    final controller = _mapController;
+    if (controller == null) return;
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      await controller.animateCamera(CameraUpdate.newLatLngZoom(
+        LatLng(position.latitude, position.longitude),
+        15,
+      ));
+    } catch (_) {
+      // Permesso negato o GPS non disponibile: nessun errore bloccante da
+      // mostrare, l'utente può comunque continuare a esplorare la mappa a
+      // mano.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Guida rimasta 'active' lato server perché il processo è stato ucciso
     // a metà tracking (kill di sistema, riavvio, force-stop): la
     // proponiamo qui una sola volta, invece di lasciarla bloccata per
@@ -42,7 +75,11 @@ class HomeScreen extends ConsumerWidget {
       backgroundColor: AppColors.guidaBg,
       body: Stack(
         children: [
-          const Positioned.fill(child: HomeMapBackground()),
+          Positioned.fill(
+            child: HomeMapBackground(
+              onMapCreated: (c) => setState(() => _mapController = c),
+            ),
+          ),
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -60,16 +97,42 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
           ),
+          Positioned(
+            right: 16,
+            bottom: MediaQuery.sizeOf(context).height * _sheetMinChildSize + 18,
+            child: _RecenterButton(onTap: _recenter),
+          ),
           DraggableScrollableSheet(
             initialChildSize: 0.34,
-            minChildSize: 0.14,
+            minChildSize: _sheetMinChildSize,
             maxChildSize: 0.92,
             snap: true,
-            snapSizes: const [0.14, 0.34, 0.92],
+            snapSizes: const [_sheetMinChildSize, 0.34, 0.92],
             builder: (context, scrollController) =>
                 _GuidaSheet(scrollController: scrollController),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RecenterButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RecenterButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xD8121212),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Icon(Icons.my_location_rounded, color: Colors.white, size: 26),
+        ),
       ),
     );
   }

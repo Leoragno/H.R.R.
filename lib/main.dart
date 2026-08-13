@@ -11,6 +11,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/game/presentation/providers/game_controller.dart';
 import 'features/missions/presentation/providers/mission_event_bridge_provider.dart';
 import 'features/notifications/presentation/providers/local_notifications_service.dart';
 import 'features/notifications/presentation/providers/push_notification_service.dart';
@@ -63,6 +64,11 @@ class HrrApp extends ConsumerWidget {
     // Tiene vivo il Rival per tutta la sessione (ascolto eventi + check
     // giornaliero streak/inattività) — vedi rival_controller_provider.dart.
     ref.watch(rivalControllerProvider);
+    // Tiene vivo il tracking GPS della conquista territorio per tutta la
+    // sessione (login -> logout), non solo mentre GameScreen è a schermo:
+    // le caselle vanno acquisite guidando sul tracciato anche navigando su
+    // altre tab o con l'app minimizzata — vedi game_controller.dart.
+    ref.watch(gameControllerProvider);
 
     return MaterialApp.router(
       title: 'H.R.R.',

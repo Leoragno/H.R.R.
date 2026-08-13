@@ -105,7 +105,9 @@ const _kPositionDistanceFilterM = 12;
 // keepAlive: la conquista territorio è un tracking ambientale continuo,
 // non legato alla schermata "Gioca" — deve restare attivo anche
 // navigando su altre tab o con l'app minimizzata (vedi
-// _liveLocationSettings), non solo mentre GameScreen è a schermo.
+// _liveLocationSettings). Istanziato da [HrrApp] con ref.watch (stesso
+// pattern di RivalController/MissionEventBridge) così parte all'avvio
+// dell'app — anzi al login — non solo alla prima apertura di GameScreen.
 @Riverpod(keepAlive: true)
 class GameController extends _$GameController {
   StreamSubscription<Position>? _positionSub;
@@ -113,24 +115,56 @@ class GameController extends _$GameController {
   HexCoord? _lastClaimedCell;
   final List<HexCoord> _pendingClaims = [];
 
+  // Distingue un vero cambio di sessione (login/logout/altro utente) da una
+  // riemissione di onAuthStateChange a utente invariato (es. TOKEN_REFRESHED,
+  // che Supabase spara periodicamente): solo il primo deve (ri)avviare o
+  // fermare il tracking GPS.
+  String? _trackedUserId;
+
   @override
   GameState build() {
     ref.onDispose(() {
       _positionSub?.cancel();
       _flushTimer?.cancel();
     });
-    // Deferita a un microtask: build() deve tornare e inizializzare lo
-    // stato del provider prima che _startTracking() possa scriverci
-    // (unawaited(_bootstrap()) gira sincrono fino al primo await reale,
-    // che qui arriverebbe troppo tardi e romperebbe Riverpod con "Tried
-    // to read the state of an uninitialized provider").
-    Future.microtask(_bootstrap);
+
+    // ref.listen (non ref.watch): il tracking deve reagire ai cambi di
+    // sessione come EFFETTO — non deve far ripartire build() (e quindi
+    // resettare lo stato già accumulato: visibleCells, session, focus) ad
+    // ogni evento auth. Il callback gira fuori dal frame sincrono di
+    // build(), quindi può scrivere su `state` in sicurezza (a differenza di
+    // build() stesso, dove `state` non è ancora inizializzato — vedi
+    // _onAuthChanged). fireImmediately: prende in carico anche la sessione
+    // già attiva al primo avvio, non solo i login successivi.
+    ref.listen(authStateProvider, (previous, next) {
+      final userId = next.valueOrNull?.id;
+      Future.microtask(() => _onAuthChanged(userId));
+    }, fireImmediately: true);
+
     return const GameState();
   }
 
-  Future<void> _bootstrap() async {
-    final userId = ref.read(authStateProvider).valueOrNull?.id;
-    if (userId != null) unawaited(_refreshMyCellCount(userId));
+  void _stopTracking() {
+    _positionSub?.cancel();
+    _positionSub = null;
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _pendingClaims.clear();
+    _lastClaimedCell = null;
+  }
+
+  Future<void> _onAuthChanged(String? userId) async {
+    if (userId == _trackedUserId) return;
+    _trackedUserId = userId;
+
+    if (userId == null) {
+      _stopTracking();
+      state = const GameState();
+      return;
+    }
+
+    state = const GameState();
+    unawaited(_refreshMyCellCount(userId));
     await _startTracking();
   }
 

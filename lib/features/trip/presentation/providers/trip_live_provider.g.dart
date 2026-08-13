@@ -65,7 +65,7 @@ final lastTripSummaryControllerProvider =
 
 typedef _$LastTripSummaryController = Notifier<TripSummary?>;
 String _$tripLiveControllerHash() =>
-    r'71c81e216660e6e0c14dc921fb313d2a2b90a8a2';
+    r'7eb4ca37f71b20b9bfb8fad1b15dbee74398209e';
 
 /// See also [TripLiveController].
 @ProviderFor(TripLiveController)

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 
+import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
@@ -34,6 +35,12 @@ class TripLiveState {
   final double maxSpeedKmh;
   final String? errorMessage;
   final List<RoutePoint> routePoints;
+  // Il risparmio energetico (Battery Saver Android / Low Power Mode iOS)
+  // può limitare gli aggiornamenti GPS in background e interrompere la
+  // registrazione della guida — vedi _checkBatterySaver(). true finché
+  // resta attivo; la UI (TripLiveScreen) ne osserva la transizione a true
+  // per mostrare l'avviso una sola volta, non ad ogni rebuild.
+  final bool batterySaverActive;
 
   const TripLiveState({
     this.status = TripLiveStatus.idle,
@@ -44,6 +51,7 @@ class TripLiveState {
     this.maxSpeedKmh = 0,
     this.errorMessage,
     this.routePoints = const [],
+    this.batterySaverActive = false,
   });
 
   double get avgSpeedKmh =>
@@ -58,6 +66,7 @@ class TripLiveState {
     double? maxSpeedKmh,
     String? errorMessage,
     List<RoutePoint>? routePoints,
+    bool? batterySaverActive,
   }) {
     return TripLiveState(
       status: status ?? this.status,
@@ -68,6 +77,7 @@ class TripLiveState {
       maxSpeedKmh: maxSpeedKmh ?? this.maxSpeedKmh,
       errorMessage: errorMessage,
       routePoints: routePoints ?? this.routePoints,
+      batterySaverActive: batterySaverActive ?? this.batterySaverActive,
     );
   }
 }
@@ -230,7 +240,9 @@ class PersistedTripState {
         'startedAt': startedAt.toIso8601String(),
         'distanceKm': distanceKm,
         'maxSpeedKmh': maxSpeedKmh,
-        'route': [for (final p in routePoints) [p.lat, p.lng]],
+        'route': [
+          for (final p in routePoints) [p.lat, p.lng]
+        ],
       };
 
   factory PersistedTripState.fromJson(Map<String, dynamic> json) {
@@ -251,8 +263,7 @@ Future<PersistedTripState?> _readPersistedTrip(SharedPreferences prefs) async {
   final raw = prefs.getString(_kActiveTripPrefsKey);
   if (raw == null) return null;
   try {
-    return PersistedTripState.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>);
+    return PersistedTripState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   } catch (_) {
     // Stato corrotto/da una versione precedente incompatibile: meglio
     // scartarlo che bloccare la Home dietro un errore di parsing.
@@ -267,7 +278,8 @@ Future<PersistedTripState?> _readPersistedTrip(SharedPreferences prefs) async {
 /// Verifica anche lato server che il viaggio sia ancora 'active' — se nel
 /// frattempo è stato chiuso da un altro device, non riproponiamo nulla.
 @riverpod
-Future<PersistedTripState?> pendingTripRecovery(PendingTripRecoveryRef ref) async {
+Future<PersistedTripState?> pendingTripRecovery(
+    PendingTripRecoveryRef ref) async {
   final prefs = await SharedPreferences.getInstance();
   final saved = await _readPersistedTrip(prefs);
   if (saved == null) return null;
@@ -299,19 +311,30 @@ class TripLiveController extends _$TripLiveController {
   DateTime? _lastPositionAt;
   double _interpolatedKm = 0;
 
-  // --- Mappa live della crew: vedi _joinCrewLiveChannel/CrewLiveMapController ---
+  // --- Mappa live della crew e degli amici: vedi _joinLiveChannels /
+  // CrewLiveMapController / FriendLiveMapController. Stesso profilo
+  // (_myProfileId ecc.) alimenta entrambi i canali, che restano comunque
+  // due canali Realtime separati (crew-live-<crewId> e
+  // friend-live-<profileId>): pubblici audience diverse, RLS diverse
+  // (0009 vs 0023_friends.sql).
   RealtimeChannel? _crewChannel;
-  String? _crewProfileId;
-  String? _crewUsername;
-  String? _crewAvatarUrl;
-  String? _crewAccentColor;
+  RealtimeChannel? _friendChannel;
+  String? _myProfileId;
+  String? _myUsername;
+  String? _myAvatarUrl;
+  String? _myAccentColor;
   DateTime? _lastCrewBroadcastAt;
+  DateTime? _lastFriendBroadcastAt;
   final List<RoutePoint> _points = [];
   final List<TelemetrySample> _samples = [];
   DateTime? _startedAt;
   String? _tripId;
   SharedPreferences? _prefs;
   DateTime? _lastPersistedAt;
+
+  // --- Avviso risparmio energetico: vedi _checkBatterySaver ---
+  final _battery = Battery();
+  int _batteryCheckTickCount = 0;
 
   // --- Stato aggregato per TripMotionStats (mai campioni grezzi bufferizzati) ---
   double _elevationGainM = 0;
@@ -356,7 +379,7 @@ class TripLiveController extends _$TripLiveController {
       _userAccelSub?.cancel();
       _gyroSub?.cancel();
       _ticker?.cancel();
-      _leaveCrewLiveChannel();
+      _leaveLiveChannels();
     });
     return const TripLiveState();
   }
@@ -465,11 +488,23 @@ class TripLiveController extends _$TripLiveController {
   }
 
   void _beginTracking() {
+    _batteryCheckTickCount = 0;
+    unawaited(_checkBatterySaver());
+
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       final startedAt = _startedAt;
       if (startedAt != null) {
         state = state.copyWith(elapsed: DateTime.now().difference(startedAt));
+      }
+
+      // Riletto ogni 30s (non ad ogni tick, per non interrogare la
+      // piattaforma inutilmente): il risparmio energetico può essere
+      // attivato anche a guida già iniziata, non solo da fermi.
+      _batteryCheckTickCount++;
+      if (_batteryCheckTickCount >= 30) {
+        _batteryCheckTickCount = 0;
+        unawaited(_checkBatterySaver());
       }
       // Heartbeat a 1Hz per il tempo da fermo/soste: col GPS il
       // getPositionStream (distanceFilter: 5) smette praticamente di
@@ -500,7 +535,7 @@ class TripLiveController extends _$TripLiveController {
       locationSettings: _liveLocationSettings(),
     ).listen(_onPosition);
 
-    unawaited(_joinCrewLiveChannel());
+    unawaited(_joinLiveChannels());
 
     // Accelerometro/giroscopio: sottoscrizioni indipendenti con onError
     // silenzioso — un sensore assente su un device/emulatore non deve far
@@ -514,6 +549,25 @@ class TripLiveController extends _$TripLiveController {
     _gyroSub = gyroscopeEventStream(
       samplingPeriod: SensorInterval.gameInterval,
     ).listen(_onGyro, onError: (_) {});
+  }
+
+  /// Il risparmio energetico (Battery Saver su Android, Low Power Mode su
+  /// iOS) può ridurre o sospendere gli aggiornamenti GPS quando l'app va in
+  /// background, interrompendo la registrazione della guida — non
+  /// prevenibile lato app, solo segnalabile: TripLiveScreen mostra un
+  /// avviso quando questo passa a true, consigliando di disattivarlo.
+  /// Non supportato su web (battery_plus web lancia UnsupportedError).
+  Future<void> _checkBatterySaver() async {
+    if (kIsWeb) return;
+    try {
+      final saveMode = await _battery.isInBatterySaveMode;
+      if (saveMode != state.batterySaverActive) {
+        state = state.copyWith(batterySaverActive: saveMode);
+      }
+    } catch (_) {
+      // Piattaforma senza supporto (es. desktop): nessun avviso, il
+      // tracking GPS non dipende in alcun modo da questo controllo.
+    }
   }
 
   Future<void> _ensurePrefs() async {
@@ -589,56 +643,81 @@ class TripLiveController extends _$TripLiveController {
         accuracy: LocationAccuracy.high, distanceFilter: 3);
   }
 
-  /// Pubblica la guida sul canale realtime privato della crew ("crew-live-
-  /// <crewId>", vedi migration 0009 per l'autorizzazione RLS) così i
-  /// compagni di crew vedono live posizione e percorso sulla mappa della
-  /// sezione guida — [CrewLiveMapController] è il lato osservatore.
-  /// Nessuna crew, nessun canale: fallisce silenziosamente, il tracking
-  /// GPS locale del viaggio non dipende in alcun modo da questo.
-  Future<void> _joinCrewLiveChannel() async {
+  /// Pubblica la guida su due canali realtime privati, entrambi solo in
+  /// lettura per gli osservatori (chi guida non legge mai il proprio):
+  /// "crew-live-<crewId>" (solo se si è in una crew, migration 0009) e
+  /// "friend-live-<profileId>" (sempre, indipendente dalla crew — la RLS
+  /// di 0023_friends.sql decide chi tra i propri amici accettati può
+  /// leggerlo). [CrewLiveMapController]/[FriendLiveMapController] sono i
+  /// lati osservatore. Nessun amico/crew, canale comunque aperto (il
+  /// friend-live è per definizione sempre pubblicato): fallisce
+  /// silenziosamente in ogni caso, il tracking GPS locale del viaggio non
+  /// dipende in alcun modo da questo.
+  Future<void> _joinLiveChannels() async {
     try {
       final profile = await ref.read(myProfileProvider.future);
-      final crewId = profile?.crewId;
       // Il trip potrebbe essere già terminato mentre attendevamo il profilo.
-      if (crewId == null || profile == null || _tripId == null) return;
+      if (profile == null || _tripId == null) return;
 
-      _crewProfileId = profile.id;
-      _crewUsername = profile.username;
-      _crewAvatarUrl = profile.avatarUrl;
-      _crewAccentColor = profile.accentColor;
+      _myProfileId = profile.id;
+      _myUsername = profile.username;
+      _myAvatarUrl = profile.avatarUrl;
+      _myAccentColor = profile.accentColor;
+      final presence = {
+        'profileId': profile.id,
+        'username': profile.username,
+        'avatarUrl': profile.avatarUrl,
+        'accentColor': profile.accentColor,
+      };
 
-      final channel = ref.read(supabaseClientProvider).channel(
-            'crew-live-$crewId',
+      final friendChannel = ref.read(supabaseClientProvider).channel(
+            'friend-live-${profile.id}',
             opts: const RealtimeChannelConfig(private: true),
           );
-      _crewChannel = channel;
-      channel.subscribe((status, error) {
+      _friendChannel = friendChannel;
+      friendChannel.subscribe((status, error) {
         if (status == RealtimeSubscribeStatus.subscribed) {
-          unawaited(channel.track({
-            'profileId': profile.id,
-            'username': profile.username,
-            'avatarUrl': profile.avatarUrl,
-            'accentColor': profile.accentColor,
-          }));
+          unawaited(friendChannel.track(presence));
         }
       });
+
+      final crewId = profile.crewId;
+      if (crewId != null) {
+        final crewChannel = ref.read(supabaseClientProvider).channel(
+              'crew-live-$crewId',
+              opts: const RealtimeChannelConfig(private: true),
+            );
+        _crewChannel = crewChannel;
+        crewChannel.subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            unawaited(crewChannel.track(presence));
+          }
+        });
+      }
     } catch (_) {
-      // Best-effort: la mappa condivisa con la crew non deve mai bloccare
-      // o interrompere il tracking GPS locale del viaggio.
+      // Best-effort: la mappa condivisa con crew/amici non deve mai
+      // bloccare o interrompere il tracking GPS locale del viaggio.
     }
   }
 
-  void _leaveCrewLiveChannel() {
-    final channel = _crewChannel;
+  void _leaveLiveChannels() {
+    final crewChannel = _crewChannel;
+    final friendChannel = _friendChannel;
     _crewChannel = null;
-    _crewProfileId = null;
-    _crewUsername = null;
-    _crewAvatarUrl = null;
-    _crewAccentColor = null;
+    _friendChannel = null;
+    _myProfileId = null;
+    _myUsername = null;
+    _myAvatarUrl = null;
+    _myAccentColor = null;
     _lastCrewBroadcastAt = null;
-    if (channel != null) {
-      unawaited(channel.untrack());
-      unawaited(Supabase.instance.client.removeChannel(channel));
+    _lastFriendBroadcastAt = null;
+    if (crewChannel != null) {
+      unawaited(crewChannel.untrack());
+      unawaited(Supabase.instance.client.removeChannel(crewChannel));
+    }
+    if (friendChannel != null) {
+      unawaited(friendChannel.untrack());
+      unawaited(Supabase.instance.client.removeChannel(friendChannel));
     }
   }
 
@@ -703,9 +782,8 @@ class TripLiveController extends _$TripLiveController {
       // invece di sommarlo alla distanza o disegnarlo come tratto di
       // percorso. _lastPosition resta quello precedente, stesso motivo del
       // filtro accuratezza sopra.
-      final dtSeconds = lastAt != null
-          ? now.difference(lastAt).inMilliseconds / 1000
-          : 0.0;
+      final dtSeconds =
+          lastAt != null ? now.difference(lastAt).inMilliseconds / 1000 : 0.0;
       final impliedSpeedMs = dtSeconds > 0 ? meters / dtSeconds : 0.0;
       if (impliedSpeedMs > _kMaxPlausibleSpeedMs) return;
 
@@ -780,28 +858,39 @@ class TripLiveController extends _$TripLiveController {
       routePoints: List.unmodifiable(_points),
     );
 
-    final crewChannel = _crewChannel;
-    final lastBroadcast = _lastCrewBroadcastAt;
+    final livePayload = {
+      'profileId': _myProfileId,
+      'username': _myUsername,
+      'avatarUrl': _myAvatarUrl,
+      'accentColor': _myAccentColor,
+      'lat': position.latitude,
+      'lng': position.longitude,
+      'speedKmh': speedKmh,
+      'heading': position.heading.isFinite ? position.heading : null,
+    };
     // Throttle allineato all'intervallo GPS nativo (1s, vedi
     // _liveLocationSettings): evita raffiche ravvicinate se la piattaforma
-    // consegna comunque più fix di quanti richiesti.
-    final canBroadcast = lastBroadcast == null ||
-        now.difference(lastBroadcast) >= const Duration(milliseconds: 900);
-    if (crewChannel != null && canBroadcast) {
+    // consegna comunque più fix di quanti richiesti. Due timestamp
+    // separati perché i due canali possono sottoscriversi in momenti
+    // diversi (uno dei due potrebbe non esistere affatto, es. nessuna
+    // crew) — non devono scattare in lockstep.
+    final crewChannel = _crewChannel;
+    if (crewChannel != null &&
+        (_lastCrewBroadcastAt == null ||
+            now.difference(_lastCrewBroadcastAt!) >=
+                const Duration(milliseconds: 900))) {
       _lastCrewBroadcastAt = now;
       unawaited(crewChannel.sendBroadcastMessage(
-        event: 'position',
-        payload: {
-          'profileId': _crewProfileId,
-          'username': _crewUsername,
-          'avatarUrl': _crewAvatarUrl,
-          'accentColor': _crewAccentColor,
-          'lat': position.latitude,
-          'lng': position.longitude,
-          'speedKmh': speedKmh,
-          'heading': position.heading.isFinite ? position.heading : null,
-        },
-      ));
+          event: 'position', payload: livePayload));
+    }
+    final friendChannel = _friendChannel;
+    if (friendChannel != null &&
+        (_lastFriendBroadcastAt == null ||
+            now.difference(_lastFriendBroadcastAt!) >=
+                const Duration(milliseconds: 900))) {
+      _lastFriendBroadcastAt = now;
+      unawaited(friendChannel.sendBroadcastMessage(
+          event: 'position', payload: livePayload));
     }
 
     if (_turnWindowStart != null && speedKmh > _turnWindowMaxSpeedKmh) {
@@ -1095,7 +1184,7 @@ class TripLiveController extends _$TripLiveController {
     _points.clear();
     _samples.clear();
     _resetMotionStats();
-    _leaveCrewLiveChannel();
+    _leaveLiveChannels();
     state = const TripLiveState();
   }
 }

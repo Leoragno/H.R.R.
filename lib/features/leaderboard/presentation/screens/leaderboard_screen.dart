@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/supabase_provider.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/draggable_sheet_scaffold.dart';
@@ -251,7 +253,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                         _MyRankCard(entry: mine, metric: _metric),
                         const SizedBox(height: 14),
                       ],
-                      const _AddFriendsCard(),
+                      _AddFriendsCard(
+                          onTap: () => context.push(AppRoutes.friends)),
                       const SizedBox(height: 14),
                       for (final e in list)
                         _LeaderboardTile(
@@ -414,49 +417,57 @@ class _MyRankCard extends StatelessWidget {
 }
 
 class _AddFriendsCard extends StatelessWidget {
-  const _AddFriendsCard();
+  final VoidCallback onTap;
+  const _AddFriendsCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xE50A0E1A),
-        border: Border.all(color: const Color(0x29A0C8FF)),
+    return Material(
+      color: const Color(0xE50A0E1A),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
         borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.guidaBlue.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.person_add_alt_rounded,
-                color: AppColors.guidaCyan),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0x29A0C8FF)),
+            borderRadius: BorderRadius.circular(18),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Aggiungi amici',
-                    style: AppTheme.archivo(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text('Aggiungi amici per competere con loro!',
-                    style: AppTheme.archivo(
-                        fontSize: 15, color: const Color(0xFF75879E))),
-              ],
-            ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.guidaBlue.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person_add_alt_rounded,
+                    color: AppColors.guidaCyan),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Aggiungi amici',
+                        style: AppTheme.archivo(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text('Aggiungi amici per competere con loro!',
+                        style: AppTheme.archivo(
+                            fontSize: 15, color: const Color(0xFF75879E))),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.guidaTextSecondary),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded,
-              color: AppColors.guidaTextSecondary),
-        ],
+        ),
       ),
     );
   }

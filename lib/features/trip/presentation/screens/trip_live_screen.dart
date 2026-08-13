@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -15,6 +16,7 @@ import '../../../../core/widgets/neon_cta_button.dart';
 import '../../../radar/domain/entities/radar_event.dart';
 import '../../../radar/presentation/providers/radar_proximity_provider.dart';
 import '../providers/crew_live_map_provider.dart';
+import '../providers/friend_live_map_provider.dart';
 import '../providers/trip_live_provider.dart';
 import '../utils/route_smoothing.dart';
 import '../widgets/speedometer_gauge.dart';
@@ -110,6 +112,40 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
     }
   }
 
+  /// Il risparmio energetico può sospendere il GPS in background e
+  /// interrompere la registrazione — vedi TripLiveController._checkBatterySaver.
+  /// Mostrato una sola volta per transizione a true (vedi ref.listen in
+  /// build), non ripetuto ad ogni rebuild finché resta attivo.
+  Future<void> _showBatterySaverWarning() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0E1522),
+        title: const Text('Risparmio energetico attivo'),
+        content: const Text(
+          'Con il risparmio energetico attivo il sistema può sospendere il '
+          'GPS quando l\'app va in background, interrompendo la '
+          'registrazione della guida. Per una registrazione affidabile ti '
+          'consigliamo di disattivarlo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Ho capito'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ph.openAppSettings();
+            },
+            child: const Text('Apri impostazioni',
+                style: TextStyle(color: AppColors.guidaCyan)),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60);
@@ -131,113 +167,120 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
       if (event != null) _onProximityAlert(event);
     });
 
+    ref.listen<TripLiveState>(tripLiveControllerProvider, (previous, next) {
+      if (next.batterySaverActive && previous?.batterySaverActive != true) {
+        _showBatterySaverWarning();
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.guidaBg,
       body: Stack(
         children: [
           SafeArea(
             child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-              child: Row(
-                children: [
-                  _RoundIconButton(
-                    icon: Icons.close_rounded,
-                    onTap: _discard,
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.danger),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.fiber_manual_record,
-                            size: 10, color: AppColors.danger),
-                        const SizedBox(width: 6),
-                        Text(
-                          tracking ? 'LIVE' : 'AVVIO...',
-                          style: AppTheme.archivo(
-                            color: AppColors.danger,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                  child: Row(
+                    children: [
+                      _RoundIconButton(
+                        icon: Icons.close_rounded,
+                        onTap: _discard,
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.danger),
                         ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  _RoundIconButton(
-                    icon: _view == _LiveView.map
-                        ? Icons.speed_rounded
-                        : Icons.map_rounded,
-                    onTap: () => setState(() {
-                      _view = _view == _LiveView.map
-                          ? _LiveView.speedometer
-                          : _LiveView.map;
-                    }),
-                  ),
-                ],
-              ),
-            ),
-            if (state.status == TripLiveStatus.error)
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.gps_off_rounded,
-                            size: 48,
-                            color: AppColors.danger.withValues(alpha: 0.7)),
-                        const SizedBox(height: 12),
-                        Text(
-                          state.errorMessage ?? 'Errore GPS',
-                          style: AppTheme.archivo(
-                              color: AppColors.guidaTextSecondary),
-                          textAlign: TextAlign.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.fiber_manual_record,
+                                size: 10, color: AppColors.danger),
+                            const SizedBox(width: 6),
+                            Text(
+                              tracking ? 'LIVE' : 'AVVIO...',
+                              style: AppTheme.archivo(
+                                color: AppColors.danger,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                        NeonCtaButton(
-                          label: 'Riprova',
-                          minHeight: 52,
-                          onPressed: () => ref
-                              .read(tripLiveControllerProvider.notifier)
-                              .startTrip(),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const Spacer(),
+                      _RoundIconButton(
+                        icon: _view == _LiveView.map
+                            ? Icons.speed_rounded
+                            : Icons.map_rounded,
+                        onTap: () => setState(() {
+                          _view = _view == _LiveView.map
+                              ? _LiveView.speedometer
+                              : _LiveView.map;
+                        }),
+                      ),
+                    ],
                   ),
                 ),
-              )
-            else
-              Expanded(
-                child: _view == _LiveView.speedometer
-                    ? _SpeedView(state: state, formatDuration: _formatDuration)
-                    : _MapView(state: state, formatDuration: _formatDuration),
-              ),
-            if (state.status != TripLiveStatus.error)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                child: NeonCtaButton(
-                  label: 'Termina viaggio',
-                  icon: Icons.flag_rounded,
-                  minHeight: 60,
-                  onPressed: tracking ? _finish : null,
-                ),
-              ),
+                if (state.status == TripLiveStatus.error)
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.gps_off_rounded,
+                                size: 48,
+                                color: AppColors.danger.withValues(alpha: 0.7)),
+                            const SizedBox(height: 12),
+                            Text(
+                              state.errorMessage ?? 'Errore GPS',
+                              style: AppTheme.archivo(
+                                  color: AppColors.guidaTextSecondary),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            NeonCtaButton(
+                              label: 'Riprova',
+                              minHeight: 52,
+                              onPressed: () => ref
+                                  .read(tripLiveControllerProvider.notifier)
+                                  .startTrip(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: _view == _LiveView.speedometer
+                        ? _SpeedView(
+                            state: state, formatDuration: _formatDuration)
+                        : _MapView(
+                            state: state, formatDuration: _formatDuration),
+                  ),
+                if (state.status != TripLiveStatus.error)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                    child: NeonCtaButton(
+                      label: 'Termina viaggio',
+                      icon: Icons.flag_rounded,
+                      minHeight: 60,
+                      onPressed: tracking ? _finish : null,
+                    ),
+                  ),
               ],
             ),
           ),
-          if (_activeAlert != null)
-            _RadarAlertBanner(event: _activeAlert!),
+          if (_activeAlert != null) _RadarAlertBanner(event: _activeAlert!),
         ],
       ),
     );
@@ -442,7 +485,7 @@ class _MapViewState extends ConsumerState<_MapView> {
 
   Future<void> _onStyleLoaded() async {
     await _updateRouteLine();
-    await _syncCrewDrivers(ref.read(crewLiveMapControllerProvider));
+    await _syncCrewDrivers(_mergedDrivers());
   }
 
   /// Allinea marker+percorso degli altri driver della crew allo stato del
@@ -508,10 +551,25 @@ class _MapViewState extends ConsumerState<_MapView> {
     }
   }
 
+  // Crew e amici sono due provider/canali Realtime distinti (vedi
+  // friend_live_map_provider.dart) ma condividono la stessa forma
+  // [CrewLiveDriver] e lo stesso layer marker/percorso sulla mappa: unirli
+  // qui in un'unica mappa per profileId (un utente può comparire da
+  // entrambe le fonti se è sia in crew che amico — non importa quale
+  // "vince", stessa posizione) evita di duplicare _syncCrewDrivers per
+  // gli amici.
+  Map<String, CrewLiveDriver> _mergedDrivers() => {
+        ...ref.read(crewLiveMapControllerProvider),
+        ...ref.read(friendLiveMapControllerProvider),
+      };
+
   @override
   Widget build(BuildContext context) {
-    ref.listen(crewLiveMapControllerProvider, (_, next) {
-      _syncCrewDrivers(next);
+    ref.listen(crewLiveMapControllerProvider, (_, __) {
+      _syncCrewDrivers(_mergedDrivers());
+    });
+    ref.listen(friendLiveMapControllerProvider, (_, __) {
+      _syncCrewDrivers(_mergedDrivers());
     });
     return Stack(
       children: [
