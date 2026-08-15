@@ -54,7 +54,7 @@ class StarRatingSelector extends StatelessWidget {
                         ? Icons.star_half_rounded
                         : Icons.star_border_rounded,
                 size: size,
-                color: AppColors.neonAmber,
+                color: AppColor.amber,
               ),
             ),
           );

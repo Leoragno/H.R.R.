@@ -34,19 +34,19 @@ class AuthTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: AppTheme.archivo(fontSize: 14, color: const Color(0xFFC2D2E6)),
+          style: AppType.text(fontSize: 14, color: const Color(0xFFC2D2E6)),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: AppTheme.archivo(fontSize: 17, color: AppColors.textPrimary),
+          style: AppType.text(fontSize: 17, color: AppColor.ink),
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: AppTheme.archivo(
-                fontSize: 17, color: AppColors.guidaTextSecondary),
+            hintStyle: AppType.text(
+                fontSize: 17, color: AppColor.inkMuted),
             filled: true,
             fillColor: const Color(0xE50C1120),
             prefixIcon: icon == null
@@ -75,15 +75,15 @@ class AuthTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: AppColors.guidaCyan),
+              borderSide: const BorderSide(color: AppColor.cyan),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: AppColors.danger),
+              borderSide: const BorderSide(color: AppColor.danger),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: AppColors.danger),
+              borderSide: const BorderSide(color: AppColor.danger),
             ),
           ),
         ),

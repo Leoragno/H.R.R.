@@ -10,12 +10,11 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/draggable_sheet_scaffold.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../radar/domain/entities/radar_bounds.dart';
 import '../../../radar/domain/entities/radar_event.dart';
 import '../../../radar/presentation/providers/radar_provider.dart';
 import '../../../radar/presentation/widgets/radar_icons.dart';
-import '../../../trip/presentation/providers/crew_live_map_provider.dart';
+import '../../../trip/presentation/providers/live_map_provider.dart';
 
 /// Mappa reale (MapLibre GL + tile OpenFreeMap/OSM) dietro la sheet Guida,
 /// al posto della griglia decorativa finta [StreetGridBackground]. Il
@@ -23,14 +22,13 @@ import '../../../trip/presentation/providers/crew_live_map_provider.dart';
 /// un centro neutro (Italia) — nessun prompt di permesso esplicito qui,
 /// [MapLibreMap.myLocationEnabled] gestisce da sé il pallino posizione live.
 ///
-/// Ospita anche i marker Velox/Pattuglia (API arancioni, Crew ciano — vedi
-/// lib/features/radar/) e la posizione live dei membri della crew che
-/// stanno guidando ora (vedi CrewLiveMapController — stesso provider usato
-/// da TripLiveScreen, qui riletto così i compagni sono visibili anche
-/// senza un proprio viaggio attivo): stessa mappa, nessuna seconda view
-/// sovrapposta. I marker sono Symbol nativi MapLibre (non widget Flutter
-/// overlay) per restare fluidi durante pan/zoom anche con centinaia di
-/// punti.
+/// Ospita anche i marker Velox/Pattuglia (API arancioni, community ciano —
+/// vedi lib/features/radar/) e la posizione live di tutti gli utenti che
+/// stanno guidando ora (vedi LiveMapController — stesso provider usato da
+/// TripLiveScreen, qui riletto così sono visibili anche senza un proprio
+/// viaggio attivo): stessa mappa, nessuna seconda view sovrapposta. I
+/// marker sono Symbol nativi MapLibre (non widget Flutter overlay) per
+/// restare fluidi durante pan/zoom anche con centinaia di punti.
 class HomeMapBackground extends ConsumerStatefulWidget {
   final ValueChanged<MapLibreMapController>? onMapCreated;
   const HomeMapBackground({super.key, this.onMapCreated});
@@ -50,12 +48,12 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
   Timer? _boundsDebounce;
   final Map<String, Symbol> _symbolsById = {};
 
-  // Marker + percorso dei membri della crew che stanno guidando ora (vedi
-  // CrewLiveMapController), tenuti per profileId così un aggiornamento di
+  // Marker + percorso degli utenti che stanno guidando ora (vedi
+  // LiveMapController), tenuti per profileId così un aggiornamento di
   // posizione fa update invece di add/remove ad ogni fix — stesso pattern
   // di trip_live_screen.dart.
-  final Map<String, Symbol> _crewSymbolsById = {};
-  final Map<String, Line> _crewLinesById = {};
+  final Map<String, Symbol> _liveSymbolsById = {};
+  final Map<String, Line> _liveLinesById = {};
 
   @override
   void initState() {
@@ -102,27 +100,27 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
       // tree della mappa — il resto della Guida resta comunque usabile.
     }
     unawaited(_updateVisibleBounds());
-    unawaited(_syncCrewDrivers(ref.read(crewLiveMapControllerProvider)));
+    unawaited(_syncLiveDrivers(ref.read(liveMapControllerProvider)));
   }
 
-  /// Allinea marker+percorso dei membri della crew allo stato del canale
-  /// realtime: aggiunge chi ha appena iniziato a guidare, aggiorna
-  /// posizione/percorso di chi è già sulla mappa, rimuove chi ha smesso —
-  /// identico a _syncCrewDrivers in trip_live_screen.dart, qui però senza
-  /// bisogno di un proprio viaggio attivo.
-  Future<void> _syncCrewDrivers(Map<String, CrewLiveDriver> drivers) async {
+  /// Allinea marker+percorso degli utenti allo stato del canale realtime:
+  /// aggiunge chi ha appena iniziato a guidare, aggiorna posizione/percorso
+  /// di chi è già sulla mappa, rimuove chi ha smesso — identico a
+  /// _syncLiveDrivers in trip_live_screen.dart, qui però senza bisogno di
+  /// un proprio viaggio attivo.
+  Future<void> _syncLiveDrivers(Map<String, LiveDriver> drivers) async {
     final controller = _controller;
     if (controller == null) return;
 
     try {
-      for (final profileId in _crewSymbolsById.keys.toList()) {
+      for (final profileId in _liveSymbolsById.keys.toList()) {
         if (!drivers.containsKey(profileId)) {
-          await controller.removeSymbol(_crewSymbolsById.remove(profileId)!);
+          await controller.removeSymbol(_liveSymbolsById.remove(profileId)!);
         }
       }
-      for (final profileId in _crewLinesById.keys.toList()) {
+      for (final profileId in _liveLinesById.keys.toList()) {
         if (!drivers.containsKey(profileId)) {
-          await controller.removeLine(_crewLinesById.remove(profileId)!);
+          await controller.removeLine(_liveLinesById.remove(profileId)!);
         }
       }
 
@@ -136,9 +134,9 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
           textSize: 13,
           textOffset: const Offset(0, 1.4),
         );
-        final symbol = _crewSymbolsById[driver.profileId];
+        final symbol = _liveSymbolsById[driver.profileId];
         if (symbol == null) {
-          _crewSymbolsById[driver.profileId] =
+          _liveSymbolsById[driver.profileId] =
               await controller.addSymbol(symbolOptions);
         } else {
           await controller.updateSymbol(symbol, symbolOptions);
@@ -154,9 +152,9 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
           lineWidth: 3,
           lineOpacity: 0.75,
         );
-        final line = _crewLinesById[driver.profileId];
+        final line = _liveLinesById[driver.profileId];
         if (line == null) {
-          _crewLinesById[driver.profileId] =
+          _liveLinesById[driver.profileId] =
               await controller.addLine(lineOptions);
         } else {
           await controller.updateLine(line, lineOptions);
@@ -167,7 +165,7 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
       // Symbol/Line di maplibre_gl non è uniforme su tutte le piattaforme
       // (in particolare il target web) — mai lasciar risalire
       // un'eccezione della piattaforma mappa da qui, il resto della Guida
-      // deve restare usabile anche senza i marker della crew.
+      // deve restare usabile anche senza i marker degli altri utenti.
     }
   }
 
@@ -224,7 +222,7 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
             geometry: LatLng(e.lat, e.lon),
             iconImage: RadarIconSet.imageIdFor(
               e.category == RadarCategory.velox,
-              e.source == RadarSource.crew,
+              e.source == RadarSource.community,
             ),
             iconSize: 0.42,
           ),
@@ -241,8 +239,6 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
 
   Future<void> _onMapLongPress(Point<double> point, LatLng coords) async {
     if (!ref.read(radarModeControllerProvider)) return;
-    final crewId = ref.read(myProfileProvider).valueOrNull?.crewId;
-    if (crewId == null) return; // niente crew, niente segnalazioni condivise
     if (!mounted) return;
 
     final category = await DraggableSheetScaffold.show<RadarCategory>(
@@ -256,7 +252,7 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
             label: 'Velox',
             onTap: () => Navigator.of(ctx).pop(RadarCategory.velox),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
           _ReportOptionTile(
             icon: Icons.shield_rounded,
             label: 'Pattuglia',
@@ -280,11 +276,11 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
       final events = next.valueOrNull;
       if (events != null) unawaited(_syncSymbols(events));
     });
-    ref.listen<Map<String, CrewLiveDriver>>(crewLiveMapControllerProvider,
-        (previous, next) => unawaited(_syncCrewDrivers(next)));
+    ref.listen<Map<String, LiveDriver>>(liveMapControllerProvider,
+        (previous, next) => unawaited(_syncLiveDrivers(next)));
 
     return ColoredBox(
-      color: AppColors.guidaBg,
+      color: AppColor.void_,
       child: MapLibreMap(
         styleString: dotenv.env['MAP_STYLE_URL'] ?? MapLibreStyles.demo,
         initialCameraPosition: _initialCamera,
@@ -319,22 +315,23 @@ class _ReportOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xF0101828),
-      borderRadius: BorderRadius.circular(16),
+      color: AppColor.surfaceHigh,
+      borderRadius: BorderRadius.circular(AppRadius.card),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.md, vertical: AppSpace.md),
           child: Row(
             children: [
-              Icon(icon, color: AppColors.guidaCyan),
-              const SizedBox(width: 14),
+              Icon(icon, color: AppColor.cyan),
+              const SizedBox(width: AppSpace.sm),
               Text(label,
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                       fontWeight: FontWeight.w700,
                       fontSize: 17,
-                      color: AppColors.textPrimary)),
+                      color: AppColor.ink)),
             ],
           ),
         ),

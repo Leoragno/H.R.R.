@@ -56,7 +56,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         error: (err, _) => ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_friendlyError(err)),
-            backgroundColor: AppColors.danger,
+            backgroundColor: AppColor.danger,
           ),
         ),
       );
@@ -65,7 +65,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(22, 30, 22, 30),
@@ -79,7 +79,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     IconButton(
                       onPressed: () => context.pop(),
                       icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppColors.textPrimary, size: 18),
+                          color: AppColor.ink, size: 18),
                     ),
                     const SizedBox(width: 4),
                     const HrrWordmark(fontSize: 30, showTagline: false),
@@ -88,18 +88,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 28),
                 Text(
                   'Crea il tuo account',
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                     fontWeight: FontWeight.w900,
                     fontSize: 34,
-                    color: AppColors.textPrimary,
+                    color: AppColor.ink,
                   ),
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.15, end: 0),
                 const SizedBox(height: 12),
                 Text(
                   'Unisciti alla community e scala la classifica',
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                     fontSize: 17,
-                    color: AppColors.guidaTextSecondary,
+                    color: AppColor.inkMuted,
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -162,8 +162,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     padding: const EdgeInsets.only(top: 6, left: 4),
                     child: Text(
                       'Devi accettare i termini per continuare',
-                      style: AppTheme.archivo(
-                          fontSize: 13, color: AppColors.danger),
+                      style: AppType.text(
+                          fontSize: 13, color: AppColor.danger),
                     ),
                   ),
                 const SizedBox(height: 22),
@@ -180,7 +180,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.guidaCyan,
+                          color: AppColor.cyan,
                         ),
                       ),
                     ),
@@ -191,17 +191,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     alignment: WrapAlignment.center,
                     children: [
                       Text('Hai già un account? ',
-                          style: AppTheme.archivo(
+                          style: AppType.text(
                               fontSize: 16,
-                              color: AppColors.guidaTextSecondary)),
+                              color: AppColor.inkMuted)),
                       TextButton(
                         onPressed: () => context.pop(),
                         style: TextButton.styleFrom(
-                          foregroundColor: AppColors.guidaCyan,
+                          foregroundColor: AppColor.cyan,
                           padding: EdgeInsets.zero,
                         ),
                         child: Text('Accedi',
-                            style: AppTheme.archivo(
+                            style: AppType.text(
                                 fontSize: 16, fontWeight: FontWeight.w800)),
                       ),
                     ],
@@ -238,8 +238,8 @@ class _TermsCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderColor = hasError
-        ? AppColors.danger
-        : (checked ? AppColors.guidaCyan : const Color(0xFF3A3A3A));
+        ? AppColor.danger
+        : (checked ? AppColor.cyan : const Color(0xFF3A3A3A));
 
     return InkWell(
       onTap: () => onChanged(!checked),
@@ -252,37 +252,37 @@ class _TermsCheckbox extends StatelessWidget {
             height: 24,
             margin: const EdgeInsets.only(top: 1),
             decoration: BoxDecoration(
-              color: checked ? AppColors.guidaCyan : Colors.transparent,
+              color: checked ? AppColor.cyan : Colors.transparent,
               borderRadius: BorderRadius.circular(7),
               border: Border.all(color: borderColor, width: 1),
             ),
             child: checked
                 ? const Icon(Icons.check_rounded,
-                    size: 18, color: AppColors.guidaOnAccent)
+                    size: 18, color: AppColor.void_)
                 : null,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text.rich(
               TextSpan(
-                style: AppTheme.archivo(
+                style: AppType.text(
                     fontSize: 14, color: const Color(0xFFC2D2E6), height: 1.45),
                 children: [
                   const TextSpan(text: 'Accetto i '),
                   TextSpan(
                     text: 'Termini di servizio',
-                    style: AppTheme.archivo(
+                    style: AppType.text(
                       fontSize: 14,
-                      color: AppColors.guidaCyan,
+                      color: AppColor.cyan,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const TextSpan(text: ' e la '),
                   TextSpan(
                     text: 'Privacy policy',
-                    style: AppTheme.archivo(
+                    style: AppType.text(
                       fontSize: 14,
-                      color: AppColors.guidaCyan,
+                      color: AppColor.cyan,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

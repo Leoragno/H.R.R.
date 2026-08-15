@@ -4,6 +4,7 @@ import '../../../../core/network/supabase_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/territory_remote_datasource.dart';
 import '../../data/repositories/territory_repository_impl.dart';
+import '../../domain/entities/territory_cell.dart';
 import '../../domain/entities/territory_standing.dart';
 import '../../domain/repositories/territory_repository.dart';
 
@@ -24,24 +25,22 @@ TerritoryRepository territoryRepository(TerritoryRepositoryRef ref) {
 
 // ---- Stato ----------------------------------------------------------------
 
-/// Classifica territorio per scope (family sul tab Globale/La mia crew).
-/// La metrica selezionata nei 4 tab del pannello (GENERALE/TOP LADRI/...)
-/// riordina la stessa lista lato client — la RPC restituisce già tutti e
-/// 4 gli aggregati per riga, non serve rifare la chiamata per cambiare
-/// ordinamento (stesso principio di `standings()` nel mockup).
-/// scope=crew usa la crew dell'utente corrente ([myProfileProvider]): se
-/// non ha una crew la lista è vuota, mai un errore.
+/// Classifica territorio globale. La metrica selezionata nei 4 tab del
+/// pannello (GENERALE/TOP LADRI/...) riordina la stessa lista lato client —
+/// la RPC restituisce già tutti e 4 gli aggregati per riga, non serve
+/// rifare la chiamata per cambiare ordinamento.
 @riverpod
 Future<List<TerritoryStanding>> territoryStandings(
   TerritoryStandingsRef ref,
-  TerritoryScope scope,
-) async {
-  String? crewId;
-  if (scope == TerritoryScope.crew) {
-    crewId = (await ref.watch(myProfileProvider.future))?.crewId;
-    if (crewId == null) return const [];
-  }
-  return ref
-      .watch(territoryRepositoryProvider)
-      .standings(scope: scope, crewId: crewId);
+) {
+  return ref.watch(territoryRepositoryProvider).standings();
+}
+
+/// Tutte le celle possedute dall'utente corrente, dalla più vicina a
+/// scadere — per la schermata "I miei territori" (brief, punto 1).
+@riverpod
+Future<List<TerritoryCell>> myTerritories(MyTerritoriesRef ref) async {
+  final profile = await ref.watch(myProfileProvider.future);
+  if (profile == null) return const [];
+  return ref.watch(territoryRepositoryProvider).myTerritories(profile.id);
 }

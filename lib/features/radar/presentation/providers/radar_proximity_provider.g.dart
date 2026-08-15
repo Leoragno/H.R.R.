@@ -7,12 +7,12 @@ part of 'radar_proximity_provider.dart';
 // **************************************************************************
 
 String _$radarProximityControllerHash() =>
-    r'e120d673a591e9c19f08d64cdf923341c987b67b';
+    r'0da8a7911237e7f8dc80f5ff5b00de379f9567ee';
 
 /// Durante DRIVE, riusa il GPS già live in [tripLiveControllerProvider]
 /// (nessun nuovo stream di posizione) per capire se l'utente si sta
-/// avvicinando a un Velox/Pattuglia (API o crew) e restituisce l'evento
-/// da segnalare — un impulso, non uno stato persistente: [Timer]/durata
+/// avvicinando a un Velox/Pattuglia (API o community) e restituisce
+/// l'evento da segnalare — un impulso, non uno stato persistente: [Timer]/durata
 /// di visualizzazione dell'avviso restano a carico della UI (vedi
 /// RadarAlertBanner), qui c'è solo "quale evento, se c'è, va segnalato ora".
 ///

@@ -57,13 +57,13 @@ class PodiumCard extends StatelessWidget {
                 height: 56,
                 fit: BoxFit.cover,
                 placeholder: (c, u) => Container(
-                    width: 56, height: 56, color: AppColors.surfaceElevated),
+                    width: 56, height: 56, color: AppColor.surfaceHigh),
                 errorWidget: (c, u, e) => Container(
                     width: 56,
                     height: 56,
-                    color: AppColors.surfaceElevated,
+                    color: AppColor.surfaceHigh,
                     child: const Icon(Icons.directions_car_rounded,
-                        color: AppColors.textDisabled)),
+                        color: AppColor.inkFaint)),
               ),
             ),
             const SizedBox(width: 12),
@@ -73,8 +73,8 @@ class PodiumCard extends StatelessWidget {
                 children: [
                   Text(
                     title.isEmpty ? 'Auto sconosciuta' : title,
-                    style: AppTheme.archivo(
-                        color: AppColors.textPrimary,
+                    style: AppType.text(
+                        color: AppColor.ink,
                         fontSize: 14,
                         fontWeight: FontWeight.w700),
                     maxLines: 1,

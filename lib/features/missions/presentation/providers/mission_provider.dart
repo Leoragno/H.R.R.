@@ -4,7 +4,6 @@ import '../../../../core/network/supabase_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/mission_remote_datasource.dart';
 import '../../data/repositories/mission_repository_impl.dart';
-import '../../domain/entities/crew_mission.dart';
 import '../../domain/entities/mission.dart';
 import '../../domain/entities/mission_progress.dart';
 import '../../domain/entities/season.dart';
@@ -64,11 +63,6 @@ Future<List<String>> myClaimedMissionIds(MyClaimedMissionIdsRef ref) {
 @riverpod
 Future<int> secretMissionSlotCount(SecretMissionSlotCountRef ref) {
   return ref.watch(missionRepositoryProvider).secretMissionSlotCount();
-}
-
-@riverpod
-Future<List<CrewMission>> crewMissions(CrewMissionsRef ref, String crewId) {
-  return ref.watch(missionRepositoryProvider).crewMissions(crewId);
 }
 
 @riverpod

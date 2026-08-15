@@ -47,21 +47,26 @@ class DraggableSheetScaffold extends StatelessWidget {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.86,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xF50E1522), Color(0xFA070A11)],
+            colors: [
+              AppColor.surfaceHigh.withValues(alpha: 0.96),
+              AppColor.void_.withValues(alpha: 0.98),
+            ],
           ),
-          border: Border(
-            top: BorderSide(color: Color(0x33A0AAFF), width: 1),
-            left: BorderSide(color: Color(0x33A0AAFF), width: 1),
-            right: BorderSide(color: Color(0x33A0AAFF), width: 1),
+          border: const Border(
+            top: BorderSide(color: AppColor.line, width: 1),
+            left: BorderSide(color: AppColor.line, width: 1),
+            right: BorderSide(color: AppColor.line, width: 1),
           ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -71,22 +76,22 @@ class DraggableSheetScaffold extends StatelessWidget {
                   width: 96,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A3450),
-                    borderRadius: BorderRadius.circular(999),
+                    color: AppColor.line,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
               ),
               if (title != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         title!,
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                           fontWeight: FontWeight.w800,
                           fontSize: 22,
-                          color: AppColors.textPrimary,
+                          color: AppColor.ink,
                         ),
                       ),
                     ),
@@ -94,12 +99,12 @@ class DraggableSheetScaffold extends StatelessWidget {
                       IconButton(
                         onPressed: () => Navigator.of(context).maybePop(),
                         icon: const Icon(Icons.close_rounded,
-                            color: AppColors.guidaTextSecondary),
+                            color: AppColor.inkMuted),
                       ),
                   ],
                 ),
               ] else
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpace.md),
               Flexible(child: child),
             ],
           ),
@@ -146,21 +151,24 @@ class SheetOptionPicker<T> extends StatelessWidget {
       shrinkWrap: true,
       padding: EdgeInsets.zero,
       itemCount: options.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpace.sm),
       itemBuilder: (context, i) {
         final opt = options[i];
         final isSelected = opt.value == selected;
         return Material(
-          color: isSelected ? const Color(0xF01C2640) : const Color(0xF0101828),
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected
+              ? AppColor.surfaceHigh.withValues(alpha: 0.94)
+              : AppColor.surface.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             onTap: () {
               onSelect(opt.value);
               Navigator.of(context).pop(opt.value);
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.md, vertical: AppSpace.md),
               child: Row(
                 children: [
                   if (opt.leading != null) ...[
@@ -183,15 +191,15 @@ class SheetOptionPicker<T> extends StatelessWidget {
                   Expanded(
                     child: Text(
                       opt.label,
-                      style: AppTheme.archivo(
+                      style: AppType.text(
                         fontWeight: FontWeight.w700,
                         fontSize: 17,
-                        color: AppColors.textPrimary,
+                        color: AppColor.ink,
                       ),
                     ),
                   ),
                   if (isSelected)
-                    const Icon(Icons.check_rounded, color: AppColors.guidaCyan),
+                    const Icon(Icons.check_rounded, color: AppColor.cyan),
                 ],
               ),
             ),

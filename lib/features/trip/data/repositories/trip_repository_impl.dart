@@ -22,6 +22,17 @@ class TripRepositoryImpl implements TripRepository {
     required double avgSpeedKmh,
     required double maxSpeedKmh,
     List<RoutePoint> route = const [],
+    double? jerkRmsMs3,
+    int brakingSoftCount = 0,
+    int brakingHardCount = 0,
+    double? brakingJerkAvgMs3,
+    int turnsCount = 0,
+    double? turnGyroStddevAvg,
+    int totalStops = 0,
+    int stoppedSeconds = 0,
+    int accelThenBrakeCount = 0,
+    double? gpsFixHz,
+    double? gyroHz,
   }) async {
     final trip = await _remote.completeTrip(
       tripId: tripId,
@@ -30,6 +41,17 @@ class TripRepositoryImpl implements TripRepository {
       avgSpeedKmh: avgSpeedKmh,
       maxSpeedKmh: maxSpeedKmh,
       route: route,
+      jerkRmsMs3: jerkRmsMs3,
+      brakingSoftCount: brakingSoftCount,
+      brakingHardCount: brakingHardCount,
+      brakingJerkAvgMs3: brakingJerkAvgMs3,
+      turnsCount: turnsCount,
+      turnGyroStddevAvg: turnGyroStddevAvg,
+      totalStops: totalStops,
+      stoppedSeconds: stoppedSeconds,
+      accelThenBrakeCount: accelThenBrakeCount,
+      gpsFixHz: gpsFixHz,
+      gyroHz: gyroHz,
     );
     return trip.toEntity();
   }

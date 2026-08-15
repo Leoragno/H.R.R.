@@ -10,7 +10,6 @@ class AppUser extends Equatable {
   final int xp;
   final int rep;
   final String title;
-  final String? crewId;
   final String? vehicleBrand;
   final String? vehicleModel;
   final String? country;
@@ -29,7 +28,6 @@ class AppUser extends Equatable {
     required this.xp,
     required this.rep,
     required this.title,
-    this.crewId,
     this.vehicleBrand,
     this.vehicleModel,
     this.country,
@@ -50,7 +48,6 @@ class AppUser extends Equatable {
         xp,
         rep,
         title,
-        crewId,
         vehicleBrand,
         vehicleModel,
         country,

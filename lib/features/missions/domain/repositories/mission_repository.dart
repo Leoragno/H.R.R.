@@ -1,5 +1,4 @@
 import '../../../../core/events/mission_event.dart';
-import '../entities/crew_mission.dart';
 import '../entities/mission.dart';
 import '../entities/mission_claim.dart';
 import '../entities/mission_progress.dart';
@@ -45,8 +44,6 @@ abstract class MissionRepository {
   /// Numero di missioni segrete attive nel pool (per i placeholder "???"),
   /// senza mai esporre quali siano.
   Future<int> secretMissionSlotCount();
-
-  Future<List<CrewMission>> crewMissions(String crewId);
 
   Future<Season?> activeSeason();
 }

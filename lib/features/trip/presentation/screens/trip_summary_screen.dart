@@ -20,6 +20,13 @@ import '../widgets/trip_rank_card.dart';
 /// bottone Condividi). Non include il confronto "previsto vs effettivo"
 /// del mockup: richiederebbe un motore di stima ETA che non esiste in
 /// questa app, e inventare quei numeri sarebbe fuorviante.
+///
+/// Il protagonista della schermata è il punteggio di guida (DESIGN.md:
+/// "Report di fine viaggio → il punteggio"), rivelato con l'unica
+/// animazione elaborata dell'app (conteggio + glow che sale, vedi
+/// _DriveScoreReveal). Tutto il resto — anteprima percorso, reward,
+/// statistiche, grafici — resta grigio su superficie, senza accenti
+/// concorrenti: un solo elemento acceso per schermata.
 class TripSummaryScreen extends ConsumerWidget {
   const TripSummaryScreen({super.key});
 
@@ -40,8 +47,7 @@ class TripSummaryScreen extends ConsumerWidget {
   }
 
   // Etichette contestuali sotto il valore, in stile "racing" coerente col
-  // resto dell'app (XP/REP, gradient) — calcolate da soglie sul dato reale,
-  // non inventate.
+  // resto dell'app — calcolate da soglie sul dato reale, non inventate.
   String _gForceHint(double g) {
     if (g >= 1.0) return 'Impatto forte';
     if (g >= 0.6) return 'Frenata/curva decisa';
@@ -67,7 +73,7 @@ class TripSummaryScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1522),
+        backgroundColor: AppColor.surfaceHigh,
         title: const Text('Eliminare il trip?'),
         content: const Text(
             'Il viaggio verrà rimosso dal tuo storico. XP e REP già assegnati restano.'),
@@ -78,7 +84,7 @@ class TripSummaryScreen extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Elimina',
-                style: TextStyle(color: AppColors.danger)),
+                style: TextStyle(color: AppColor.danger)),
           ),
         ],
       ),
@@ -101,12 +107,15 @@ class TripSummaryScreen extends ConsumerWidget {
         if (context.mounted) context.go(AppRoutes.home);
       });
       return const Scaffold(
-        backgroundColor: AppColors.guidaBg,
+        backgroundColor: AppColor.void_,
         body: SizedBox.shrink(),
       );
     }
     final trip = summary.trip;
-    final earnedNothing = trip.xpEarned == 0 && trip.repEarned == 0;
+    // La REP non arriva mai da un viaggio guidato da soli (0025_livello_
+    // rep_separation.sql): repEarned a 0 è la norma, non un segnale che
+    // "non è stato assegnato nulla" — solo xpEarned lo è.
+    final earnedNothing = trip.xpEarned == 0;
     final speedSeries = summary.samples.map((s) => s.speedKmh).toList();
     final elevationSeries = summary.samples
         .where((s) => s.elevationM != null && s.elevationM != 0)
@@ -116,71 +125,61 @@ class TripSummaryScreen extends ConsumerWidget {
     final motion = summary.motionStats;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
           children: [
             Center(
-              child: ShaderMask(
-                shaderCallback: (b) =>
-                    const LinearGradient(colors: AppColors.guidaGradientCta)
-                        .createShader(b),
-                child: Text(
-                  earnedNothing ? 'VIAGGIO REGISTRATO' : 'DRIVE COMPLETED',
-                  style: AppTheme.archivo(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 22,
-                      color: Colors.white),
-                ),
+              child: Text(
+                earnedNothing ? 'VIAGGIO REGISTRATO' : 'DRIVE COMPLETED',
+                style: AppType.label.copyWith(fontSize: 16, color: AppColor.ink),
               ),
             ).animate().fadeIn().slideY(begin: -0.2, end: 0),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
-            // Hero: anteprima percorso + top speed + condividi
+            if (trip.drivingScore != null) ...[
+              Center(child: _DriveScoreReveal(score: trip.drivingScore!)),
+              const SizedBox(height: AppSpace.lg),
+            ],
+
+            // Hero: anteprima percorso (elemento firma, DESIGN.md) + top
+            // speed + condividi. Unico elemento acceso della schermata.
             ClipRRect(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               child: Container(
                 height: 220,
-                color: const Color(0xFF171717),
+                color: AppColor.surface,
                 child: Stack(
                   children: [
                     if (summary.routePoints.length >= 2)
                       Positioned.fill(
                           child: RoutePreview(points: summary.routePoints)),
                     Positioned(
-                      right: 14,
-                      top: 14,
+                      right: AppSpace.sm,
+                      top: AppSpace.sm,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                            horizontal: AppSpace.sm, vertical: AppSpace.xs),
                         decoration: BoxDecoration(
-                          color: const Color(0xD90A1414),
-                          border: Border.all(color: const Color(0xFF2F6F6B)),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColor.surfaceHigh.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(AppRadius.control),
+                          border: Border.all(color: AppColor.line),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Text('TOP SPEED',
-                                style: AppTheme.archivo(
-                                    fontSize: 10,
-                                    letterSpacing: 1.4,
-                                    color: AppColors.guidaCyan)),
+                            Text('TOP SPEED', style: AppType.label),
                             Text.rich(
                               TextSpan(
                                 text:
                                     trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—',
-                                style: AppTheme.archivo(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white),
+                                style: AppType.metric.copyWith(fontSize: 17),
                                 children: [
                                   TextSpan(
                                     text: ' km/h',
-                                    style: AppTheme.archivo(
-                                        fontSize: 12,
-                                        color: AppColors.guidaTextSecondary),
+                                    style: AppType.caption,
                                   ),
                                 ],
                               ),
@@ -190,10 +189,10 @@ class TripSummaryScreen extends ConsumerWidget {
                       ),
                     ),
                     Positioned(
-                      right: 12,
-                      bottom: 12,
+                      right: AppSpace.sm,
+                      bottom: AppSpace.sm,
                       child: Material(
-                        color: const Color(0xD90F0F0F),
+                        color: AppColor.surfaceHigh.withValues(alpha: 0.85),
                         shape: const CircleBorder(),
                         child: InkWell(
                           customBorder: const CircleBorder(),
@@ -212,7 +211,7 @@ class TripSummaryScreen extends ConsumerWidget {
                             width: 48,
                             height: 48,
                             child: Icon(Icons.ios_share_rounded,
-                                color: Colors.white, size: 20),
+                                color: AppColor.ink, size: 20),
                           ),
                         ),
                       ),
@@ -221,177 +220,141 @@ class TripSummaryScreen extends ConsumerWidget {
                 ),
               ),
             ).animate().fadeIn(delay: 100.ms),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
             Row(
               children: [
-                Icon(Icons.calendar_today_rounded,
-                    size: 15, color: AppColors.guidaTextSecondary),
-                const SizedBox(width: 8),
+                const Icon(Icons.calendar_today_rounded,
+                    size: 15, color: AppColor.inkMuted),
+                const SizedBox(width: AppSpace.sm),
                 Text(
                     '${trip.startedAt.day.toString().padLeft(2, '0')}/${trip.startedAt.month.toString().padLeft(2, '0')}/${trip.startedAt.year}',
-                    style: AppTheme.archivo(
-                        color: const Color(0xFFCFDCEC), fontSize: 15)),
-                const SizedBox(width: 20),
-                Icon(Icons.schedule_rounded,
-                    size: 15, color: AppColors.guidaTextSecondary),
-                const SizedBox(width: 8),
+                    style: AppType.caption),
+                const SizedBox(width: AppSpace.md),
+                const Icon(Icons.schedule_rounded,
+                    size: 15, color: AppColor.inkMuted),
+                const SizedBox(width: AppSpace.sm),
                 Text(
                   trip.endedAt == null
                       ? _hm(trip.startedAt)
                       : '${_hm(trip.startedAt)} – ${_hm(trip.endedAt!)}',
-                  style: AppTheme.archivo(
-                      color: const Color(0xFFCFDCEC), fontSize: 15),
+                  style: AppType.caption,
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpace.md),
 
             Row(
               children: [
                 Expanded(
-                  child: _RewardCard(
-                      label: 'XP',
-                      value: trip.xpEarned,
-                      colors: AppColors.gradientXp),
+                  child: _RewardCard(label: 'XP', value: trip.xpEarned),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpace.md),
                 Expanded(
-                  child: _RewardCard(
-                      label: 'REP',
-                      value: trip.repEarned,
-                      colors: AppColors.gradientRep),
+                  child: _RewardCard(label: 'REP', value: trip.repEarned),
                 ),
               ],
             ).animate().fadeIn(delay: 200.ms),
             if (earnedNothing) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               Text(
-                'Nessun premio assegnato per questo viaggio (velocità media o '
-                'distanza fuori dai limiti previsti).',
-                style: AppTheme.archivo(
-                    color: AppColors.guidaTextSecondary, fontSize: 12),
+                'Nessun livello assegnato per questo viaggio (troppo corto, '
+                'velocità incompatibile con un\'auto, o hai già raggiunto il '
+                'tetto giornaliero/ripetuto lo stesso percorso più volte oggi).',
+                style: AppType.caption,
                 textAlign: TextAlign.center,
               ),
             ],
-            const SizedBox(height: 22),
+            const SizedBox(height: AppSpace.lg),
 
-            // Hero stats (3 colonne)
+            // Hero stats (3 colonne) — tutto grigio, nessun accento: il
+            // protagonista resta l'anteprima del percorso sopra.
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xEB111A2A),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              padding: const EdgeInsets.symmetric(
+                  vertical: AppSpace.md, horizontal: AppSpace.sm),
+              decoration: AppGlow.card,
               child: Row(
                 children: [
                   Expanded(
                       child: _HeroStat(
                           label: 'DISTANZA',
                           value: trip.distanceKm.toStringAsFixed(1),
-                          unit: 'km',
-                          dotColor: AppColors.guidaCyan)),
+                          unit: 'km')),
                   Expanded(
                       child: _HeroStat(
                           label: 'DURATA',
                           value: _formatDuration(trip.durationSeconds),
-                          unit: '',
-                          dotColor: AppColors.guidaBlue)),
+                          unit: '')),
                   Expanded(
                       child: _HeroStat(
                           label: 'VEL. MEDIA',
                           value: trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—',
-                          unit: 'km/h',
-                          dotColor: AppColors.guidaPurple)),
+                          unit: 'km/h')),
                 ],
               ),
             ).animate().fadeIn(delay: 250.ms),
-            const SizedBox(height: 22),
+            const SizedBox(height: AppSpace.lg),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('SPEED DISTRIBUTION',
-                    style: AppTheme.archivo(
-                        fontSize: 12,
-                        letterSpacing: 1.4,
-                        color: AppColors.guidaTextSecondary)),
-                Text('KM/H',
-                    style: AppTheme.archivo(
-                        fontSize: 12, color: AppColors.guidaTextSecondary)),
+                Text('SPEED DISTRIBUTION', style: AppType.label),
+                Text('KM/H', style: AppType.caption),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             SpeedDistributionBar(bands: speedBands),
-            const SizedBox(height: 26),
+            const SizedBox(height: AppSpace.lg),
 
-            Text('Statistiche del trip',
-                style: AppTheme.archivo(
-                    fontWeight: FontWeight.w800, fontSize: 22)),
-            const SizedBox(height: 12),
+            Text('Statistiche del trip', style: AppType.title),
+            const SizedBox(height: AppSpace.sm),
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+              crossAxisSpacing: AppSpace.sm,
+              mainAxisSpacing: AppSpace.sm,
               childAspectRatio: 1.4,
               children: [
-                _StatCard('Distanza', trip.distanceKm.toStringAsFixed(1), 'km',
-                    AppColors.guidaCyan),
-                _StatCard('Durata', _formatDuration(trip.durationSeconds), '',
-                    AppColors.guidaBlue),
+                _StatCard('Distanza', trip.distanceKm.toStringAsFixed(1), 'km'),
                 _StatCard(
-                    'Velocità media',
-                    trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—',
-                    'km/h',
-                    AppColors.guidaPurple),
-                _StatCard(
-                    'Velocità massima',
-                    trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—',
-                    'km/h',
-                    const Color(0xFFFF8A1F)),
-                _StatCard('XP guadagnati', '${trip.xpEarned}', '',
-                    const Color(0xFF8B5CF6)),
-                _StatCard('REP guadagnati', '${trip.repEarned}', '',
-                    AppColors.neonAmber),
-                _StatCard(
-                    'Tempo da fermo',
-                    _formatStoppedTime(motion.stoppedTime),
-                    '',
-                    const Color(0xFF4A90E2)),
-                _StatCard('Soste totali', '${motion.totalStops}', '',
-                    const Color(0xFF35E0FF)),
+                    'Durata', _formatDuration(trip.durationSeconds), ''),
+                _StatCard('Velocità media',
+                    trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—', 'km/h'),
+                _StatCard('Velocità massima',
+                    trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—', 'km/h'),
+                _StatCard('XP guadagnati', '${trip.xpEarned}', ''),
+                _StatCard('REP guadagnati', '${trip.repEarned}', ''),
+                if (trip.drivingScore != null)
+                  _StatCard(
+                      'Punteggio di guida', '${trip.drivingScore}', '/100'),
+                _StatCard('Tempo da fermo',
+                    _formatStoppedTime(motion.stoppedTime), ''),
+                _StatCard('Soste totali', '${motion.totalStops}', ''),
                 _StatCard(
                     'Tempo 0-100',
                     motion.zeroToHundredSeconds != null
                         ? motion.zeroToHundredSeconds!.toStringAsFixed(2)
                         : '—',
-                    's',
-                    AppColors.guidaCyan),
-                _StatCard('Frenate', '${motion.brakingEvents}', '',
-                    const Color(0xFFFF4A4A)),
-                _StatCard('Svolte a sinistra', '${motion.turnsLeft}', '',
-                    const Color(0xFF7B3BFF)),
-                _StatCard('Svolte a destra', '${motion.turnsRight}', '',
-                    const Color(0xFFC23DFF)),
+                    's'),
+                _StatCard('Frenate', '${motion.brakingEvents}', ''),
+                _StatCard('Svolte a sinistra', '${motion.turnsLeft}', ''),
+                _StatCard('Svolte a destra', '${motion.turnsRight}', ''),
                 _StatCard('Picco forza G', motion.peakGForce.toStringAsFixed(2),
-                    'G', const Color(0xFFFF8A1F),
+                    'G',
                     hint: _gForceHint(motion.peakGForce)),
                 _StatCard(
                     'Velocità max in curva',
                     motion.maxCorneringSpeedKmh != null
                         ? motion.maxCorneringSpeedKmh!.toStringAsFixed(0)
                         : '—',
-                    'km/h',
-                    const Color(0xFFFF2D55)),
+                    'km/h'),
                 _StatCard(
                     'Accelerazione max',
                     motion.maxAccelerationMs2 != null
                         ? motion.maxAccelerationMs2!.toStringAsFixed(1)
                         : '—',
                     'm/s²',
-                    const Color(0xFF2ED47A),
                     hint: motion.maxAccelerationMs2 != null
                         ? _accelHint(motion.maxAccelerationMs2!)
                         : null),
@@ -401,85 +364,71 @@ class TripSummaryScreen extends ConsumerWidget {
                         ? motion.maxDecelerationMs2!.abs().toStringAsFixed(1)
                         : '—',
                     'm/s²',
-                    const Color(0xFFFF8A1F),
                     hint: motion.maxDecelerationMs2 != null
                         ? _decelHint(motion.maxDecelerationMs2!)
                         : null),
-                _StatCard(
-                    'Dislivello',
-                    motion.elevationGainM.round().toString(),
-                    'm',
-                    const Color(0xFF4A90E2)),
+                _StatCard('Dislivello',
+                    motion.elevationGainM.round().toString(), 'm'),
                 _StatCard(
                     'Altitudine max',
                     motion.maxAltitudeM != null
                         ? motion.maxAltitudeM!.round().toString()
                         : '—',
-                    'm',
-                    const Color(0xFF8B5CF6)),
+                    'm'),
               ],
             ),
-            const SizedBox(height: 26),
+            const SizedBox(height: AppSpace.lg),
 
-            Text('Speed Over Time',
-                style: AppTheme.archivo(
-                    fontWeight: FontWeight.w800, fontSize: 20)),
-            const SizedBox(height: 10),
+            Text('Speed Over Time', style: AppType.title),
+            const SizedBox(height: AppSpace.sm),
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0E1414),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              padding: const EdgeInsets.all(AppSpace.sm),
+              decoration: AppGlow.card,
               child: LineAreaChart(
                 values: speedSeries,
-                lineColor: AppColors.guidaCyan,
-                fillColor: AppColors.guidaCyan.withValues(alpha: 0.18),
+                lineColor: AppColor.cyan,
+                fillColor: AppColor.cyan.withValues(alpha: 0.18),
               ),
             ),
 
             if (elevationSeries.length >= 2) ...[
-              const SizedBox(height: 22),
-              Text('Elevation Over Time',
-                  style: AppTheme.archivo(
-                      fontWeight: FontWeight.w800, fontSize: 20)),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.lg),
+              Text('Elevation Over Time', style: AppType.title),
+              const SizedBox(height: AppSpace.sm),
               Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D1118),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                padding: const EdgeInsets.all(AppSpace.sm),
+                decoration: AppGlow.card,
                 child: LineAreaChart(
                   values: elevationSeries,
-                  lineColor: AppColors.guidaCyan,
-                  fillColor: const Color(0xFF4A90E2).withValues(alpha: 0.18),
+                  lineColor: AppColor.cyan,
+                  fillColor: AppColor.inkMuted.withValues(alpha: 0.18),
                 ),
               ),
             ],
-            const SizedBox(height: 28),
+            const SizedBox(height: AppSpace.xl),
 
             Material(
-              color: const Color(0x1FF04A4A),
-              borderRadius: BorderRadius.circular(16),
+              color: AppColor.danger.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadius.card),
                 onTap: () => _confirmDelete(context, ref, trip.id),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0x59F04A4A)),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    border:
+                        Border.all(color: AppColor.danger.withValues(alpha: 0.35)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.delete_outline_rounded,
-                          color: AppColors.danger, size: 20),
-                      const SizedBox(width: 10),
+                          color: AppColor.danger, size: 20),
+                      const SizedBox(width: AppSpace.sm),
                       Text('Elimina trip',
-                          style: AppTheme.archivo(
-                              color: AppColors.danger,
+                          style: AppType.text(
+                              color: AppColor.danger,
                               fontWeight: FontWeight.w700,
                               fontSize: 18)),
                     ],
@@ -487,7 +436,7 @@ class TripSummaryScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
             NeonCtaButton(
               label: 'Continua',
@@ -504,37 +453,74 @@ class TripSummaryScreen extends ConsumerWidget {
   }
 }
 
+/// Rivelazione del punteggio di guida — l'unica animazione elaborata
+/// dell'app (DESIGN.md: "il numero conta da 0 al valore finale in
+/// AppMotion.reveal, il glow sale con lui"). Colore a soglie fisse, mai un
+/// gradiente: pulito/buono → ciano, scarso/sporco → magenta (stesso
+/// vocabolario di "km puliti" nel resto del prodotto), mediocre → grigio,
+/// niente da segnalare.
+class _DriveScoreReveal extends StatelessWidget {
+  final int score;
+  const _DriveScoreReveal({required this.score});
+
+  Color get _accent {
+    if (score >= 75) return AppColor.cyan;
+    if (score <= 40) return AppColor.magenta;
+    return AppColor.inkMuted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _accent;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: AppMotion.reveal,
+      curve: AppMotion.curve,
+      builder: (context, t, _) {
+        final shown = (score * t).round();
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('PUNTEGGIO DI GUIDA', style: AppType.label),
+            const SizedBox(height: AppSpace.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpace.md),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: accent.withValues(alpha: 0.50 * t),
+                      blurRadius: 40 * t),
+                  BoxShadow(
+                      color: accent.withValues(alpha: 0.20 * t),
+                      blurRadius: 90 * t),
+                ],
+              ),
+              child: Text('$shown',
+                  style: AppType.score.copyWith(color: accent, fontSize: 64)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _RewardCard extends StatelessWidget {
   final String label;
   final int value;
-  final List<Color> colors;
-  const _RewardCard(
-      {required this.label, required this.value, required this.colors});
+  const _RewardCard({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-            colors: colors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+      decoration: AppGlow.card,
       child: Column(
         children: [
-          Text('+$value',
-              style: AppTheme.archivo(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 32,
-                  color: Colors.black)),
-          const SizedBox(height: 4),
-          Text(label,
-              style: AppTheme.archivo(
-                  color: Colors.black,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13)),
+          Text('+$value', style: AppType.metric),
+          const SizedBox(height: AppSpace.xs),
+          Text(label, style: AppType.label),
         ],
       ),
     );
@@ -545,46 +531,25 @@ class _HeroStat extends StatelessWidget {
   final String label;
   final String value;
   final String unit;
-  final Color dotColor;
   const _HeroStat(
-      {required this.label,
-      required this.value,
-      required this.unit,
-      required this.dotColor});
+      {required this.label, required this.value, required this.unit});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-                width: 6,
-                height: 6,
-                decoration:
-                    BoxDecoration(color: dotColor, shape: BoxShape.circle)),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(label,
-                  style: AppTheme.archivo(
-                      fontSize: 11, color: const Color(0xFF9DB0C8)),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
+        Flexible(
+          child: Text(label, style: AppType.label, overflow: TextOverflow.ellipsis),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Text.rich(
           TextSpan(
             text: value,
-            style: AppTheme.archivo(
-                fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
+            style: AppType.metric.copyWith(fontSize: 20),
             children: [
               if (unit.isNotEmpty)
-                TextSpan(
-                    text: ' $unit',
-                    style: AppTheme.archivo(
-                        fontSize: 13, color: const Color(0xFF9DB0C8))),
+                TextSpan(text: ' $unit', style: AppType.caption),
             ],
           ),
         ),
@@ -597,61 +562,34 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final String unit;
-  final Color color;
   final String? hint;
-  const _StatCard(this.label, this.value, this.unit, this.color, {this.hint});
+  const _StatCard(this.label, this.value, this.unit, {this.hint});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xEB111A2A),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.sm, vertical: AppSpace.sm),
+      decoration: AppGlow.card,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.9),
-                    shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(label,
-                    style: AppTheme.archivo(
-                        fontSize: 13, color: const Color(0xFFC2D2E6)),
-                    overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
+          Text(label,
+              style: AppType.caption, overflow: TextOverflow.ellipsis),
           const Spacer(),
           Text.rich(
             TextSpan(
               text: value,
-              style: AppTheme.archivo(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white),
+              style: AppType.metric.copyWith(fontSize: 22),
               children: [
                 if (unit.isNotEmpty)
-                  TextSpan(
-                      text: ' $unit',
-                      style: AppTheme.archivo(
-                          fontSize: 13, color: const Color(0xFF9DB0C8))),
+                  TextSpan(text: ' $unit', style: AppType.caption),
               ],
             ),
           ),
           if (hint != null) ...[
             const SizedBox(height: 2),
-            Text(hint!,
-                style: AppTheme.archivo(fontSize: 11, color: color),
-                overflow: TextOverflow.ellipsis),
+            Text(hint!, style: AppType.caption, overflow: TextOverflow.ellipsis),
           ],
         ],
       ),

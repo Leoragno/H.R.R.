@@ -17,14 +17,14 @@ class TripDetailScreen extends ConsumerWidget {
     final tripAsync = ref.watch(tripByIdProvider(tripId));
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: tripAsync.when(
           loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.guidaCyan)),
+              child: CircularProgressIndicator(color: AppColor.cyan)),
           error: (e, _) => Center(
             child: Text('Viaggio non trovato',
-                style: AppTheme.archivo(color: AppColors.danger)),
+                style: AppType.text(color: AppColor.danger)),
           ),
           data: (trip) {
             return ListView(
@@ -39,10 +39,10 @@ class TripDetailScreen extends ConsumerWidget {
                       child: Text(
                         'Dettaglio viaggio',
                         textAlign: TextAlign.center,
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                           fontWeight: FontWeight.w900,
                           fontSize: 22,
-                          color: AppColors.textPrimary,
+                          color: AppColor.ink,
                         ),
                       ),
                     ),
@@ -56,7 +56,7 @@ class TripDetailScreen extends ConsumerWidget {
                   '${trip.startedAt.year} · ${trip.startedAt.hour.toString().padLeft(2, '0')}:'
                   '${trip.startedAt.minute.toString().padLeft(2, '0')}',
                   textAlign: TextAlign.center,
-                  style: AppTheme.archivo(color: AppColors.guidaTextSecondary),
+                  style: AppType.text(color: AppColor.inkMuted),
                 ),
                 const SizedBox(height: 20),
                 if (trip.route.length >= 2) ...[
@@ -76,14 +76,14 @@ class TripDetailScreen extends ConsumerWidget {
                       child: _RewardChip(
                           label: 'XP',
                           value: trip.xpEarned,
-                          color: AppColors.guidaPurple),
+                          color: AppMascot.volt),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _RewardChip(
                           label: 'REP',
                           value: trip.repEarned,
-                          color: AppColors.neonAmber),
+                          color: AppColor.amber),
                     ),
                   ],
                 ),
@@ -142,12 +142,12 @@ class _RewardChip extends StatelessWidget {
       child: Column(
         children: [
           Text('+$value',
-              style: AppTheme.archivo(
+              style: AppType.text(
                   color: color, fontWeight: FontWeight.w800, fontSize: 20)),
           const SizedBox(height: 2),
           Text(label,
-              style: AppTheme.archivo(
-                  color: AppColors.guidaTextSecondary, fontSize: 12)),
+              style: AppType.text(
+                  color: AppColor.inkMuted, fontSize: 12)),
         ],
       ),
     );
@@ -165,10 +165,10 @@ class _StatRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: AppTheme.archivo(color: AppColors.guidaTextSecondary)),
+            style: AppType.text(color: AppColor.inkMuted)),
         Text(value,
-            style: AppTheme.archivo(
-                fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            style: AppType.text(
+                fontWeight: FontWeight.w700, color: AppColor.ink)),
       ],
     );
   }
@@ -190,7 +190,7 @@ class _RoundIconButton extends StatelessWidget {
         child: SizedBox(
           width: 46,
           height: 46,
-          child: Icon(icon, color: AppColors.textPrimary, size: 20),
+          child: Icon(icon, color: AppColor.ink, size: 20),
         ),
       ),
     );

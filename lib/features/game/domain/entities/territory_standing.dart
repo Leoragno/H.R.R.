@@ -8,8 +8,6 @@ class TerritoryStanding extends Equatable {
   final String username;
   final String displayName;
   final String? avatarUrl;
-  final String? crewId;
-  final String? crewTag;
   final int cellCount;
   final double areaKm2;
   final int stolen;
@@ -21,8 +19,6 @@ class TerritoryStanding extends Equatable {
     required this.username,
     required this.displayName,
     this.avatarUrl,
-    this.crewId,
-    this.crewTag,
     required this.cellCount,
     required this.areaKm2,
     required this.stolen,
@@ -36,30 +32,12 @@ class TerritoryStanding extends Equatable {
         username,
         displayName,
         avatarUrl,
-        crewId,
-        crewTag,
         cellCount,
         areaKm2,
         stolen,
         growth,
         decline,
       ];
-}
-
-/// Corrisponde a `p_scope` della RPC `territory_standings`.
-enum TerritoryScope {
-  global,
-  crew;
-
-  String get apiValue => switch (this) {
-        TerritoryScope.global => 'global',
-        TerritoryScope.crew => 'crew',
-      };
-
-  String get label => switch (this) {
-        TerritoryScope.global => 'Globale',
-        TerritoryScope.crew => 'La mia crew',
-      };
 }
 
 /// Corrisponde alla metrica selezionata nei 4 tab del pannello (mockup:

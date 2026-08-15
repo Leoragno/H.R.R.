@@ -20,7 +20,7 @@ class NotificationsScreen extends ConsumerWidget {
     final hasUnread = notifications.any((n) => !n.read);
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -31,10 +31,10 @@ class NotificationsScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Notifiche',
-                      style: AppTheme.archivo(
+                      style: AppType.text(
                           fontWeight: FontWeight.w900,
                           fontSize: 32,
-                          color: AppColors.textPrimary)),
+                          color: AppColor.ink)),
                   TextButton(
                     onPressed: hasUnread
                         ? () => ref
@@ -42,11 +42,11 @@ class NotificationsScreen extends ConsumerWidget {
                             .markAllRead()
                         : null,
                     child: Text('Segna tutte come lette',
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontSize: 13,
                             color: hasUnread
-                                ? AppColors.guidaCyan
-                                : AppColors.guidaTextSecondary)),
+                                ? AppColor.cyan
+                                : AppColor.inkMuted)),
                   ),
                 ],
               ),
@@ -118,18 +118,18 @@ class _NotificationTile extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(presentation.title(notification),
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
-                            color: AppColors.textPrimary)),
+                            color: AppColor.ink)),
                     const SizedBox(height: 3),
                     Text(presentation.body(notification),
-                        style: AppTheme.archivo(
-                            fontSize: 13, color: AppColors.guidaTextSecondary)),
+                        style: AppType.text(
+                            fontSize: 13, color: AppColor.inkMuted)),
                     const SizedBox(height: 6),
                     Text(_relativeTime(notification.createdAt),
-                        style: AppTheme.archivo(
-                            fontSize: 11, color: AppColors.guidaTextSecondary)),
+                        style: AppType.text(
+                            fontSize: 11, color: AppColor.inkMuted)),
                   ],
                 ),
               ),
@@ -172,15 +172,15 @@ class _EmptyNotifications extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.notifications_off_rounded,
-                size: 48, color: AppColors.textDisabled),
+                size: 48, color: AppColor.inkFaint),
             const SizedBox(height: 16),
             Text(
               'Nessuna notifica... per ora! 👀\n'
               'Vai a guidare, avvista un\'auto o completa una missione:\n'
               'qui si anima in fretta.',
               textAlign: TextAlign.center,
-              style: AppTheme.archivo(
-                  color: AppColors.guidaTextSecondary, fontSize: 13),
+              style: AppType.text(
+                  color: AppColor.inkMuted, fontSize: 13),
             ),
           ],
         ),

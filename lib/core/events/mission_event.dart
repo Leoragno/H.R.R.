@@ -118,22 +118,6 @@ class PoiDiscovered extends MissionEvent {
       {...super.toPayload(), if (poiName != null) 'poi_name': poiName};
 }
 
-class FriendAdded extends MissionEvent {
-  FriendAdded(
-      {required super.profileId, super.idempotencyKey, super.occurredAt});
-
-  @override
-  String get type => 'friend_added';
-}
-
-class CrewJoined extends MissionEvent {
-  CrewJoined(
-      {required super.profileId, super.idempotencyKey, super.occurredAt});
-
-  @override
-  String get type => 'crew_joined';
-}
-
 class CarSpotted extends MissionEvent {
   /// Marca rilevata (es. "Ferrari") — portata nel payload per un futuro
   /// matching mirato lato server; il progress engine di questa consegna

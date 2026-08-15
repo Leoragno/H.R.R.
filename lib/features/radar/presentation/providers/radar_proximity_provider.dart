@@ -20,8 +20,8 @@ const _kProximityBoxDeg = 0.03; // ~3 km
 
 /// Durante DRIVE, riusa il GPS già live in [tripLiveControllerProvider]
 /// (nessun nuovo stream di posizione) per capire se l'utente si sta
-/// avvicinando a un Velox/Pattuglia (API o crew) e restituisce l'evento
-/// da segnalare — un impulso, non uno stato persistente: [Timer]/durata
+/// avvicinando a un Velox/Pattuglia (API o community) e restituisce
+/// l'evento da segnalare — un impulso, non uno stato persistente: [Timer]/durata
 /// di visualizzazione dell'avviso restano a carico della UI (vedi
 /// RadarAlertBanner), qui c'è solo "quale evento, se c'è, va segnalato ora".
 @riverpod
@@ -49,8 +49,8 @@ class RadarProximityController extends _$RadarProximityController {
     final candidates = [
       ...await ref.watch(veloxApiEventsProvider(bounds).future),
       ...await ref.watch(pattugliaApiEventsProvider(bounds).future),
-      ...ref.watch(crewVeloxReportsProvider),
-      ...ref.watch(crewPattugliaReportsProvider),
+      ...ref.watch(communityVeloxReportsProvider),
+      ...ref.watch(communityPattugliaReportsProvider),
     ];
 
     final now = DateTime.now();

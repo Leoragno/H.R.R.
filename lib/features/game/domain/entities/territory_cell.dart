@@ -7,14 +7,16 @@ import '../hex_grid.dart';
 class TerritoryCell extends Equatable {
   final HexCoord coord;
   final String ownerId;
-  final String? ownerCrewId;
+  final DateTime claimedAt;
+  final int? driveScore;
 
   const TerritoryCell({
     required this.coord,
     required this.ownerId,
-    this.ownerCrewId,
+    required this.claimedAt,
+    this.driveScore,
   });
 
   @override
-  List<Object?> get props => [coord, ownerId, ownerCrewId];
+  List<Object?> get props => [coord, ownerId, claimedAt, driveScore];
 }

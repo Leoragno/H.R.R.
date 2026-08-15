@@ -9,7 +9,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hrr_app/features/auth/domain/entities/app_user.dart';
 import 'package:hrr_app/features/auth/presentation/providers/auth_provider.dart';
-import 'package:hrr_app/features/missions/domain/entities/crew_mission.dart';
 import 'package:hrr_app/features/missions/domain/entities/mission.dart';
 import 'package:hrr_app/features/missions/domain/entities/mission_claim.dart';
 import 'package:hrr_app/features/missions/domain/entities/mission_progress.dart';
@@ -48,7 +47,6 @@ Mission _mission({
     hidden: false,
     secret: type == MissionType.secret,
     repeatable: true,
-    crewOnly: false,
     createdAt: _now,
     updatedAt: _now,
   );
@@ -92,8 +90,6 @@ class _FakeMissionRepository implements MissionRepository {
       required String idempotencyKey}) async {}
   @override
   Future<int> secretMissionSlotCount() async => 0;
-  @override
-  Future<List<CrewMission>> crewMissions(String crewId) async => const [];
   @override
   Future<Season?> activeSeason() async => null;
   @override

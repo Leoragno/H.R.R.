@@ -45,7 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         error: (err, _) => ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_friendlyError(err)),
-            backgroundColor: AppColors.danger,
+            backgroundColor: AppColor.danger,
           ),
         ),
       );
@@ -55,7 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isLoading = authState.isLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(22, 30, 22, 30),
@@ -71,18 +71,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 34),
                 Text(
                   'Bentornato',
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                     fontWeight: FontWeight.w900,
                     fontSize: 36,
-                    color: AppColors.textPrimary,
+                    color: AppColor.ink,
                   ),
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.15, end: 0),
                 const SizedBox(height: 12),
                 Text(
                   'Accedi per continuare la tua corsa',
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                     fontSize: 17,
-                    color: AppColors.guidaTextSecondary,
+                    color: AppColor.inkMuted,
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -116,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Text('Il recupero password non è ancora disponibile'),
                     )),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.guidaCyan,
+                      foregroundColor: AppColor.cyan,
                     ),
                     child: const Text('Password dimenticata?'),
                   ),
@@ -136,7 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.guidaCyan,
+                          color: AppColor.cyan,
                         ),
                       ),
                     ),
@@ -148,8 +148,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text('oppure',
-                          style: AppTheme.archivo(
-                              color: AppColors.guidaTextSecondary,
+                          style: AppType.text(
+                              color: AppColor.inkMuted,
                               fontSize: 14)),
                     ),
                     const Expanded(child: Divider(color: Color(0xFF232323))),
@@ -182,17 +182,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text('Non hai un account? ',
-                          style: AppTheme.archivo(
+                          style: AppType.text(
                               fontSize: 16,
-                              color: AppColors.guidaTextSecondary)),
+                              color: AppColor.inkMuted)),
                       TextButton(
                         onPressed: () => context.push(AppRoutes.register),
                         style: TextButton.styleFrom(
-                          foregroundColor: AppColors.guidaCyan,
+                          foregroundColor: AppColor.cyan,
                           padding: EdgeInsets.zero,
                         ),
                         child: Text('Registrati',
-                            style: AppTheme.archivo(
+                            style: AppType.text(
                                 fontSize: 16, fontWeight: FontWeight.w800)),
                       ),
                     ],
@@ -227,10 +227,10 @@ class _SocialButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, color: AppColors.textPrimary),
-      label: Text(label, style: AppTheme.archivo(fontSize: 15)),
+      icon: Icon(icon, color: AppColor.ink),
+      label: Text(label, style: AppType.text(fontSize: 15)),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: AppColor.ink,
         padding: const EdgeInsets.symmetric(vertical: 16),
         side: const BorderSide(color: Color(0x33A0AAFF)),
         backgroundColor: const Color(0xE50C1120),

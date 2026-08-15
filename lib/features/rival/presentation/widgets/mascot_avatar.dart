@@ -84,7 +84,7 @@ class _PlaceholderBadge extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         mascot.name.substring(0, 1),
-        style: AppTheme.orbitron(
+        style: AppType.display(
           fontWeight: FontWeight.w900,
           fontSize: size * 0.4,
           color: mascot.accentColor,

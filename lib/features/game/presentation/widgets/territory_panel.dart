@@ -1,11 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/territory_standing.dart';
+import '../../domain/territory_color.dart';
 import '../providers/game_controller.dart';
 import '../providers/territory_provider.dart';
 
@@ -146,7 +149,7 @@ class _MetricTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.guidaCyan : const Color(0xFFCFDCEC);
+    final color = selected ? AppColor.cyan : const Color(0xFFCFDCEC);
     return Material(
       color: selected ? const Color(0x332F6BFF) : const Color(0xFF131313),
       borderRadius: BorderRadius.circular(14),
@@ -164,7 +167,7 @@ class _MetricTabButton extends StatelessWidget {
                 metric.label,
                 textAlign: TextAlign.center,
                 maxLines: 2,
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.04,
@@ -206,9 +209,8 @@ class _ExpandedContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(gameControllerProvider);
-    final controller = ref.read(gameControllerProvider.notifier);
     final myId = ref.watch(authStateProvider).valueOrNull?.id;
-    final standingsAsync = ref.watch(territoryStandingsProvider(state.scope));
+    final standingsAsync = ref.watch(territoryStandingsProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
@@ -216,11 +218,11 @@ class _ExpandedContent extends ConsumerWidget {
         loading: () => const Padding(
           padding: EdgeInsets.all(32),
           child: Center(
-              child: CircularProgressIndicator(color: AppColors.guidaCyan)),
+              child: CircularProgressIndicator(color: AppColor.cyan)),
         ),
         error: (err, st) => Center(
           child: Text('Errore: $err',
-              style: AppTheme.archivo(color: AppColors.guidaTextSecondary)),
+              style: AppType.text(color: AppColor.inkMuted)),
         ),
         data: (list) {
           final sorted = List<TerritoryStanding>.of(list)
@@ -246,15 +248,15 @@ class _ExpandedContent extends ConsumerWidget {
                         children: [
                           Text(
                             _kBoardTitles[state.panelTab]!,
-                            style: AppTheme.chakraPetch(
+                            style: AppType.display(
                                 fontWeight: FontWeight.w900, fontSize: 22),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${_kBoardSubtitles[state.panelTab]!} · ${state.scope.label}',
-                            style: AppTheme.archivo(
+                            _kBoardSubtitles[state.panelTab]!,
+                            style: AppType.text(
                                 fontSize: 13,
-                                color: AppColors.guidaTextSecondary),
+                                color: AppColor.inkMuted),
                           ),
                         ],
                       ),
@@ -263,43 +265,44 @@ class _ExpandedContent extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text('LA TUA POSIZIONE',
-                            style: AppTheme.archivo(
+                            style: AppType.text(
                                 fontSize: 11,
                                 letterSpacing: 0.1,
-                                color: AppColors.guidaTextSecondary)),
+                                color: AppColor.inkMuted)),
                         const SizedBox(height: 4),
                         Text(
                           mineIndex >= 0
                               ? '#${mineIndex + 1} di ${sorted.length}'
                               : 'fuori classifica',
-                          style: AppTheme.archivo(
+                          style: AppType.text(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.guidaCyan),
+                              color: AppColor.cyan),
                         ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    for (final scope in TerritoryScope.values) ...[
-                      Expanded(
-                        child: _ScopePill(
-                          label: scope.label,
-                          selected: state.scope == scope,
-                          onTap: () => controller.setScope(scope),
-                        ),
-                      ),
-                      if (scope != TerritoryScope.values.last)
-                        const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => context.push(AppRoutes.myTerritories),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('I miei territori',
+                          style: AppType.text(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColor.cyan)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 16, color: AppColor.cyan),
                     ],
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 14),
                 if (sorted.isEmpty)
-                  _EmptyTerritoryStandings(scope: state.scope)
+                  const _EmptyTerritoryStandings()
                 else
                   for (var i = 0; i < sorted.length; i++)
                     _StandingRow(
@@ -308,43 +311,15 @@ class _ExpandedContent extends ConsumerWidget {
                       metric: state.panelTab,
                       isMe: sorted[i].profileId == myId,
                       maxValue: topValue.toDouble(),
+                      identityColor: territoryIdentityColor(
+                        ownerId: sorted[i].profileId,
+                        myProfileId: myId,
+                      ),
                     ),
               ],
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _ScopePill extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _ScopePill(
-      {required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? const Color(0xFF3A3A40) : Colors.transparent,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: AppTheme.archivo(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : AppColors.guidaTextSecondary,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -356,6 +331,7 @@ class _StandingRow extends StatelessWidget {
   final TerritoryMetric metric;
   final bool isMe;
   final double maxValue;
+  final Color identityColor;
 
   const _StandingRow({
     required this.rank,
@@ -363,6 +339,7 @@ class _StandingRow extends StatelessWidget {
     required this.metric,
     required this.isMe,
     required this.maxValue,
+    required this.identityColor,
   });
 
   static const _medals = {1: '🥇', 2: '🥈', 3: '🥉'};
@@ -384,10 +361,10 @@ class _StandingRow extends StatelessWidget {
     final value = _valueFor(standing, metric);
     final delta = metric == TerritoryMetric.topDecline ? -value : value;
     final deltaColor = delta == 0
-        ? AppColors.guidaTextSecondary
+        ? AppColor.inkMuted
         : delta > 0
-            ? AppColors.guidaBlue
-            : AppColors.neonRed;
+            ? AppColor.success
+            : AppColor.danger;
     final rankColor = rank == 1
         ? const Color(0xFFFFC93C)
         : rank == 2
@@ -402,13 +379,13 @@ class _StandingRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isMe
-            ? const Color(0xDB121E3A)
+            ? AppColor.cyan.withValues(alpha: 0.08)
             : rank == 1
                 ? const Color(0xFF1D1A08)
                 : const Color(0xFF131313),
         border: Border.all(
           color: isMe
-              ? AppColors.guidaBlue
+              ? AppColor.cyan.withValues(alpha: 0.6)
               : rank == 1
                   ? const Color(0xFF7A6A1E)
                   : const Color(0xFF232323),
@@ -428,7 +405,7 @@ class _StandingRow extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('$rank',
-                          style: AppTheme.chakraPetch(
+                          style: AppType.display(
                               fontWeight: FontWeight.w900,
                               fontSize: 22,
                               color: rankColor)),
@@ -446,16 +423,25 @@ class _StandingRow extends StatelessWidget {
                     children: [
                       Row(
                         children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: identityColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                           Flexible(
                             child: Text(
                               standing.displayName,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTheme.archivo(
+                              style: AppType.text(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
                                 color: isMe
-                                    ? AppColors.guidaCyan
-                                    : AppColors.textPrimary,
+                                    ? AppColor.cyan
+                                    : AppColor.ink,
                               ),
                             ),
                           ),
@@ -466,14 +452,14 @@ class _StandingRow extends StatelessWidget {
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color:
-                                    AppColors.guidaCyan.withValues(alpha: 0.14),
+                                    AppColor.cyan.withValues(alpha: 0.14),
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: Text('TU',
-                                  style: AppTheme.archivo(
+                                  style: AppType.text(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.guidaCyan)),
+                                      color: AppColor.cyan)),
                             ),
                           ],
                         ],
@@ -485,12 +471,12 @@ class _StandingRow extends StatelessWidget {
                             delta == 0
                                 ? '—'
                                 : (delta > 0 ? '▲ $delta' : '▼ ${delta.abs()}'),
-                            style: AppTheme.archivo(
+                            style: AppType.text(
                                 fontSize: 12, color: deltaColor),
                           ),
                           const SizedBox(width: 6),
                           Text('${standing.cellCount} celle',
-                              style: AppTheme.archivo(
+                              style: AppType.text(
                                   fontSize: 12,
                                   color: const Color(0xFF68788F))),
                         ],
@@ -502,20 +488,20 @@ class _StandingRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(valueText,
-                        style: AppTheme.chakraPetch(
+                        style: AppType.display(
                           fontWeight: FontWeight.w900,
                           fontSize: 22,
                           color: rank == 1
                               ? const Color(0xFFFFC93C)
                               : rank == 3
                                   ? const Color(0xFFFF8A1F)
-                                  : AppColors.textPrimary,
+                                  : AppColor.ink,
                         )),
                     Text(unit,
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontSize: 10.5,
                             letterSpacing: 0.06,
-                            color: AppColors.guidaTextSecondary)),
+                            color: AppColor.inkMuted)),
                   ],
                 ),
                 const SizedBox(width: 10),
@@ -531,7 +517,7 @@ class _StandingRow extends StatelessWidget {
               child: Container(
                 height: 3,
                 color: isMe
-                    ? AppColors.guidaCyan
+                    ? AppColor.cyan
                     : rank == 1
                         ? const Color(0xFFFFC93C)
                         : rankColor,
@@ -561,41 +547,21 @@ class _StandingAvatar extends StatelessWidget {
             borderRadius: BorderRadius.circular(23),
             child: url == null
                 ? Container(
-                    color: AppColors.surfaceElevated,
+                    color: AppColor.surfaceHigh,
                     child: const Icon(Icons.person_rounded,
-                        color: AppColors.textDisabled, size: 22),
+                        color: AppColor.inkFaint, size: 22),
                   )
                 : CachedNetworkImage(
                     imageUrl: url,
                     fit: BoxFit.cover,
                     placeholder: (c, u) =>
-                        Container(color: AppColors.surfaceElevated),
+                        Container(color: AppColor.surfaceHigh),
                     errorWidget: (c, u, e) => Container(
-                        color: AppColors.surfaceElevated,
+                        color: AppColor.surfaceHigh,
                         child: const Icon(Icons.person_rounded,
-                            color: AppColors.textDisabled, size: 22)),
+                            color: AppColor.inkFaint, size: 22)),
                   ),
           ),
-          if (standing.crewTag != null)
-            Positioned(
-              right: -2,
-              bottom: -2,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.guidaBlue,
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(color: const Color(0xFF060810), width: 1),
-                ),
-                child: Text(
-                  standing.crewTag!,
-                  style: AppTheme.archivo(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -603,14 +569,12 @@ class _StandingAvatar extends StatelessWidget {
 }
 
 class _EmptyTerritoryStandings extends StatelessWidget {
-  final TerritoryScope scope;
-  const _EmptyTerritoryStandings({required this.scope});
+  const _EmptyTerritoryStandings();
 
   @override
   Widget build(BuildContext context) {
-    final message = scope == TerritoryScope.crew
-        ? 'La tua crew non ha ancora territorio — oppure non fai parte di una crew.'
-        : 'Nessun territorio conquistato ancora. Guida per rivendicare i primi esagoni!';
+    const message =
+        'Nessun territorio conquistato ancora. Guida per rivendicare i primi esagoni!';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 28),
       child: Center(
@@ -618,13 +582,13 @@ class _EmptyTerritoryStandings extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.hexagon_outlined,
-                size: 40, color: AppColors.textDisabled),
+                size: 40, color: AppColor.inkFaint),
             const SizedBox(height: 14),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: AppTheme.archivo(
-                  fontSize: 13, color: AppColors.guidaTextSecondary),
+              style: AppType.text(
+                  fontSize: 13, color: AppColor.inkMuted),
             ),
           ],
         ),

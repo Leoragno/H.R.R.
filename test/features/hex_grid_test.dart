@@ -45,7 +45,7 @@ void main() {
       final corners = HexGrid.polygonOf(cell);
       expect(corners.length, 6);
 
-      const expectedRadius = HexGrid.hexMeters * 0.94;
+      const expectedRadius = HexGrid.hexMeters * 0.92;
       for (final (lat, lon) in corners) {
         final dist = _metersBetween(centerLat, centerLon, lat, lon);
         expect(dist, closeTo(expectedRadius, 0.5));
@@ -55,7 +55,7 @@ void main() {
     test('poligoni di celle adiacenti non si sovrappongono e restano vicini',
         () {
       // Due celle adiacenti: i vertici più vicini fra i due poligoni non
-      // devono sovrapporsi (gap positivo, lo 0.94× lascia un margine) né
+      // devono sovrapporsi (gap positivo, lo 0.92× lascia un margine) né
       // essere distanti quanto il raggio pieno (altrimenti la proiezione
       // sarebbe disallineata dalla spaziatura reale della griglia).
       final polyA = HexGrid.polygonOf(const HexCoord(0, 0));

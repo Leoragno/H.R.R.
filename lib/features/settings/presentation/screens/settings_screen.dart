@@ -48,11 +48,11 @@ class SettingsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0E1522),
         title: Text('Username',
-            style: AppTheme.archivo(
-                fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            style: AppType.text(
+                fontWeight: FontWeight.w800, color: AppColor.ink)),
         content: TextField(
           controller: ctrl,
-          style: const TextStyle(color: AppColors.textPrimary),
+          style: const TextStyle(color: AppColor.ink),
           decoration: const InputDecoration(hintText: 'Minimo 3 caratteri'),
         ),
         actions: [
@@ -186,16 +186,16 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt_rounded,
-                  color: AppColors.textPrimary),
+                  color: AppColor.ink),
               title: Text('Scatta una foto',
-                  style: AppTheme.archivo(color: AppColors.textPrimary)),
+                  style: AppType.text(color: AppColor.ink)),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_rounded,
-                  color: AppColors.textPrimary),
+                  color: AppColor.ink),
               title: Text('Scegli dalla galleria',
-                  style: AppTheme.archivo(color: AppColors.textPrimary)),
+                  style: AppType.text(color: AppColor.ink)),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
           ],
@@ -243,11 +243,11 @@ class SettingsScreen extends ConsumerWidget {
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: profile == null
             ? const Center(
-                child: CircularProgressIndicator(color: AppColors.guidaCyan))
+                child: CircularProgressIndicator(color: AppColor.cyan))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
                 children: [
@@ -262,10 +262,10 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Impostazioni',
-                    style: AppTheme.archivo(
+                    style: AppType.text(
                       fontWeight: FontWeight.w900,
                       fontSize: 42,
-                      color: AppColors.textPrimary,
+                      color: AppColor.ink,
                     ),
                   ),
                   const SizedBox(height: 26),
@@ -452,7 +452,7 @@ class _ProfileCard extends StatelessWidget {
                         width: 26,
                         height: 26,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2.4, color: AppColors.guidaCyan),
+                            strokeWidth: 2.4, color: AppColor.cyan),
                       ),
                     ),
                   ),
@@ -481,14 +481,14 @@ class _ProfileCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('@${profile.username}',
-                    style: AppTheme.archivo(
+                    style: AppType.text(
                         fontWeight: FontWeight.w800,
                         fontSize: 22,
-                        color: AppColors.textPrimary)),
+                        color: AppColor.ink)),
                 const SizedBox(height: 4),
                 Text('Tocca la foto per cambiarla',
-                    style: AppTheme.archivo(
-                        fontSize: 15, color: AppColors.guidaTextSecondary)),
+                    style: AppType.text(
+                        fontSize: 15, color: AppColor.inkMuted)),
               ],
             ),
           ),
@@ -561,10 +561,10 @@ class _SettingsRow extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Text(label,
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                       fontWeight: FontWeight.w600,
                       fontSize: 19,
-                      color: AppColors.textPrimary)),
+                      color: AppColor.ink)),
             ),
             if (swatch != null) ...[
               Container(
@@ -582,14 +582,14 @@ class _SettingsRow extends StatelessWidget {
                 child: Text(
                   value,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTheme.archivo(
-                      fontSize: 15, color: AppColors.guidaTextSecondary),
+                  style: AppType.text(
+                      fontSize: 15, color: AppColor.inkMuted),
                 ),
               ),
             if (showChevron && onTap != null) ...[
               const SizedBox(width: 6),
               const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.guidaTextSecondary),
+                  color: AppColor.inkMuted),
             ],
           ],
         ),
@@ -614,7 +614,7 @@ class _RoundIconButton extends StatelessWidget {
         child: SizedBox(
           width: 52,
           height: 52,
-          child: Icon(icon, color: AppColors.textPrimary, size: 22),
+          child: Icon(icon, color: AppColor.ink, size: 22),
         ),
       ),
     );

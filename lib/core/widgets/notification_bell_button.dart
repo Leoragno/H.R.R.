@@ -30,17 +30,17 @@ class NotificationBellButton extends ConsumerWidget {
               width: size,
               height: size,
               decoration: BoxDecoration(
-                color: const Color(0xE50C1120),
+                color: AppColor.surfaceHigh.withValues(alpha: 0.9),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0x33A0AAFF)),
+                border: Border.all(color: AppColor.line),
               ),
               child: Icon(
                 unread > 0
                     ? Icons.notifications_active_rounded
                     : Icons.notifications_none_rounded,
                 color: unread > 0
-                    ? AppColors.guidaCyan
-                    : AppColors.guidaTextSecondary,
+                    ? AppColor.cyan
+                    : AppColor.inkMuted,
                 size: size * 0.5,
               ),
             ),
@@ -52,9 +52,9 @@ class NotificationBellButton extends ConsumerWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: AppColors.danger,
+                    color: AppColor.danger,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.guidaBg, width: 2),
+                    border: Border.all(color: AppColor.void_, width: 2),
                   ),
                 ),
               ),

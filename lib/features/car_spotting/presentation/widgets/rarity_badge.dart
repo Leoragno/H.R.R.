@@ -11,11 +11,11 @@ class RarityBadge extends StatelessWidget {
   const RarityBadge({super.key, required this.rarity});
 
   static const _colors = {
-    'common': AppColors.rarityCommon,
-    'uncommon': AppColors.rarityUncommon,
-    'rare': AppColors.rarityRare,
-    'epic': AppColors.rarityEpic,
-    'legendary': AppColors.rarityLegendary,
+    'common': AppColor.rarityCommon,
+    'uncommon': AppColor.rarityUncommon,
+    'rare': AppColor.rarityRare,
+    'epic': AppColor.rarityEpic,
+    'legendary': AppColor.rarityLegendary,
   };
 
   @override

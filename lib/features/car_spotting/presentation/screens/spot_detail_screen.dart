@@ -59,10 +59,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0E1522),
         title: Text('Eliminare questo spot?',
-            style: AppTheme.archivo(
-                fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            style: AppType.text(
+                fontWeight: FontWeight.w800, color: AppColor.ink)),
         content: Text('L\'azione non è reversibile.',
-            style: AppTheme.archivo(color: AppColors.guidaTextSecondary)),
+            style: AppType.text(color: AppColor.inkMuted)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -70,7 +70,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: Text('Elimina',
-                  style: AppTheme.archivo(color: AppColors.danger))),
+                  style: AppType.text(color: AppColor.danger))),
         ],
       ),
     );
@@ -92,13 +92,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     final currentUserId = ref.watch(authStateProvider).valueOrNull?.id;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg2,
+      backgroundColor: AppColor.base,
       body: spotAsync.when(
         loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.guidaCyan)),
+            child: CircularProgressIndicator(color: AppColor.cyan)),
         error: (err, st) => Center(
             child: Text('Errore: $err',
-                style: AppTheme.archivo(color: AppColors.guidaTextSecondary))),
+                style: AppType.text(color: AppColor.inkMuted))),
         data: (spot) {
           final title = [spot.detectedMake, spot.detectedModel]
               .where((s) => s != null && s.isNotEmpty)
@@ -117,11 +117,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           imageUrl: spot.photoUrl,
                           fit: BoxFit.cover,
                           placeholder: (c, u) =>
-                              Container(color: AppColors.surfaceElevated),
+                              Container(color: AppColor.surfaceHigh),
                           errorWidget: (c, u, e) => Container(
-                              color: AppColors.surfaceElevated,
+                              color: AppColor.surfaceHigh,
                               child: const Icon(Icons.broken_image_rounded,
-                                  color: AppColors.textDisabled)),
+                                  color: AppColor.inkFaint)),
                         ),
                       ),
                       Positioned.fill(
@@ -151,8 +151,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             Expanded(
                               child: Text(
                                 title.isEmpty ? 'Auto sconosciuta' : title,
-                                style: AppTheme.chakraPetch(
-                                    fontSize: 28, color: AppColors.textPrimary),
+                                style: AppType.display(
+                                    fontSize: 28, color: AppColor.ink),
                               ),
                             ),
                             RarityBadge(rarity: spot.detectedRarity),
@@ -162,8 +162,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text('${spot.detectedYear}',
-                                style: AppTheme.archivo(
-                                    color: AppColors.guidaTextSecondary,
+                                style: AppType.text(
+                                    color: AppColor.inkMuted,
                                     fontSize: 14)),
                           ),
                         const SizedBox(height: 12),
@@ -173,8 +173,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             const SizedBox(width: 8),
                             Text(
                               '${spot.averageRating.toStringAsFixed(1)} · ${spot.ratingCount} voti',
-                              style: AppTheme.archivo(
-                                  color: AppColors.guidaTextSecondary,
+                              style: AppType.text(
+                                  color: AppColor.inkMuted,
                                   fontSize: 13),
                             ),
                           ],
@@ -190,16 +190,16 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                                 if (spot.locationLabel != null)
                                   spot.locationLabel,
                               ].join(' · '),
-                              style: AppTheme.archivo(
-                                  color: AppColors.guidaCyan, fontSize: 12.5),
+                              style: AppType.text(
+                                  color: AppColor.cyan, fontSize: 12.5),
                             ),
                           ),
                         if (spot.caption != null && spot.caption!.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 12),
                             child: Text(spot.caption!,
-                                style: AppTheme.archivo(
-                                    color: AppColors.textPrimary,
+                                style: AppType.text(
+                                    color: AppColor.ink,
                                     fontSize: 14)),
                           ),
                         const SizedBox(height: 24),
@@ -208,8 +208,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('IL TUO VOTO',
-                                  style: AppTheme.archivo(
-                                      color: AppColors.guidaTextSecondary,
+                                  style: AppType.text(
+                                      color: AppColor.inkMuted,
                                       fontSize: 11,
                                       letterSpacing: 1.5,
                                       fontWeight: FontWeight.w700)),
@@ -220,11 +220,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                                     child: Center(
                                         child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            color: AppColors.guidaCyan))),
+                                            color: AppColor.cyan))),
                                 error: (e, s) => Text(
                                     'Errore nel caricare il voto',
-                                    style: AppTheme.archivo(
-                                        color: AppColors.danger)),
+                                    style: AppType.text(
+                                        color: AppColor.danger)),
                                 data: (myRating) => StarRatingSelector(
                                   value: myRating?.rating ?? 0,
                                   onChanged: _rate,
@@ -235,8 +235,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         ),
                         const SizedBox(height: 28),
                         Text('COMMENTI',
-                            style: AppTheme.archivo(
-                                color: AppColors.guidaTextSecondary,
+                            style: AppType.text(
+                                color: AppColor.inkMuted,
                                 fontSize: 11,
                                 letterSpacing: 1.5,
                                 fontWeight: FontWeight.w700)),
@@ -246,12 +246,12 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             Expanded(
                               child: TextField(
                                 controller: _commentController,
-                                style: AppTheme.archivo(
-                                    color: AppColors.textPrimary),
+                                style: AppType.text(
+                                    color: AppColor.ink),
                                 decoration: InputDecoration(
                                   hintText: 'Scrivi un commento…',
-                                  hintStyle: AppTheme.archivo(
-                                      color: AppColors.guidaTextSecondary),
+                                  hintStyle: AppType.text(
+                                      color: AppColor.inkMuted),
                                   filled: true,
                                   fillColor: const Color(0xE50C1120),
                                   border: OutlineInputBorder(
@@ -265,7 +265,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.send_rounded,
-                                  color: AppColors.guidaCyan),
+                                  color: AppColor.cyan),
                               onPressed: _submitComment,
                             ),
                           ],
@@ -277,11 +277,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             child: Center(
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: AppColors.guidaCyan)),
+                                    color: AppColor.cyan)),
                           ),
                           error: (e, s) => Text(
                               'Impossibile caricare i commenti',
-                              style: AppTheme.archivo(color: AppColors.danger)),
+                              style: AppType.text(color: AppColor.danger)),
                           data: (comments) => _CommentList(comments: comments),
                         ),
                       ],
@@ -325,7 +325,7 @@ class _CommentList extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text('Nessun commento ancora.',
             style:
-                AppTheme.archivo(color: AppColors.textDisabled, fontSize: 13)),
+                AppType.text(color: AppColor.inkFaint, fontSize: 13)),
       );
     }
     return Column(
@@ -337,14 +337,14 @@ class _CommentList extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('@${comment.authorUsername ?? 'utente'}',
-                    style: AppTheme.archivo(
-                        color: AppColors.guidaCyan,
+                    style: AppType.text(
+                        color: AppColor.cyan,
                         fontSize: 12,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(comment.content,
-                    style: AppTheme.archivo(
-                        color: AppColors.textPrimary, fontSize: 13)),
+                    style: AppType.text(
+                        color: AppColor.ink, fontSize: 13)),
               ],
             ),
           ),

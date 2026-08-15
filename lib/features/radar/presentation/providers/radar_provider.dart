@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/dio_provider.dart';
 import '../../../../core/network/supabase_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../data/datasources/crew_reports_remote_datasource.dart';
+import '../../data/datasources/community_reports_remote_datasource.dart';
 import '../../data/datasources/overpass_remote_datasource.dart';
 import '../../data/datasources/waze_remote_datasource.dart';
 import '../../data/repositories/radar_repository_impl.dart';
@@ -28,15 +28,15 @@ WazeRemoteDatasource wazeRemoteDatasource(WazeRemoteDatasourceRef ref) =>
     WazeRemoteDatasource(ref.watch(dioProvider));
 
 @riverpod
-CrewReportsRemoteDatasource crewReportsRemoteDatasource(
-        CrewReportsRemoteDatasourceRef ref) =>
-    CrewReportsRemoteDatasource(ref.watch(supabaseClientProvider));
+CommunityReportsRemoteDatasource communityReportsRemoteDatasource(
+        CommunityReportsRemoteDatasourceRef ref) =>
+    CommunityReportsRemoteDatasource(ref.watch(supabaseClientProvider));
 
 @riverpod
 RadarRepository radarRepository(RadarRepositoryRef ref) => RadarRepositoryImpl(
       ref.watch(overpassRemoteDatasourceProvider),
       ref.watch(wazeRemoteDatasourceProvider),
-      ref.watch(crewReportsRemoteDatasourceProvider),
+      ref.watch(communityReportsRemoteDatasourceProvider),
     );
 
 // ---- Interruttore della modalità Velox/Pattuglia ---------------------------
@@ -44,7 +44,7 @@ RadarRepository radarRepository(RadarRepositoryRef ref) => RadarRepositoryImpl(
 const _kRadarModePrefsKey = 'radar_mode_enabled';
 
 /// On/off dell'intera modalità: mappa (marker), card di monitoraggio,
-/// segnalazioni di crew e avviso di prossimità durante DRIVE dipendono
+/// segnalazioni community e avviso di prossimità durante DRIVE dipendono
 /// tutti da questo interruttore, persistito così resta impostato fra un
 /// riavvio e l'altro. Da spento, nessuno dei provider sotto fa richieste
 /// (rete o realtime) — non è solo un "nascondi la UI".
@@ -120,16 +120,16 @@ Future<List<RadarEvent>> currentPattugliaApiEvents(
   return ref.watch(pattugliaApiEventsProvider(bounds).future);
 }
 
-// ---- Segnalazioni di crew (realtime, scadenza 90 minuti) -------------------
+// ---- Segnalazioni community (realtime, scadenza 90 minuti) -----------------
 
-/// Segnalazioni Velox+Pattuglia della crew dell'utente, aggiornate in
-/// realtime via Supabase e già private delle voci scadute (90 minuti,
-/// vedi [RadarEvent.isExpired]) — sia ad ogni nuovo evento dal DB, sia
-/// periodicamente per chi scade "a riposo" senza che nel frattempo
-/// arrivi un nuovo insert altrui (stesso principio dello staleness timer
-/// di CrewLiveMapController).
+/// Segnalazioni Velox+Pattuglia di tutti gli utenti, aggiornate in realtime
+/// via Supabase e già private delle voci scadute (90 minuti, vedi
+/// [RadarEvent.isExpired]) — sia ad ogni nuovo evento dal DB, sia
+/// periodicamente per chi scade "a riposo" senza che nel frattempo arrivi
+/// un nuovo insert altrui (stesso principio dello staleness timer di
+/// LiveMapController).
 @riverpod
-class CrewReportsController extends _$CrewReportsController {
+class CommunityReportsController extends _$CommunityReportsController {
   StreamSubscription<List<RadarEvent>>? _sub;
   Timer? _expiryTimer;
 
@@ -140,14 +140,13 @@ class CrewReportsController extends _$CrewReportsController {
       _cancel();
       return const [];
     }
-    final crewId = ref.watch(myProfileProvider).valueOrNull?.crewId;
-    if (crewId != null) _subscribe(crewId);
+    if (ref.watch(authStateProvider).valueOrNull != null) _subscribe();
     return const [];
   }
 
-  void _subscribe(String crewId) {
+  void _subscribe() {
     _sub?.cancel();
-    _sub = ref.read(radarRepositoryProvider).crewReports(crewId).listen(
+    _sub = ref.read(radarRepositoryProvider).communityReports().listen(
       (events) {
         final now = DateTime.now();
         state = events.where((e) => !e.isExpired(now)).toList();
@@ -175,16 +174,18 @@ class CrewReportsController extends _$CrewReportsController {
 }
 
 @riverpod
-List<RadarEvent> crewVeloxReports(CrewVeloxReportsRef ref) => ref
-    .watch(crewReportsControllerProvider)
+List<RadarEvent> communityVeloxReports(CommunityVeloxReportsRef ref) => ref
+    .watch(communityReportsControllerProvider)
     .where((e) => e.category == RadarCategory.velox)
     .toList();
 
 @riverpod
-List<RadarEvent> crewPattugliaReports(CrewPattugliaReportsRef ref) => ref
-    .watch(crewReportsControllerProvider)
-    .where((e) => e.category == RadarCategory.pattuglia)
-    .toList();
+List<RadarEvent> communityPattugliaReports(
+        CommunityPattugliaReportsRef ref) =>
+    ref
+        .watch(communityReportsControllerProvider)
+        .where((e) => e.category == RadarCategory.pattuglia)
+        .toList();
 
 /// Tutti gli eventi da disegnare sulla mappa Guida (le 4 categorie
 /// insieme) per la bounding box corrente — unico provider osservato da
@@ -199,8 +200,8 @@ Future<List<RadarEvent>> homeMapMarkers(HomeMapMarkersRef ref) async {
   return [
     ...results[0],
     ...results[1],
-    ...ref.watch(crewVeloxReportsProvider),
-    ...ref.watch(crewPattugliaReportsProvider),
+    ...ref.watch(communityVeloxReportsProvider),
+    ...ref.watch(communityPattugliaReportsProvider),
   ];
 }
 
@@ -219,15 +220,14 @@ class RadarActionsController extends _$RadarActionsController {
     required double lon,
   }) async {
     final userId = ref.read(authStateProvider).valueOrNull?.id;
-    final crewId = ref.read(myProfileProvider).valueOrNull?.crewId;
-    if (userId == null || crewId == null) return;
+    if (userId == null) return;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(radarRepositoryProvider).submitCrewReport(
-          crewId: crewId,
-          reporterId: userId,
-          category: category,
-          lat: lat,
-          lon: lon,
-        ));
+    state = await AsyncValue.guard(
+        () => ref.read(radarRepositoryProvider).submitCommunityReport(
+              reporterId: userId,
+              category: category,
+              lat: lat,
+              lon: lon,
+            ));
   }
 }

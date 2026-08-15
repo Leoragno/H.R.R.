@@ -5,9 +5,12 @@ import '../entities/trip.dart';
 abstract class TripRepository {
   Future<Trip> startTrip({required String driverId, String? carId});
 
-  /// Chiama la RPC `complete_trip`: il server ricalcola XP/REP dalla
-  /// telemetria inviata (mai fidarsi di un xp/rep calcolato dal client).
-  /// `route` viene salvato lato server solo se contiene almeno 2 punti.
+  /// Chiama la RPC `complete_trip`: il server ricalcola XP/REP e il
+  /// punteggio di guida dalla telemetria inviata (mai fidarsi di un valore
+  /// calcolato dal client). `route` viene salvato lato server solo se
+  /// contiene almeno 2 punti. Gli aggregati opzionali alimentano il
+  /// punteggio di guida (vedi 0024_drive_score.sql) — `null`/assenti se il
+  /// dato non è stato calcolabile lato client (es. mai un jerk valido).
   Future<Trip> completeTrip({
     required String tripId,
     required double distanceKm,
@@ -15,6 +18,17 @@ abstract class TripRepository {
     required double avgSpeedKmh,
     required double maxSpeedKmh,
     List<RoutePoint> route = const [],
+    double? jerkRmsMs3,
+    int brakingSoftCount = 0,
+    int brakingHardCount = 0,
+    double? brakingJerkAvgMs3,
+    int turnsCount = 0,
+    double? turnGyroStddevAvg,
+    int totalStops = 0,
+    int stoppedSeconds = 0,
+    int accelThenBrakeCount = 0,
+    double? gpsFixHz,
+    double? gyroHz,
   });
 
   Future<void> discardTrip(String tripId);

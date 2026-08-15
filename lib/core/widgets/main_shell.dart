@@ -29,7 +29,11 @@ class MainShell extends StatelessWidget {
       icon: Icons.emoji_events_rounded,
       label: 'Classifica'
     ),
-    (route: AppRoutes.crew, icon: Icons.groups_rounded, label: 'Crew'),
+    (
+      route: AppRoutes.statistics,
+      icon: Icons.query_stats_rounded,
+      label: 'Statistiche'
+    ),
   ];
 
   int _indexForLocation(String location) {
@@ -43,12 +47,12 @@ class MainShell extends StatelessWidget {
     final currentIndex = _indexForLocation(location);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColor.base,
       drawer: const MusicDrawer(),
       body: RivalOverlay(child: NotificationToastOverlay(child: child)),
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border)),
+          border: Border(top: BorderSide(color: AppColor.line)),
         ),
         child: BottomNavigationBar(
           currentIndex: currentIndex,

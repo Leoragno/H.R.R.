@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// Le 4 immagini marker (Velox/Pattuglia × arancione-API/ciano-Crew),
+/// Le 4 immagini marker (Velox/Pattuglia × arancione-API/ciano-Community),
 /// rasterizzate una sola volta e registrate sulla mappa via
 /// `controller.addImage` — i marker MapLibre sono layer nativi (Symbol),
 /// servono bitmap, non widget Flutter, per restare fluidi anche con
@@ -14,23 +14,23 @@ class RadarIconSet {
 
   static const veloxApiId = 'radar-velox-api';
   static const pattugliaApiId = 'radar-pattuglia-api';
-  static const veloxCrewId = 'radar-velox-crew';
-  static const pattugliaCrewId = 'radar-pattuglia-crew';
+  static const veloxCommunityId = 'radar-velox-community';
+  static const pattugliaCommunityId = 'radar-pattuglia-community';
 
-  // Arancione SOLO per le fonti API, ciano SOLO per le fonti Crew — mai
-  // altri colori, per restare leggibili come "chi ha segnalato cosa".
+  // Arancione SOLO per le fonti API, ciano SOLO per le fonti community —
+  // mai altri colori, per restare leggibili come "chi ha segnalato cosa".
   static const _apiColor = Color(0xFFFF8A1F);
-  static const _crewColor = Color(0xFF35E0FF);
+  static const _communityColor = Color(0xFF35E0FF);
 
   /// Nomi immagine -> bytes PNG, pronti per `controller.addImage`.
   static Future<Map<String, Uint8List>> render({double size = 96}) async {
     return {
       veloxApiId:
           await _rasterizeIcon(Icons.videocam_rounded, _apiColor, size),
-      veloxCrewId:
-          await _rasterizeIcon(Icons.videocam_rounded, _crewColor, size),
-      pattugliaCrewId:
-          await _rasterizeIcon(Icons.shield_rounded, _crewColor, size),
+      veloxCommunityId:
+          await _rasterizeIcon(Icons.videocam_rounded, _communityColor, size),
+      pattugliaCommunityId:
+          await _rasterizeIcon(Icons.shield_rounded, _communityColor, size),
       // Pattuglia API: ESCLUSIVAMENTE il cappello, mai un'auto — nessuna
       // icona Material esistente rappresenta un berretto da polizia da
       // solo, quindi lo disegniamo a mano con forme semplici (cupola +
@@ -100,8 +100,8 @@ class RadarIconSet {
   }
 
   /// Nome immagine per un evento, in base a categoria + fonte.
-  static String imageIdFor(bool isVelox, bool isCrew) {
-    if (isVelox) return isCrew ? veloxCrewId : veloxApiId;
-    return isCrew ? pattugliaCrewId : pattugliaApiId;
+  static String imageIdFor(bool isVelox, bool isCommunity) {
+    if (isVelox) return isCommunity ? veloxCommunityId : veloxApiId;
+    return isCommunity ? pattugliaCommunityId : pattugliaApiId;
   }
 }

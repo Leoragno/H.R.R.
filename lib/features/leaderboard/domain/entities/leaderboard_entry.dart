@@ -87,14 +87,3 @@ enum LeaderboardPeriod {
         LeaderboardPeriod.all => 'SEMPRE',
       };
 }
-
-/// Corrisponde a `p_crew_id` della RPC `leaderboard_global` (null = globale).
-enum LeaderboardScope {
-  global,
-  crew;
-
-  String get label => switch (this) {
-        LeaderboardScope.global => 'Globale',
-        LeaderboardScope.crew => 'La mia crew',
-      };
-}

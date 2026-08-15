@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/route_point.dart';
 import '../utils/route_smoothing.dart';
 
@@ -39,7 +40,7 @@ class _RoutePainter extends CustomPainter {
     final latSpan = (maxLat - minLat).abs() < 1e-9 ? 1e-9 : (maxLat - minLat);
     final lngSpan = (maxLng - minLng).abs() < 1e-9 ? 1e-9 : (maxLng - minLng);
 
-    const padding = 24.0;
+    const padding = AppSpace.lg;
     Offset toOffset(RoutePoint p) {
       final x =
           padding + ((p.lng - minLng) / lngSpan) * (size.width - padding * 2);
@@ -58,7 +59,7 @@ class _RoutePainter extends CustomPainter {
     }
 
     final glowPaint = Paint()
-      ..color = AppColors.neonCyan.withOpacity(0.35)
+      ..color = AppColor.cyan.withValues(alpha: 0.35)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round
@@ -66,16 +67,19 @@ class _RoutePainter extends CustomPainter {
     canvas.drawPath(path, glowPaint);
 
     final linePaint = Paint()
-      ..color = AppColors.neonCyan
+      ..color = AppColor.cyan
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(path, linePaint);
 
+    // Partenza neutra, arrivo sul secondo accento: il percorso "si consuma"
+    // dal ciano (attivo) al magenta (finito), coerente con l'elemento firma
+    // di DESIGN.md.
     final startPoint = toOffset(points.first);
     final endPoint = toOffset(points.last);
-    canvas.drawCircle(startPoint, 5, Paint()..color = AppColors.neonGreen);
-    canvas.drawCircle(endPoint, 5, Paint()..color = AppColors.neonMagenta);
+    canvas.drawCircle(startPoint, 5, Paint()..color = AppColor.ink);
+    canvas.drawCircle(endPoint, 5, Paint()..color = AppColor.magenta);
   }
 
   @override

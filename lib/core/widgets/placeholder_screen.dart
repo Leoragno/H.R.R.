@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
 /// Scaffold placeholder condiviso per le feature ancora da sviluppare.
-/// Estratto dalla duplicazione identica presente in 8 schermate (Eventi,
-/// Notifiche, Crew, Car Spotting, Chat, Classifica, Impostazioni, Mappa).
+/// Estratto dalla duplicazione identica presente in più schermate (Eventi,
+/// Notifiche, Car Spotting, Classifica, Impostazioni, Mappa).
 class PlaceholderScreen extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -20,19 +20,19 @@ class PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColor.base,
       appBar: AppBar(title: Text(title), actions: actions),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: AppColors.neonCyan.withOpacity(0.6)),
+            Icon(icon, size: 56, color: AppColor.cyan.withValues(alpha: 0.6)),
             const SizedBox(height: 16),
             Text(title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             const Text(
               'In sviluppo — Fase successiva',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: AppColor.inkMuted),
             ),
           ],
         ),

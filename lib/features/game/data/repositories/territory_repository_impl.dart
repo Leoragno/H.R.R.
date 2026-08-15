@@ -11,9 +11,10 @@ class TerritoryRepositoryImpl implements TerritoryRepository {
   TerritoryRepositoryImpl(this._remote);
 
   @override
-  Future<TerritoryClaimResult> claimCells(List<HexCoord> cells) {
+  Future<TerritoryClaimResult> claimCells(List<HexCoord> cells,
+      {int? driveScore}) {
     if (cells.isEmpty) return Future.value(TerritoryClaimResult.zero);
-    return _remote.claimCells(cells);
+    return _remote.claimCells(cells, driveScore: driveScore);
   }
 
   @override
@@ -27,19 +28,24 @@ class TerritoryRepositoryImpl implements TerritoryRepository {
   }
 
   @override
-  Future<List<TerritoryStanding>> standings({
-    required TerritoryScope scope,
-    String? crewId,
-    int periodDays = 30,
-  }) async {
-    final rows = await _remote.standings(
-      scope: scope,
-      crewId: crewId,
-      periodDays: periodDays,
-    );
+  Future<List<TerritoryStanding>> standings({int periodDays = 30}) async {
+    final rows = await _remote.standings(periodDays: periodDays);
     return rows.map((r) => r.toEntity()).toList();
   }
 
   @override
   Future<int> myCellCount(String profileId) => _remote.myCellCount(profileId);
+
+  @override
+  Future<List<TerritoryCell>> myTerritories(String profileId) async {
+    final cells = await _remote.myTerritories(profileId);
+    return cells.map((c) => c.toEntity()).toList();
+  }
+
+  @override
+  Future<String?> profileDisplayName(String profileId) =>
+      _remote.profileDisplayName(profileId);
+
+  @override
+  Stream<void> watchCellChanges() => _remote.watchCellChanges();
 }

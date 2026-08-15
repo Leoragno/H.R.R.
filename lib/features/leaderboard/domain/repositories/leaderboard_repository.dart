@@ -5,6 +5,5 @@ abstract class LeaderboardRepository {
     required LeaderboardMetric metric,
     required LeaderboardPeriod period,
     int limit = 50,
-    String? crewId,
   });
 }

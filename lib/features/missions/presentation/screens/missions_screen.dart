@@ -7,7 +7,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/hrr_icons.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../domain/entities/crew_mission.dart' as domain;
 import '../../domain/entities/mission.dart' as domain;
 import '../../domain/entities/mission_progress.dart' as domain;
 import '../providers/mission_controller.dart';
@@ -65,15 +64,6 @@ class _SecretMission {
       required this.revealed});
 }
 
-class _CrewMission {
-  final String title;
-  final String reward;
-  final double progress;
-  final String progressLabel;
-  const _CrewMission(
-      this.title, this.reward, this.progress, this.progressLabel);
-}
-
 class _EventCard {
   final String name;
   final String timeLeft;
@@ -100,15 +90,15 @@ IconData _iconFor(String key) =>
 List<_Reward> _rewardsFor(domain.Mission m) {
   final list = <_Reward>[];
   if (m.rewardRep > 0)
-    list.add(_Reward('REP +${m.rewardRep}', AppColors.neonCyan));
+    list.add(_Reward('REP +${m.rewardRep}', AppColor.cyan));
   if (m.rewardXp > 0)
-    list.add(_Reward('XP +${m.rewardXp}', AppColors.neonPurple));
+    list.add(_Reward('XP +${m.rewardXp}', AppColor.magenta));
   if (m.rewardBadgeIds.isNotEmpty)
-    list.add(const _Reward('BADGE', AppColors.neonAmber));
+    list.add(const _Reward('BADGE', AppColor.amber));
   if (m.rewardTitles.isNotEmpty) list.add(_Reward('TITOLO', _rewardTitle));
   if (m.rewardAvatarFrame != null) list.add(_Reward('FRAME', _rewardFrame));
   for (final key in m.rewardProfileItems.keys) {
-    list.add(_Reward(key.toUpperCase(), AppColors.neonGreen));
+    list.add(_Reward(key.toUpperCase(), AppColor.success));
   }
   return list;
 }
@@ -170,26 +160,9 @@ _SecretMission _toUiSecretMission(domain.Mission m) => _SecretMission(
 String _formatXp(int xp) =>
     xp >= 1000 ? '${(xp / 1000).toStringAsFixed(1)}k' : '$xp';
 
-_CrewMission _toUiCrewMission(domain.CrewMission c) {
-  final rewardParts = <String>[
-    if (c.rewardRep > 0) 'REP +${c.rewardRep}',
-    if (c.rewardXp > 0) 'XP +${c.rewardXp}',
-  ];
-  final progress = c.targetValue <= 0
-      ? 0.0
-      : (c.currentValue / c.targetValue).clamp(0, 1).toDouble();
-  return _CrewMission(
-    c.title,
-    rewardParts.isEmpty ? '—' : rewardParts.join(' · '),
-    progress,
-    '${c.currentValue.toStringAsFixed(0)} / ${c.targetValue.toStringAsFixed(0)}',
-  );
-}
-
 // ---- Dati ancora statici in questo giro: Battle Pass (nessun sistema di
 // sblocco tier costruito) ed Eventi (feature Eventi ancora placeholder,
-// nessuna sorgente dati reale a cui collegarsi). Crew Missions è invece
-// collegata a crewMissionsProvider — vuota finché profiles.crew_id è null. ----
+// nessuna sorgente dati reale a cui collegarsi). ----
 
 const _passTiers = [
   _PassTier(15, Icons.bolt_rounded, 'REP +100', true),
@@ -302,18 +275,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
         ? 0
         : season.endsAt.difference(DateTime.now()).inDays.clamp(0, 999);
 
-    // Nessuna crew reale collegata: mostra la sezione vuota invece di
-    // inventare progressi per una crew a cui l'utente non appartiene.
-    final crewId = profile?.crewId;
-    final crewMissionsList = crewId == null
-        ? const <_CrewMission>[]
-        : (ref.watch(crewMissionsProvider(crewId)).valueOrNull ??
-                const <domain.CrewMission>[])
-            .map(_toUiCrewMission)
-            .toList();
-
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColor.base,
       body: Stack(
         children: [
           SafeArea(
@@ -351,8 +314,6 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     sliver: _SecretMissionsList(missions: _secretMissionsList),
                   ),
-                SliverToBoxAdapter(
-                    child: _CrewMissionsSection(missions: crewMissionsList)),
                 SliverToBoxAdapter(child: _EventsStrip(events: _eventStrip)),
                 const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
               ],
@@ -405,11 +366,11 @@ class _Header extends StatelessWidget {
                   children: [
                     ShaderMask(
                       shaderCallback: (b) => const LinearGradient(
-                              colors: [Colors.white, AppColors.neonCyan])
+                              colors: [Colors.white, AppColor.cyan])
                           .createShader(b),
                       child: Text(
                         'MISSIONS',
-                        style: AppTheme.orbitron(
+                        style: AppType.display(
                             fontWeight: FontWeight.w900,
                             fontSize: 27,
                             color: Colors.white),
@@ -422,7 +383,7 @@ class _Header extends StatelessWidget {
                         fontFamily: 'monospace',
                         fontSize: 9,
                         letterSpacing: 2,
-                        color: AppColors.textSecondary,
+                        color: AppColor.inkMuted,
                       ),
                     ),
                   ],
@@ -436,14 +397,14 @@ class _Header extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 8,
                         letterSpacing: 1.5,
-                        color: AppColors.textSecondary),
+                        color: AppColor.inkMuted),
                   ),
                   Text(
                     '$progressPct%',
-                    style: AppTheme.orbitron(
+                    style: AppType.display(
                         fontWeight: FontWeight.w800,
                         fontSize: 23,
-                        color: AppColors.neonCyan),
+                        color: AppColor.cyan),
                   ),
                 ],
               ),
@@ -455,8 +416,8 @@ class _Header extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progressPct / 100,
               minHeight: 9,
-              backgroundColor: AppColors.surfaceElevated,
-              valueColor: const AlwaysStoppedAnimation(AppColors.neonCyan),
+              backgroundColor: AppColor.surfaceHigh,
+              valueColor: const AlwaysStoppedAnimation(AppColor.cyan),
             ),
           ),
           const SizedBox(height: 12),
@@ -466,18 +427,18 @@ class _Header extends StatelessWidget {
                 child: _HudChip(
                     label: 'SEASON LEVEL',
                     value: 'LV $seasonLevel',
-                    color: AppColors.neonPurple),
+                    color: AppColor.magenta),
               ),
               const SizedBox(width: 8),
               Expanded(
                   child: _HudChip(
-                      label: 'XP', value: xpLabel, color: AppColors.neonCyan)),
+                      label: 'XP', value: xpLabel, color: AppColor.cyan)),
               const SizedBox(width: 8),
               Expanded(
                 child: _HudChip(
                     label: 'SEASON END',
                     value: '$daysLeft giorni',
-                    color: AppColors.neonMagenta),
+                    color: AppColor.magenta),
               ),
             ],
           ),
@@ -500,8 +461,8 @@ class _HudChip extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
-        color: color.withOpacity(0.14),
-        border: Border.all(color: color.withOpacity(0.4)),
+        color: color.withValues(alpha: 0.14),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,10 +471,10 @@ class _HudChip extends StatelessWidget {
               style: TextStyle(
                   fontSize: 7.5,
                   letterSpacing: 1.2,
-                  color: color.withOpacity(0.85))),
+                  color: color.withValues(alpha: 0.85))),
           const SizedBox(height: 2),
           Text(value,
-              style: AppTheme.orbitron(
+              style: AppType.display(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
                   color: Colors.white)),
@@ -552,22 +513,22 @@ class _TabBar extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(13),
                     color: current == tab
-                        ? AppColors.neonCyan.withOpacity(0.16)
-                        : AppColors.surfaceGlass,
+                        ? AppColor.cyan.withValues(alpha: 0.16)
+                        : AppColor.surface,
                     border: Border.all(
                       color: current == tab
-                          ? AppColors.neonCyan.withOpacity(0.6)
-                          : AppColors.border,
+                          ? AppColor.cyan.withValues(alpha: 0.6)
+                          : AppColor.line,
                     ),
                   ),
                   child: Text(
                     _labels[tab]!,
-                    style: AppTheme.orbitron(
+                    style: AppType.display(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                       color: current == tab
-                          ? AppColors.neonCyan
-                          : AppColors.textSecondary,
+                          ? AppColor.cyan
+                          : AppColor.inkMuted,
                     ),
                   ),
                 ),
@@ -596,7 +557,7 @@ class _BattlePassTrack extends StatelessWidget {
             style: TextStyle(
                 fontSize: 8.5,
                 letterSpacing: 1.8,
-                color: AppColors.textSecondary),
+                color: AppColor.inkMuted),
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -609,7 +570,7 @@ class _BattlePassTrack extends StatelessWidget {
               itemBuilder: (context, i) {
                 final t = tiers[i];
                 final color =
-                    t.unlocked ? AppColors.neonCyan : AppColors.textDisabled;
+                    t.unlocked ? AppColor.cyan : AppColor.inkFaint;
                 return Container(
                   width: 78,
                   padding:
@@ -617,23 +578,23 @@ class _BattlePassTrack extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     color: t.unlocked
-                        ? AppColors.neonCyan.withOpacity(0.12)
-                        : AppColors.surfaceGlass,
-                    border: Border.all(color: color.withOpacity(0.4)),
+                        ? AppColor.cyan.withValues(alpha: 0.12)
+                        : AppColor.surface,
+                    border: Border.all(color: color.withValues(alpha: 0.4)),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('LV ${t.level}',
                           style: const TextStyle(
-                              fontSize: 7.5, color: AppColors.textSecondary)),
+                              fontSize: 7.5, color: AppColor.inkMuted)),
                       const SizedBox(height: 6),
                       Container(
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(11),
-                          color: color.withOpacity(0.18),
+                          color: color.withValues(alpha: 0.18),
                         ),
                         child: Icon(t.icon, size: 18, color: color),
                       ),
@@ -668,9 +629,9 @@ class _MissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (stateLabel, stateColor) = switch (mission.state) {
-      _MissionState.inProgress => ('IN CORSO', AppColors.textSecondary),
-      _MissionState.ready => ('PRONTA', AppColors.neonAmber),
-      _MissionState.claimed => ('COMPLETATA', AppColors.neonGreen),
+      _MissionState.inProgress => ('IN CORSO', AppColor.inkMuted),
+      _MissionState.ready => ('PRONTA', AppColor.amber),
+      _MissionState.claimed => ('COMPLETATA', AppColor.success),
     };
     final ready = mission.state == _MissionState.ready;
 
@@ -679,12 +640,12 @@ class _MissionCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: ready
-            ? AppColors.neonAmber.withOpacity(0.08)
-            : AppColors.surfaceGlass,
+            ? AppColor.amber.withValues(alpha: 0.08)
+            : AppColor.surface,
         border: Border.all(
             color: ready
-                ? AppColors.neonAmber.withOpacity(0.4)
-                : AppColors.border),
+                ? AppColor.amber.withValues(alpha: 0.4)
+                : AppColor.line),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -694,10 +655,10 @@ class _MissionCard extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
-              color: AppColors.neonCyan.withOpacity(0.12),
-              border: Border.all(color: AppColors.neonCyan.withOpacity(0.3)),
+              color: AppColor.cyan.withValues(alpha: 0.12),
+              border: Border.all(color: AppColor.cyan.withValues(alpha: 0.3)),
             ),
-            child: Icon(mission.icon, color: AppColors.neonCyan, size: 22),
+            child: Icon(mission.icon, color: AppColor.cyan, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -709,7 +670,7 @@ class _MissionCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         mission.title,
-                        style: AppTheme.orbitron(
+                        style: AppType.display(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: Colors.white),
@@ -728,16 +689,16 @@ class _MissionCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(mission.desc,
                     style: const TextStyle(
-                        fontSize: 13, color: AppColors.textSecondary)),
+                        fontSize: 13, color: AppColor.inkMuted)),
                 const SizedBox(height: 9),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(5),
                   child: LinearProgressIndicator(
                     value: mission.progress,
                     minHeight: 7,
-                    backgroundColor: AppColors.surfaceElevated,
+                    backgroundColor: AppColor.surfaceHigh,
                     valueColor: AlwaysStoppedAnimation(
-                        ready ? AppColors.neonAmber : AppColors.neonCyan),
+                        ready ? AppColor.amber : AppColor.cyan),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -749,7 +710,7 @@ class _MissionCard extends StatelessWidget {
                         style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 10,
-                          color: AppColors.textSecondary,
+                          color: AppColor.inkMuted,
                         ),
                       ),
                     ),
@@ -763,15 +724,15 @@ class _MissionCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                             gradient: ready
                                 ? const LinearGradient(colors: [
-                                    AppColors.neonAmber,
+                                    AppColor.amber,
                                     Color(0xFFFFE9A3)
                                   ])
                                 : null,
-                            color: ready ? null : AppColors.surfaceElevated,
+                            color: ready ? null : AppColor.surfaceHigh,
                             border: Border.all(
                                 color: ready
-                                    ? AppColors.neonAmber
-                                    : AppColors.border),
+                                    ? AppColor.amber
+                                    : AppColor.line),
                           ),
                           child: Text(
                             ready ? 'RISCATTA' : 'IN CORSO',
@@ -779,7 +740,7 @@ class _MissionCard extends StatelessWidget {
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color:
-                                  ready ? Colors.black : AppColors.textDisabled,
+                                  ready ? Colors.black : AppColor.inkFaint,
                             ),
                           ),
                         ),
@@ -798,8 +759,8 @@ class _MissionCard extends StatelessWidget {
                               horizontal: 9, vertical: 4),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(9),
-                            color: r.color.withOpacity(0.14),
-                            border: Border.all(color: r.color.withOpacity(0.4)),
+                            color: r.color.withValues(alpha: 0.14),
+                            border: Border.all(color: r.color.withValues(alpha: 0.4)),
                           ),
                           child: Text(
                             r.label,
@@ -837,7 +798,7 @@ class _SecretMissionsList extends StatelessWidget {
             style: const TextStyle(
                 fontSize: 8.5,
                 letterSpacing: 1.5,
-                color: AppColors.textSecondary),
+                color: AppColor.inkMuted),
           ),
         ),
         for (final m in missions) ...[
@@ -847,12 +808,12 @@ class _SecretMissionsList extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
               color: m.revealed
-                  ? AppColors.neonPurple.withOpacity(0.1)
-                  : AppColors.surfaceGlass,
+                  ? AppColor.magenta.withValues(alpha: 0.1)
+                  : AppColor.surface,
               border: Border.all(
                   color: m.revealed
-                      ? AppColors.neonPurple.withOpacity(0.4)
-                      : AppColors.border),
+                      ? AppColor.magenta.withValues(alpha: 0.4)
+                      : AppColor.line),
             ),
             child: Row(
               children: [
@@ -862,9 +823,9 @@ class _SecretMissionsList extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
                     color: (m.revealed
-                            ? AppColors.neonPurple
-                            : AppColors.textDisabled)
-                        .withOpacity(0.16),
+                            ? AppColor.magenta
+                            : AppColor.inkFaint)
+                        .withValues(alpha: 0.16),
                   ),
                   child: Icon(
                     m.revealed
@@ -872,8 +833,8 @@ class _SecretMissionsList extends StatelessWidget {
                         : Icons.lock_rounded,
                     size: 21,
                     color: m.revealed
-                        ? AppColors.neonPurple
-                        : AppColors.textDisabled,
+                        ? AppColor.magenta
+                        : AppColor.inkFaint,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -883,12 +844,12 @@ class _SecretMissionsList extends StatelessWidget {
                     children: [
                       Text(
                         m.revealed ? m.title : '??? MISSIONE SEGRETA',
-                        style: AppTheme.orbitron(
+                        style: AppType.display(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: m.revealed
                               ? Colors.white
-                              : AppColors.textDisabled,
+                              : AppColor.inkFaint,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -897,7 +858,7 @@ class _SecretMissionsList extends StatelessWidget {
                             ? m.desc
                             : 'Sblocca completandola in viaggio per scoprirla',
                         style: const TextStyle(
-                            fontSize: 12.5, color: AppColors.textSecondary),
+                            fontSize: 12.5, color: AppColor.inkMuted),
                       ),
                       const SizedBox(height: 5),
                       Text(
@@ -906,8 +867,8 @@ class _SecretMissionsList extends StatelessWidget {
                           fontFamily: 'monospace',
                           fontSize: 9.5,
                           color: m.revealed
-                              ? AppColors.neonAmber
-                              : AppColors.textDisabled,
+                              ? AppColor.amber
+                              : AppColor.inkFaint,
                         ),
                       ),
                     ],
@@ -918,100 +879,6 @@ class _SecretMissionsList extends StatelessWidget {
           ),
         ],
       ]),
-    );
-  }
-}
-
-class _CrewMissionsSection extends StatelessWidget {
-  final List<_CrewMission> missions;
-  const _CrewMissionsSection({required this.missions});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'CREW MISSIONS',
-                style: AppTheme.orbitron(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => context.push(AppRoutes.crew),
-                child: const Text(
-                  'Night Phantoms ›',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.neonPurple,
-                      fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (final c in missions)
-            Container(
-              margin: const EdgeInsets.only(bottom: 9),
-              padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                gradient: LinearGradient(colors: [
-                  AppColors.neonPurple.withOpacity(0.2),
-                  AppColors.surfaceGlass
-                ]),
-                border:
-                    Border.all(color: AppColors.neonPurple.withOpacity(0.32)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(c.title,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w700)),
-                      ),
-                      Text(
-                        c.reward,
-                        style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 9.5,
-                            color: Color(0xFFC9B8FF)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: c.progress,
-                      minHeight: 6,
-                      backgroundColor: AppColors.surfaceElevated,
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppColors.neonMagenta),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    c.progressLabel,
-                    style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 9.5,
-                        color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
     );
   }
 }
@@ -1031,7 +898,7 @@ class _EventsStrip extends StatelessWidget {
             children: [
               Text(
                 'EVENTI LIVE',
-                style: AppTheme.orbitron(
+                style: AppType.display(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Colors.white),
@@ -1043,7 +910,7 @@ class _EventsStrip extends StatelessWidget {
                   'Tutti ›',
                   style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.neonGreen,
+                      color: AppColor.success,
                       fontWeight: FontWeight.w600),
                 ),
               ),
@@ -1066,8 +933,8 @@ class _EventsStrip extends StatelessWidget {
                     width: 150,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
-                      color: AppColors.surfaceGlass,
-                      border: Border.all(color: AppColors.border),
+                      color: AppColor.surface,
+                      border: Border.all(color: AppColor.line),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: Column(
@@ -1084,7 +951,7 @@ class _EventsStrip extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -1104,21 +971,21 @@ class _EventsStrip extends StatelessWidget {
                                 e.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: AppTheme.orbitron(
+                                style: AppType.display(
                                     fontSize: 12, fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(height: 2),
                               Text('${e.players} piloti',
                                   style: const TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary)),
+                                      color: AppColor.inkMuted)),
                               const SizedBox(height: 6),
                               Text(
                                 e.reward,
                                 style: const TextStyle(
                                     fontFamily: 'monospace',
                                     fontSize: 9.5,
-                                    color: AppColors.neonCyan),
+                                    color: AppColor.cyan),
                               ),
                             ],
                           ),
@@ -1144,7 +1011,7 @@ class _CelebrationOverlay extends StatelessWidget {
   int get _rep {
     final repReward = mission.rewards.firstWhere(
       (r) => r.label.startsWith('REP'),
-      orElse: () => const _Reward('REP +50', AppColors.neonCyan),
+      orElse: () => const _Reward('REP +50', AppColor.cyan),
     );
     return int.tryParse(
             RegExp(r'\d+').firstMatch(repReward.label)?.group(0) ?? '50') ??
@@ -1155,7 +1022,7 @@ class _CelebrationOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withOpacity(0.82),
+        color: Colors.black.withValues(alpha: 0.82),
         alignment: Alignment.center,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1164,22 +1031,12 @@ class _CelebrationOverlay extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
+                color: AppColor.cyan,
                 borderRadius: BorderRadius.circular(30),
-                gradient: const LinearGradient(
-                  colors: [
-                    AppColors.neonCyan,
-                    AppColors.neonPurple,
-                    AppColors.neonMagenta
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                      color: AppColors.neonPurple.withOpacity(0.7),
-                      blurRadius: 44)
-                ],
+                boxShadow: AppGlow.peak(AppColor.cyan),
               ),
               child: const Icon(Icons.check_rounded,
-                  size: 46, color: Colors.black),
+                  size: 46, color: AppColor.void_),
             ),
             const SizedBox(height: 18),
             const Text(
@@ -1188,7 +1045,7 @@ class _CelebrationOverlay extends StatelessWidget {
                   fontFamily: 'monospace',
                   fontSize: 10,
                   letterSpacing: 4,
-                  color: AppColors.neonGreen),
+                  color: AppColor.success),
             ),
             const SizedBox(height: 8),
             Padding(
@@ -1196,7 +1053,7 @@ class _CelebrationOverlay extends StatelessWidget {
               child: Text(
                 mission.title,
                 textAlign: TextAlign.center,
-                style: AppTheme.orbitron(
+                style: AppType.display(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: Colors.white),
@@ -1205,7 +1062,7 @@ class _CelebrationOverlay extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               '+$_rep',
-              style: AppTheme.orbitron(
+              style: AppType.display(
                   fontWeight: FontWeight.w900,
                   fontSize: 44,
                   color: Colors.white),
@@ -1216,7 +1073,7 @@ class _CelebrationOverlay extends StatelessWidget {
                   fontFamily: 'monospace',
                   fontSize: 10,
                   letterSpacing: 3,
-                  color: AppColors.neonCyan),
+                  color: AppColor.cyan),
             ),
             const SizedBox(height: 16),
             Padding(
@@ -1232,8 +1089,8 @@ class _CelebrationOverlay extends StatelessWidget {
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: r.color.withOpacity(0.16),
-                        border: Border.all(color: r.color.withOpacity(0.5)),
+                        color: r.color.withValues(alpha: 0.16),
+                        border: Border.all(color: r.color.withValues(alpha: 0.5)),
                       ),
                       child: Text(r.label,
                           style: TextStyle(
@@ -1251,21 +1108,15 @@ class _CelebrationOverlay extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 44, vertical: 14),
                 decoration: BoxDecoration(
+                  color: AppColor.cyan,
                   borderRadius: BorderRadius.circular(30),
-                  gradient: const LinearGradient(
-                      colors: [AppColors.neonPurple, AppColors.neonCyan]),
-                  boxShadow: [
-                    BoxShadow(
-                        color: AppColors.neonCyan.withOpacity(0.5),
-                        blurRadius: 28)
-                  ],
                 ),
                 child: Text(
                   'CONTINUA',
-                  style: AppTheme.orbitron(
+                  style: AppType.display(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      color: Colors.black),
+                      color: AppColor.void_),
                 ),
               ),
             ),

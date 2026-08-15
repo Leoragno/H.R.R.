@@ -21,13 +21,13 @@ class EmptySpotState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: AppColors.textDisabled),
+            Icon(icon, size: 48, color: AppColor.inkFaint),
             const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
               style:
-                  const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  const TextStyle(color: AppColor.inkMuted, fontSize: 13),
             ),
           ],
         ),

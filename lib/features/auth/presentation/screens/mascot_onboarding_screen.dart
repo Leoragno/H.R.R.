@@ -40,7 +40,7 @@ class _MascotOnboardingScreenState
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
@@ -50,19 +50,19 @@ class _MascotOnboardingScreenState
               Text(
                 'Scegli la tua mascotte',
                 textAlign: TextAlign.center,
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontWeight: FontWeight.w900,
                   fontSize: 30,
-                  color: AppColors.textPrimary,
+                  color: AppColor.ink,
                 ),
               ).animate().fadeIn().slideY(begin: 0.1, end: 0),
               const SizedBox(height: 12),
               Text(
                 'Ti accompagnerà e ti provocherà lungo la strada',
                 textAlign: TextAlign.center,
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontSize: 16,
-                  color: AppColors.guidaTextSecondary,
+                  color: AppColor.inkMuted,
                 ),
               ),
               const SizedBox(height: 28),
@@ -134,7 +134,7 @@ class _MascotOption extends StatelessWidget {
               MascotAvatar(mascot: mascot, size: 84),
               const SizedBox(height: 10),
               Text(mascot.name,
-                  style: AppTheme.orbitron(
+                  style: AppType.display(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                       color: mascot.accentColor)),
@@ -143,8 +143,8 @@ class _MascotOption extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTheme.archivo(
-                      fontSize: 12, color: AppColors.guidaTextSecondary)),
+                  style: AppType.text(
+                      fontSize: 12, color: AppColor.inkMuted)),
             ],
           ),
         ),

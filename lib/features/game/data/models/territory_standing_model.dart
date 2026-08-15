@@ -6,8 +6,6 @@ class TerritoryStandingModel {
   final String username;
   final String displayName;
   final String? avatarUrl;
-  final String? crewId;
-  final String? crewTag;
   final int cellCount;
   final int stolen;
   final int growth;
@@ -18,8 +16,6 @@ class TerritoryStandingModel {
     required this.username,
     required this.displayName,
     this.avatarUrl,
-    this.crewId,
-    this.crewTag,
     required this.cellCount,
     required this.stolen,
     required this.growth,
@@ -32,8 +28,6 @@ class TerritoryStandingModel {
       username: json['username'] as String,
       displayName: json['display_name'] as String,
       avatarUrl: json['avatar_url'] as String?,
-      crewId: json['crew_id'] as String?,
-      crewTag: json['crew_tag'] as String?,
       cellCount: (json['cell_count'] as num).toInt(),
       stolen: (json['stolen'] as num).toInt(),
       growth: (json['growth'] as num).toInt(),
@@ -46,8 +40,6 @@ class TerritoryStandingModel {
         username: username,
         displayName: displayName,
         avatarUrl: avatarUrl,
-        crewId: crewId,
-        crewTag: crewTag,
         cellCount: cellCount,
         areaKm2: cellCount * HexGrid.cellAreaKm2(),
         stolen: stolen,

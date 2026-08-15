@@ -57,8 +57,8 @@ class _NotificationToastOverlayState
         widget.child,
         if (visible != null)
           Positioned(
-            left: 12,
-            right: 12,
+            left: AppSpace.md,
+            right: AppSpace.md,
             bottom: 90, // sopra la bottom nav su ogni tab
             child: SafeArea(
               top: false,
@@ -87,13 +87,13 @@ class _ToastCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AppSpace.md),
           decoration: BoxDecoration(
-            color: const Color(0xF00A0E1A),
-            borderRadius: BorderRadius.circular(16),
+            color: AppColor.surfaceHigh.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: presentation.color, width: 1.2),
             boxShadow: [
               BoxShadow(
@@ -115,16 +115,16 @@ class _ToastCard extends StatelessWidget {
                     Text(presentation.title(notification),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
-                            color: AppColors.textPrimary)),
+                            color: AppColor.ink)),
                     Text(presentation.body(notification),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontSize: 12.5,
-                            color: AppColors.guidaTextSecondary)),
+                            color: AppColor.inkMuted)),
                   ],
                 ),
               ),

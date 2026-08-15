@@ -19,19 +19,19 @@ class CarSpottingLeaderboardScreen extends ConsumerWidget {
     final topRated = ref.watch(topRatedSpotsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg2,
+      backgroundColor: AppColor.base,
       appBar: AppBar(
-        backgroundColor: AppColors.guidaBg2,
+        backgroundColor: AppColor.base,
         elevation: 0,
         title: Text('TOP AUTO DELLA COMMUNITY',
-            style: AppTheme.chakraPetch(fontSize: 16, letterSpacing: 0.5)),
+            style: AppType.display(fontSize: 16, letterSpacing: 0.5)),
       ),
       body: topRated.when(
         loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.guidaCyan)),
+            child: CircularProgressIndicator(color: AppColor.cyan)),
         error: (err, st) => Center(
             child: Text('Errore: $err',
-                style: AppTheme.archivo(color: AppColors.guidaTextSecondary))),
+                style: AppType.text(color: AppColor.inkMuted))),
         data: (spots) {
           if (spots.isEmpty) {
             return const EmptySpotState(

@@ -54,7 +54,7 @@ class LocalNotificationsService extends _$LocalNotificationsService {
     const channel = AndroidNotificationChannel(
       hrrNotificationChannelId,
       'Notifiche H.R.R.',
-      description: 'Missioni, achievement, crew e community',
+      description: 'Missioni, achievement e community',
       importance: Importance.high,
       playSound: true,
     );
@@ -90,7 +90,7 @@ class LocalNotificationsService extends _$LocalNotificationsService {
         android: AndroidNotificationDetails(
           hrrNotificationChannelId,
           'Notifiche H.R.R.',
-          channelDescription: 'Missioni, achievement, crew e community',
+          channelDescription: 'Missioni, achievement e community',
           importance: Importance.high,
           priority: Priority.high,
           icon: 'ic_notification',
@@ -124,7 +124,7 @@ class LocalNotificationsService extends _$LocalNotificationsService {
         android: AndroidNotificationDetails(
           hrrNotificationChannelId,
           'Notifiche H.R.R.',
-          channelDescription: 'Missioni, achievement, crew e community',
+          channelDescription: 'Missioni, achievement e community',
           importance: Importance.high,
           priority: Priority.high,
           icon: 'ic_notification',

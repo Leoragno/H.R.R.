@@ -46,7 +46,7 @@ final leaderboardRepositoryProvider =
 // ignore: unused_element
 typedef LeaderboardRepositoryRef
     = AutoDisposeProviderRef<LeaderboardRepository>;
-String _$leaderboardHash() => r'129e451b259d7b2050fd75f53e01042f41a74659';
+String _$leaderboardHash() => r'f0fa25391f67a04353447095ca0a1cca32fe262f';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -69,49 +69,39 @@ class _SystemHash {
   }
 }
 
-/// Classifica per metrica + periodo + scope (family sui tre filtri della
+/// Classifica globale per metrica + periodo (family sui due filtri della
 /// schermata). La metrica determina anche l'ordinamento lato server:
 /// cambiarla rifà sempre la chiamata (niente riordino lato client).
-/// scope=crew usa la crew dell'utente corrente ([myProfileProvider]): se
-/// non ha una crew la lista è vuota, mai un errore.
 ///
 /// Copied from [leaderboard].
 @ProviderFor(leaderboard)
 const leaderboardProvider = LeaderboardFamily();
 
-/// Classifica per metrica + periodo + scope (family sui tre filtri della
+/// Classifica globale per metrica + periodo (family sui due filtri della
 /// schermata). La metrica determina anche l'ordinamento lato server:
 /// cambiarla rifà sempre la chiamata (niente riordino lato client).
-/// scope=crew usa la crew dell'utente corrente ([myProfileProvider]): se
-/// non ha una crew la lista è vuota, mai un errore.
 ///
 /// Copied from [leaderboard].
 class LeaderboardFamily extends Family<AsyncValue<List<LeaderboardEntry>>> {
-  /// Classifica per metrica + periodo + scope (family sui tre filtri della
+  /// Classifica globale per metrica + periodo (family sui due filtri della
   /// schermata). La metrica determina anche l'ordinamento lato server:
   /// cambiarla rifà sempre la chiamata (niente riordino lato client).
-  /// scope=crew usa la crew dell'utente corrente ([myProfileProvider]): se
-  /// non ha una crew la lista è vuota, mai un errore.
   ///
   /// Copied from [leaderboard].
   const LeaderboardFamily();
 
-  /// Classifica per metrica + periodo + scope (family sui tre filtri della
+  /// Classifica globale per metrica + periodo (family sui due filtri della
   /// schermata). La metrica determina anche l'ordinamento lato server:
   /// cambiarla rifà sempre la chiamata (niente riordino lato client).
-  /// scope=crew usa la crew dell'utente corrente ([myProfileProvider]): se
-  /// non ha una crew la lista è vuota, mai un errore.
   ///
   /// Copied from [leaderboard].
   LeaderboardProvider call(
     LeaderboardMetric metric,
     LeaderboardPeriod period,
-    LeaderboardScope scope,
   ) {
     return LeaderboardProvider(
       metric,
       period,
-      scope,
     );
   }
 
@@ -122,7 +112,6 @@ class LeaderboardFamily extends Family<AsyncValue<List<LeaderboardEntry>>> {
     return call(
       provider.metric,
       provider.period,
-      provider.scope,
     );
   }
 
@@ -141,32 +130,26 @@ class LeaderboardFamily extends Family<AsyncValue<List<LeaderboardEntry>>> {
   String? get name => r'leaderboardProvider';
 }
 
-/// Classifica per metrica + periodo + scope (family sui tre filtri della
+/// Classifica globale per metrica + periodo (family sui due filtri della
 /// schermata). La metrica determina anche l'ordinamento lato server:
 /// cambiarla rifà sempre la chiamata (niente riordino lato client).
-/// scope=crew usa la crew dell'utente corrente ([myProfileProvider]): se
-/// non ha una crew la lista è vuota, mai un errore.
 ///
 /// Copied from [leaderboard].
 class LeaderboardProvider
     extends AutoDisposeFutureProvider<List<LeaderboardEntry>> {
-  /// Classifica per metrica + periodo + scope (family sui tre filtri della
+  /// Classifica globale per metrica + periodo (family sui due filtri della
   /// schermata). La metrica determina anche l'ordinamento lato server:
   /// cambiarla rifà sempre la chiamata (niente riordino lato client).
-  /// scope=crew usa la crew dell'utente corrente ([myProfileProvider]): se
-  /// non ha una crew la lista è vuota, mai un errore.
   ///
   /// Copied from [leaderboard].
   LeaderboardProvider(
     LeaderboardMetric metric,
     LeaderboardPeriod period,
-    LeaderboardScope scope,
   ) : this._internal(
           (ref) => leaderboard(
             ref as LeaderboardRef,
             metric,
             period,
-            scope,
           ),
           from: leaderboardProvider,
           name: r'leaderboardProvider',
@@ -179,7 +162,6 @@ class LeaderboardProvider
               LeaderboardFamily._allTransitiveDependencies,
           metric: metric,
           period: period,
-          scope: scope,
         );
 
   LeaderboardProvider._internal(
@@ -191,12 +173,10 @@ class LeaderboardProvider
     required super.from,
     required this.metric,
     required this.period,
-    required this.scope,
   }) : super.internal();
 
   final LeaderboardMetric metric;
   final LeaderboardPeriod period;
-  final LeaderboardScope scope;
 
   @override
   Override overrideWith(
@@ -213,7 +193,6 @@ class LeaderboardProvider
         debugGetCreateSourceHash: null,
         metric: metric,
         period: period,
-        scope: scope,
       ),
     );
   }
@@ -227,8 +206,7 @@ class LeaderboardProvider
   bool operator ==(Object other) {
     return other is LeaderboardProvider &&
         other.metric == metric &&
-        other.period == period &&
-        other.scope == scope;
+        other.period == period;
   }
 
   @override
@@ -236,7 +214,6 @@ class LeaderboardProvider
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, metric.hashCode);
     hash = _SystemHash.combine(hash, period.hashCode);
-    hash = _SystemHash.combine(hash, scope.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -250,9 +227,6 @@ mixin LeaderboardRef on AutoDisposeFutureProviderRef<List<LeaderboardEntry>> {
 
   /// The parameter `period` of this provider.
   LeaderboardPeriod get period;
-
-  /// The parameter `scope` of this provider.
-  LeaderboardScope get scope;
 }
 
 class _LeaderboardProviderElement
@@ -264,8 +238,6 @@ class _LeaderboardProviderElement
   LeaderboardMetric get metric => (origin as LeaderboardProvider).metric;
   @override
   LeaderboardPeriod get period => (origin as LeaderboardProvider).period;
-  @override
-  LeaderboardScope get scope => (origin as LeaderboardProvider).scope;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

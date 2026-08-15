@@ -7,7 +7,7 @@ part of 'local_notifications_service.dart';
 // **************************************************************************
 
 String _$localNotificationsServiceHash() =>
-    r'9459ae8d0ad813fbefea1919cbeecece927850e8';
+    r'f17bb279241605e20c66d23bb08c7f0a6e0692e5';
 
 /// Notifiche locali Android: servono SOLO per il caso "app in foreground",
 /// dove FCM (a differenza di background/terminata) non mostra da sé una

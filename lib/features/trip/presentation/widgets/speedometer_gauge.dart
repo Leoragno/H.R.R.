@@ -38,7 +38,7 @@ class SpeedometerGauge extends StatelessWidget {
             children: [
               Text(
                 speed.round().toString(),
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontWeight: FontWeight.w700,
                   fontSize: 88,
                   color: Colors.white,
@@ -47,10 +47,10 @@ class SpeedometerGauge extends StatelessWidget {
               ),
               Text(
                 'km/h',
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontWeight: FontWeight.w500,
                   fontSize: 22,
-                  color: AppColors.guidaCyan,
+                  color: AppColor.cyan,
                 ),
               ),
             ],

@@ -17,6 +17,7 @@ class TripModel {
   final double? maxSpeedKmh;
   final int xpEarned;
   final int repEarned;
+  final int? drivingScore;
   final TripStatus status;
   final List<RoutePoint> route;
 
@@ -32,6 +33,7 @@ class TripModel {
     this.maxSpeedKmh,
     required this.xpEarned,
     required this.repEarned,
+    this.drivingScore,
     required this.status,
     this.route = const [],
   });
@@ -51,6 +53,7 @@ class TripModel {
       maxSpeedKmh: (json['max_speed_kmh'] as num?)?.toDouble(),
       xpEarned: json['xp_earned'] as int? ?? 0,
       repEarned: json['rep_earned'] as int? ?? 0,
+      drivingScore: json['driving_score'] as int?,
       status: tripStatusFromString(json['status'] as String? ?? 'active'),
       route: _routeFromGeoJson(json['route_geojson']),
     );
@@ -81,6 +84,7 @@ class TripModel {
         maxSpeedKmh: maxSpeedKmh,
         xpEarned: xpEarned,
         repEarned: repEarned,
+        drivingScore: drivingScore,
         status: status,
         route: route,
       );

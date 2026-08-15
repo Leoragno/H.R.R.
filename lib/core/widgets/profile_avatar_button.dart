@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../router/app_router.dart';
+import '../theme/app_colors.dart';
 
 /// Avatar utente cliccabile, apre il Profilo. Prende il posto del tab
 /// "Profilo" nella bottom navbar (rimosso): unico punto d'accesso rimasto,
@@ -24,15 +25,11 @@ class ProfileAvatarButton extends ConsumerWidget {
         height: size,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6B4A3A), Color(0xFFC98B6B)],
-          ),
+          color: AppColor.surfaceHigh,
         ),
         child: avatarUrl == null
             ? Icon(Icons.person_rounded,
-                color: Colors.white.withValues(alpha: 0.85), size: size * 0.52)
+                color: AppColor.inkMuted, size: size * 0.52)
             : ClipOval(
                 child: Image.network(avatarUrl, fit: BoxFit.cover),
               ),

@@ -10,8 +10,8 @@ import 'package:hrr_app/core/theme/app_theme.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('AppTheme.dark si costruisce senza eccezioni', () {
-    final theme = AppTheme.dark;
+  test('buildSmoothTheme() si costruisce senza eccezioni', () {
+    final theme = buildSmoothTheme();
     expect(theme.useMaterial3, isTrue);
     expect(theme.brightness, Brightness.dark);
   });

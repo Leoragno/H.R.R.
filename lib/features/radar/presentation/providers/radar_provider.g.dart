@@ -45,27 +45,27 @@ final wazeRemoteDatasourceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef WazeRemoteDatasourceRef = AutoDisposeProviderRef<WazeRemoteDatasource>;
-String _$crewReportsRemoteDatasourceHash() =>
-    r'22ae5d5262818d282dff99b1e66aaeb567162e3a';
+String _$communityReportsRemoteDatasourceHash() =>
+    r'ba83cc1372e5e7b37f1c109638640cdd433e6f75';
 
-/// See also [crewReportsRemoteDatasource].
-@ProviderFor(crewReportsRemoteDatasource)
-final crewReportsRemoteDatasourceProvider =
-    AutoDisposeProvider<CrewReportsRemoteDatasource>.internal(
-  crewReportsRemoteDatasource,
-  name: r'crewReportsRemoteDatasourceProvider',
+/// See also [communityReportsRemoteDatasource].
+@ProviderFor(communityReportsRemoteDatasource)
+final communityReportsRemoteDatasourceProvider =
+    AutoDisposeProvider<CommunityReportsRemoteDatasource>.internal(
+  communityReportsRemoteDatasource,
+  name: r'communityReportsRemoteDatasourceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$crewReportsRemoteDatasourceHash,
+      : _$communityReportsRemoteDatasourceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef CrewReportsRemoteDatasourceRef
-    = AutoDisposeProviderRef<CrewReportsRemoteDatasource>;
-String _$radarRepositoryHash() => r'ba8e4323011d77793edd1963198abfdd976796bf';
+typedef CommunityReportsRemoteDatasourceRef
+    = AutoDisposeProviderRef<CommunityReportsRemoteDatasource>;
+String _$radarRepositoryHash() => r'3073452cd27f65df863b7485a071dbe73cf3fcff';
 
 /// See also [radarRepository].
 @ProviderFor(radarRepository)
@@ -412,43 +412,45 @@ final currentPattugliaApiEventsProvider =
 // ignore: unused_element
 typedef CurrentPattugliaApiEventsRef
     = AutoDisposeFutureProviderRef<List<RadarEvent>>;
-String _$crewVeloxReportsHash() => r'615d7acb996ccab4aa69ad52708c7bd70523e365';
+String _$communityVeloxReportsHash() =>
+    r'38a9d905084e04d11cb3c42cfbcde13eb637fae9';
 
-/// See also [crewVeloxReports].
-@ProviderFor(crewVeloxReports)
-final crewVeloxReportsProvider = AutoDisposeProvider<List<RadarEvent>>.internal(
-  crewVeloxReports,
-  name: r'crewVeloxReportsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$crewVeloxReportsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CrewVeloxReportsRef = AutoDisposeProviderRef<List<RadarEvent>>;
-String _$crewPattugliaReportsHash() =>
-    r'69568909e4cb50eafca8d2b2701ff07f7068225f';
-
-/// See also [crewPattugliaReports].
-@ProviderFor(crewPattugliaReports)
-final crewPattugliaReportsProvider =
+/// See also [communityVeloxReports].
+@ProviderFor(communityVeloxReports)
+final communityVeloxReportsProvider =
     AutoDisposeProvider<List<RadarEvent>>.internal(
-  crewPattugliaReports,
-  name: r'crewPattugliaReportsProvider',
+  communityVeloxReports,
+  name: r'communityVeloxReportsProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$crewPattugliaReportsHash,
+      : _$communityVeloxReportsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef CrewPattugliaReportsRef = AutoDisposeProviderRef<List<RadarEvent>>;
-String _$homeMapMarkersHash() => r'9120bbc254169d316e499d21f1b9f815d6131abb';
+typedef CommunityVeloxReportsRef = AutoDisposeProviderRef<List<RadarEvent>>;
+String _$communityPattugliaReportsHash() =>
+    r'2089a958ed5b9b8c009dc5db2bc26de8fb0d8da6';
+
+/// See also [communityPattugliaReports].
+@ProviderFor(communityPattugliaReports)
+final communityPattugliaReportsProvider =
+    AutoDisposeProvider<List<RadarEvent>>.internal(
+  communityPattugliaReports,
+  name: r'communityPattugliaReportsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$communityPattugliaReportsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CommunityPattugliaReportsRef = AutoDisposeProviderRef<List<RadarEvent>>;
+String _$homeMapMarkersHash() => r'0b53cc73c69a264932a9ce6b0cb975bd00a918bd';
 
 /// Tutti gli eventi da disegnare sulla mappa Guida (le 4 categorie
 /// insieme) per la bounding box corrente — unico provider osservato da
@@ -474,7 +476,7 @@ String _$radarModeControllerHash() =>
     r'ebe108d392fbd21b7ef556e63060008b53b2e6d1';
 
 /// On/off dell'intera modalità: mappa (marker), card di monitoraggio,
-/// segnalazioni di crew e avviso di prossimità durante DRIVE dipendono
+/// segnalazioni community e avviso di prossimità durante DRIVE dipendono
 /// tutti da questo interruttore, persistito così resta impostato fra un
 /// riavvio e l'altro. Da spento, nessuno dei provider sotto fa richieste
 /// (rete o realtime) — non è solo un "nascondi la UI".
@@ -516,32 +518,32 @@ final mapBoundsControllerProvider =
 );
 
 typedef _$MapBoundsController = Notifier<RadarBounds?>;
-String _$crewReportsControllerHash() =>
-    r'76d8a3f9a238bfc3fb345ef1953069847a0cff8f';
+String _$communityReportsControllerHash() =>
+    r'349caa17e97cf9138cc92a7e43dee63c54111d70';
 
-/// Segnalazioni Velox+Pattuglia della crew dell'utente, aggiornate in
-/// realtime via Supabase e già private delle voci scadute (90 minuti,
-/// vedi [RadarEvent.isExpired]) — sia ad ogni nuovo evento dal DB, sia
-/// periodicamente per chi scade "a riposo" senza che nel frattempo
-/// arrivi un nuovo insert altrui (stesso principio dello staleness timer
-/// di CrewLiveMapController).
+/// Segnalazioni Velox+Pattuglia di tutti gli utenti, aggiornate in realtime
+/// via Supabase e già private delle voci scadute (90 minuti, vedi
+/// [RadarEvent.isExpired]) — sia ad ogni nuovo evento dal DB, sia
+/// periodicamente per chi scade "a riposo" senza che nel frattempo arrivi
+/// un nuovo insert altrui (stesso principio dello staleness timer di
+/// LiveMapController).
 ///
-/// Copied from [CrewReportsController].
-@ProviderFor(CrewReportsController)
-final crewReportsControllerProvider = AutoDisposeNotifierProvider<
-    CrewReportsController, List<RadarEvent>>.internal(
-  CrewReportsController.new,
-  name: r'crewReportsControllerProvider',
+/// Copied from [CommunityReportsController].
+@ProviderFor(CommunityReportsController)
+final communityReportsControllerProvider = AutoDisposeNotifierProvider<
+    CommunityReportsController, List<RadarEvent>>.internal(
+  CommunityReportsController.new,
+  name: r'communityReportsControllerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$crewReportsControllerHash,
+      : _$communityReportsControllerHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$CrewReportsController = AutoDisposeNotifier<List<RadarEvent>>;
+typedef _$CommunityReportsController = AutoDisposeNotifier<List<RadarEvent>>;
 String _$radarActionsControllerHash() =>
-    r'a1d63b5f6e1f123e4a97f3a986d59dbb3b8608c8';
+    r'dca974d6ba2a33b78a04187483b47d159441e928';
 
 /// See also [RadarActionsController].
 @ProviderFor(RadarActionsController)

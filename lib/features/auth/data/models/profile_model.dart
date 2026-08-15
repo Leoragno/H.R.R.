@@ -11,7 +11,6 @@ class ProfileModel {
   final int xp;
   final int rep;
   final String title;
-  final String? crewId;
   final String? vehicleBrand;
   final String? vehicleModel;
   final String? country;
@@ -30,7 +29,6 @@ class ProfileModel {
     required this.xp,
     required this.rep,
     required this.title,
-    this.crewId,
     this.vehicleBrand,
     this.vehicleModel,
     this.country,
@@ -51,7 +49,6 @@ class ProfileModel {
       xp: (json['xp'] as num?)?.toInt() ?? 0,
       rep: (json['rep'] as num?)?.toInt() ?? 0,
       title: json['title'] as String? ?? 'Rookie Driver',
-      crewId: json['crew_id'] as String?,
       vehicleBrand: json['vehicle_brand'] as String?,
       vehicleModel: json['vehicle_model'] as String?,
       country: json['country'] as String?,
@@ -72,7 +69,6 @@ class ProfileModel {
         'xp': xp,
         'rep': rep,
         'title': title,
-        'crew_id': crewId,
         'vehicle_brand': vehicleBrand,
         'vehicle_model': vehicleModel,
         'country': country,
@@ -89,7 +85,6 @@ class ProfileModel {
         xp: xp,
         rep: rep,
         title: title,
-        crewId: crewId,
         vehicleBrand: vehicleBrand,
         vehicleModel: vehicleModel,
         country: country,

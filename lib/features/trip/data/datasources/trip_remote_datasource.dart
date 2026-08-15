@@ -40,6 +40,17 @@ class TripRemoteDatasource {
     required double avgSpeedKmh,
     required double maxSpeedKmh,
     List<RoutePoint> route = const [],
+    double? jerkRmsMs3,
+    int brakingSoftCount = 0,
+    int brakingHardCount = 0,
+    double? brakingJerkAvgMs3,
+    int turnsCount = 0,
+    double? turnGyroStddevAvg,
+    int totalStops = 0,
+    int stoppedSeconds = 0,
+    int accelThenBrakeCount = 0,
+    double? gpsFixHz,
+    double? gyroHz,
   }) async {
     final res = await _client.rpc('complete_trip', params: {
       'p_trip_id': tripId,
@@ -48,6 +59,17 @@ class TripRemoteDatasource {
       'p_avg_speed_kmh': avgSpeedKmh,
       'p_max_speed_kmh': maxSpeedKmh,
       'p_route_wkt': _routeToWkt(route),
+      'p_jerk_rms_ms3': jerkRmsMs3,
+      'p_braking_soft_count': brakingSoftCount,
+      'p_braking_hard_count': brakingHardCount,
+      'p_braking_jerk_avg_ms3': brakingJerkAvgMs3,
+      'p_turns_count': turnsCount,
+      'p_turn_gyro_stddev_avg': turnGyroStddevAvg,
+      'p_total_stops': totalStops,
+      'p_stopped_seconds': stoppedSeconds,
+      'p_accel_then_brake_count': accelThenBrakeCount,
+      'p_gps_fix_hz': gpsFixHz,
+      'p_gyro_hz': gyroHz,
     });
 
     final Map<String, dynamic> row = res is List

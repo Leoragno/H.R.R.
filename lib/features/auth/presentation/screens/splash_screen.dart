@@ -37,7 +37,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -54,8 +54,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             SizedBox(
               width: 120,
               child: LinearProgressIndicator(
-                backgroundColor: AppColors.surfaceGlass,
-                valueColor: const AlwaysStoppedAnimation(AppColors.guidaCyan),
+                backgroundColor: AppColor.surface,
+                valueColor: const AlwaysStoppedAnimation(AppColor.cyan),
                 minHeight: 3,
                 borderRadius: BorderRadius.circular(4),
               ),

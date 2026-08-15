@@ -11,12 +11,11 @@ abstract class RadarRepository {
   /// categoria POLICE). Stesse garanzie di [veloxApi].
   Future<List<RadarEvent>> pattugliaApi(RadarBounds bounds);
 
-  /// Segnalazioni della crew [crewId] (Velox e Pattuglia insieme), già
-  /// filtrate a quelle non scadute (90 minuti) e aggiornate in realtime.
-  Stream<List<RadarEvent>> crewReports(String crewId);
+  /// Segnalazioni della community (Velox e Pattuglia insieme), già filtrate
+  /// a quelle non scadute (90 minuti) e aggiornate in realtime.
+  Stream<List<RadarEvent>> communityReports();
 
-  Future<void> submitCrewReport({
-    required String crewId,
+  Future<void> submitCommunityReport({
     required String reporterId,
     required RadarCategory category,
     required double lat,

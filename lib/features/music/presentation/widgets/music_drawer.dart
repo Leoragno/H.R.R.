@@ -43,16 +43,16 @@ class MusicDrawer extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('IN RIPRODUZIONE',
-                          style: AppTheme.archivo(
+                          style: AppType.text(
                               fontSize: 11,
                               letterSpacing: 2,
-                              color: AppColors.guidaTextSecondary)),
+                              color: AppColor.inkMuted)),
                       const SizedBox(height: 6),
                       Text('HRR Radio',
-                          style: AppTheme.archivo(
+                          style: AppType.text(
                               fontWeight: FontWeight.w900,
                               fontSize: 22,
-                              color: AppColors.textPrimary)),
+                              color: AppColor.ink)),
                     ],
                   ),
                   Material(
@@ -65,7 +65,7 @@ class MusicDrawer extends ConsumerWidget {
                         width: 42,
                         height: 42,
                         child: Icon(Icons.close_rounded,
-                            color: AppColors.guidaTextSecondary, size: 20),
+                            color: AppColor.inkMuted, size: 20),
                       ),
                     ),
                   ),
@@ -103,17 +103,17 @@ class MusicDrawer extends ConsumerWidget {
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTheme.archivo(
+                    style: AppType.text(
                         fontWeight: FontWeight.w800,
                         fontSize: 21,
-                        color: AppColors.textPrimary),
+                        color: AppColor.ink),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     track.artist,
                     textAlign: TextAlign.center,
-                    style: AppTheme.archivo(
-                        fontSize: 15, color: AppColors.guidaTextSecondary),
+                    style: AppType.text(
+                        fontSize: 15, color: AppColor.inkMuted),
                   ),
                   const SizedBox(height: 14),
                   StreamBuilder<Duration>(
@@ -135,7 +135,7 @@ class MusicDrawer extends ConsumerWidget {
                               minHeight: 5,
                               backgroundColor: const Color(0xFF1E1E1E),
                               valueColor: const AlwaysStoppedAnimation(
-                                  AppColors.guidaCyan),
+                                  AppColor.cyan),
                             ),
                           ),
                           const SizedBox(height: 7),
@@ -143,13 +143,13 @@ class MusicDrawer extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(_clock(position),
-                                  style: AppTheme.archivo(
+                                  style: AppType.text(
                                       fontSize: 12,
-                                      color: AppColors.guidaTextSecondary)),
+                                      color: AppColor.inkMuted)),
                               Text(_clock(duration),
-                                  style: AppTheme.archivo(
+                                  style: AppType.text(
                                       fontSize: 12,
-                                      color: AppColors.guidaTextSecondary)),
+                                      color: AppColor.inkMuted)),
                             ],
                           ),
                         ],
@@ -163,7 +163,7 @@ class MusicDrawer extends ConsumerWidget {
                       IconButton(
                         onPressed: controller.previous,
                         icon: const Icon(Icons.skip_previous_rounded,
-                            color: AppColors.textPrimary, size: 30),
+                            color: AppColor.ink, size: 30),
                       ),
                       const SizedBox(width: 12),
                       StreamBuilder<PlayerState>(
@@ -171,7 +171,7 @@ class MusicDrawer extends ConsumerWidget {
                         builder: (context, snapshot) {
                           final playing = snapshot.data?.playing ?? false;
                           return Material(
-                            color: AppColors.guidaCyan,
+                            color: AppColor.cyan,
                             shape: const CircleBorder(),
                             child: InkWell(
                               customBorder: const CircleBorder(),
@@ -183,7 +183,7 @@ class MusicDrawer extends ConsumerWidget {
                                   playing
                                       ? Icons.pause_rounded
                                       : Icons.play_arrow_rounded,
-                                  color: AppColors.guidaOnAccent,
+                                  color: AppColor.void_,
                                   size: 32,
                                 ),
                               ),
@@ -195,7 +195,7 @@ class MusicDrawer extends ConsumerWidget {
                       IconButton(
                         onPressed: controller.next,
                         icon: const Icon(Icons.skip_next_rounded,
-                            color: AppColors.textPrimary, size: 30),
+                            color: AppColor.ink, size: 30),
                       ),
                     ],
                   ),
@@ -218,7 +218,7 @@ class MusicDrawer extends ConsumerWidget {
                   final isCurrent = i == trackIndex;
                   return Material(
                     color: isCurrent
-                        ? AppColors.guidaCyan.withValues(alpha: 0.1)
+                        ? AppColor.cyan.withValues(alpha: 0.1)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
@@ -248,29 +248,29 @@ class MusicDrawer extends ConsumerWidget {
                                   Text(t.title,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: AppTheme.archivo(
+                                      style: AppType.text(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 15,
                                           color: isCurrent
-                                              ? AppColors.guidaCyan
-                                              : AppColors.textPrimary)),
+                                              ? AppColor.cyan
+                                              : AppColor.ink)),
                                   const SizedBox(height: 2),
                                   Text(t.artist,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: AppTheme.archivo(
+                                      style: AppType.text(
                                           fontSize: 12.5,
-                                          color: AppColors.guidaTextSecondary)),
+                                          color: AppColor.inkMuted)),
                                 ],
                               ),
                             ),
                             if (isCurrent)
                               Text('ORA',
-                                  style: AppTheme.archivo(
+                                  style: AppType.text(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 11,
                                       letterSpacing: 1,
-                                      color: AppColors.guidaCyan)),
+                                      color: AppColor.cyan)),
                           ],
                         ),
                       ),
@@ -292,9 +292,9 @@ class _QueueLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text('IN CODA',
-        style: AppTheme.archivo(
+        style: AppType.text(
             fontSize: 11,
             letterSpacing: 2,
-            color: AppColors.guidaTextSecondary));
+            color: AppColor.inkMuted));
   }
 }

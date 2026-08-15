@@ -70,20 +70,20 @@ class _CarSpottingFeedScreenState extends ConsumerState<CarSpottingFeedScreen> {
     final myXp = ref.watch(myProfileProvider).valueOrNull?.xp ?? 0;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg2,
+      backgroundColor: AppColor.base,
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.guidaCyan,
-        foregroundColor: AppColors.guidaOnAccent,
+        backgroundColor: AppColor.cyan,
+        foregroundColor: AppColor.void_,
         onPressed: () => context.push(AppRoutes.createSpot),
         child: const Icon(Icons.add_a_photo_rounded),
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          color: AppColors.guidaCyan,
+          color: AppColor.cyan,
           onRefresh: () async => ref.invalidate(spotsFeedProvider),
           child: feed.when(
             loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.guidaCyan)),
+                child: CircularProgressIndicator(color: AppColor.cyan)),
             error: (err, st) => ListView(
               children: [
                 const SizedBox(height: 80),
@@ -193,7 +193,7 @@ class _Header extends StatelessWidget {
                   ).createShader(b),
                   child: Text(
                     'CAR SPOTTING',
-                    style: AppTheme.chakraPetch(
+                    style: AppType.display(
                         fontSize: 26, letterSpacing: 1, color: Colors.white),
                   ),
                 ),
@@ -211,18 +211,18 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text('Trova. Fotografa. Valuta.',
-              style: AppTheme.archivo(
-                  fontSize: 15, color: AppColors.guidaTextSecondary)),
+              style: AppType.text(
+                  fontSize: 15, color: AppColor.inkMuted)),
           if (searchOpen) ...[
             const SizedBox(height: 12),
             TextField(
               controller: searchCtrl,
               onChanged: (_) => onSearchChanged(),
-              style: AppTheme.archivo(color: AppColors.textPrimary),
+              style: AppType.text(color: AppColor.ink),
               decoration: InputDecoration(
                 hintText: 'Marca, modello, città…',
                 hintStyle:
-                    AppTheme.archivo(color: AppColors.guidaTextSecondary),
+                    AppType.text(color: AppColor.inkMuted),
                 filled: true,
                 fillColor: const Color(0xE50C1120),
                 border: OutlineInputBorder(
@@ -313,7 +313,7 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected
-          ? AppColors.guidaBlue.withValues(alpha: 0.24)
+          ? AppColor.cyan.withValues(alpha: 0.24)
           : const Color(0xCC0C1422),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
@@ -325,18 +325,18 @@ class _FilterChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: selected
-                  ? AppColors.guidaCyan.withValues(alpha: 0.5)
+                  ? AppColor.cyan.withValues(alpha: 0.5)
                   : const Color(0x2EA0AAFF),
             ),
           ),
           child: Text(
             label,
-            style: AppTheme.archivo(
+            style: AppType.text(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: selected
                   ? const Color(0xFF9DD4FF)
-                  : AppColors.guidaTextSecondary,
+                  : AppColor.inkMuted,
             ),
           ),
         ),
@@ -380,7 +380,7 @@ class _StatCard extends StatelessWidget {
             child: Center(
               child: badgeText != null
                   ? Text(badgeText!,
-                      style: AppTheme.archivo(
+                      style: AppType.text(
                           fontWeight: FontWeight.w900,
                           fontSize: 12,
                           color: const Color(0xFF04121F)))
@@ -393,15 +393,15 @@ class _StatCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(value,
-                    style: AppTheme.archivo(
+                    style: AppType.text(
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
-                        color: AppColors.textPrimary)),
+                        color: AppColor.ink)),
                 Text(label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTheme.archivo(
-                        fontSize: 11, color: AppColors.guidaTextSecondary)),
+                    style: AppType.text(
+                        fontSize: 11, color: AppColor.inkMuted)),
               ],
             ),
           ),

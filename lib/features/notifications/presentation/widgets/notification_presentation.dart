@@ -34,7 +34,7 @@ T _pick<T>(AppNotification n, String salt, List<T> options) =>
 final Map<String, NotificationPresentation> _byType = {
   'mission_complete': NotificationPresentation(
     icon: Icons.emoji_events_rounded,
-    color: AppColors.guidaCyan,
+    color: AppColor.cyan,
     title: (n) => _pick(n, 'title', const [
       'Missione completata! 🎯',
       'Obiettivo raggiunto! ✅',
@@ -48,7 +48,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'mission_almost_done': NotificationPresentation(
     icon: Icons.local_fire_department_rounded,
-    color: AppColors.neonAmber,
+    color: AppColor.amber,
     title: (n) => _pick(n, 'title', const [
       'Ci sei quasi! 🔥',
       'Manca un soffio! 💨',
@@ -59,7 +59,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'mission_claimed': NotificationPresentation(
     icon: Icons.card_giftcard_rounded,
-    color: AppColors.guidaMagenta,
+    color: AppColor.magenta,
     title: (n) => _pick(n, 'title', const [
       'Premio riscosso! 🎁',
       'Bottino incassato! 💰',
@@ -83,7 +83,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'like': NotificationPresentation(
     icon: Icons.favorite_rounded,
-    color: AppColors.neonMagenta,
+    color: AppColor.magenta,
     title: (n) => _pick(n, 'title', const [
       'Piaci alla folla! ❤️',
       'Successo! 😍',
@@ -92,7 +92,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'comment': NotificationPresentation(
     icon: Icons.chat_bubble_rounded,
-    color: AppColors.guidaBlue,
+    color: AppMascot.nitro,
     title: (n) => _pick(n, 'title', const [
       'Nuovo commento! 💬',
       'Si commenta! 🗣️',
@@ -103,27 +103,9 @@ final Map<String, NotificationPresentation> _byType = {
       '${n.body ?? "Qualcuno ha commentato"} — rispondi prima che si offenda! 😄',
     ]),
   ),
-  'friend_request': NotificationPresentation(
-    icon: Icons.person_add_rounded,
-    color: AppColors.guidaCyan,
-    title: (n) => _pick(n, 'title', const [
-      'Nuova richiesta di amicizia 🤝',
-      'Qualcuno vuole unirsi! 👋',
-    ]),
-    body: (n) => n.body ?? 'Qualcuno vuole unirsi al tuo giro.',
-  ),
-  'friend_accepted': NotificationPresentation(
-    icon: Icons.people_alt_rounded,
-    color: AppColors.neonGreen,
-    title: (n) => _pick(n, 'title', const [
-      'Nuovo amico! 🤝',
-      'Richiesta accettata! ✅',
-    ]),
-    body: (n) => n.body ?? 'Avete iniziato a seguirvi a vicenda.',
-  ),
   'event': NotificationPresentation(
     icon: Icons.event_rounded,
-    color: AppColors.guidaPurple,
+    color: AppMascot.volt,
     title: (n) => _pick(n, 'title', const [
       'Si muove qualcosa! 📅',
       'Occhio al calendario! 🗓️',
@@ -132,7 +114,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'rating': NotificationPresentation(
     icon: Icons.star_rounded,
-    color: AppColors.neonAmber,
+    color: AppColor.amber,
     title: (n) => _pick(n, 'title', const [
       'Nuovo voto! ⭐',
       'Sei stato votato! 🌟',
@@ -140,61 +122,9 @@ final Map<String, NotificationPresentation> _byType = {
     ]),
     body: (n) => n.body ?? 'Qualcuno ha votato il tuo spot.',
   ),
-  'crew_member_joined': NotificationPresentation(
-    icon: Icons.group_add_rounded,
-    color: AppColors.guidaCyan,
-    title: (n) => _pick(n, 'title', const [
-      'Nuovo membro! 🚗',
-      'La squadra si allarga! 👥',
-      'Rinforzi in arrivo! 🏎️',
-    ]),
-    body: (n) => n.body ?? 'Un nuovo pilota si è unito alla crew.',
-  ),
-  'crew_role_changed': NotificationPresentation(
-    icon: Icons.military_tech_rounded,
-    color: AppColors.neonAmber,
-    title: (n) => n.title,
-    body: (n) => n.body ?? 'Il tuo ruolo in crew è cambiato.',
-  ),
-  'crew_member_left': NotificationPresentation(
-    icon: Icons.waving_hand_rounded,
-    color: AppColors.guidaTextSecondary,
-    title: (n) => _pick(n, 'title', const [
-      'Qualcuno ha lasciato la crew 👋',
-      'Un pilota se ne va 🚪',
-    ]),
-    body: (n) => n.body ?? 'Un membro ha lasciato la crew.',
-  ),
-  'crew_kicked': NotificationPresentation(
-    icon: Icons.person_remove_rounded,
-    color: AppColors.neonRed,
-    title: (n) => _pick(n, 'title', const [
-      'Espulso dalla crew',
-      'Fuori dal giro',
-    ]),
-    body: (n) => n.body ?? 'Sei stato rimosso dalla crew.',
-  ),
-  'crew_disband_vote_started': NotificationPresentation(
-    icon: Icons.warning_amber_rounded,
-    color: AppColors.neonAmber,
-    title: (n) => _pick(n, 'title', const [
-      'Voto di scioglimento in corso ⚠️',
-      'La crew è a un bivio 🚧',
-    ]),
-    body: (n) => n.body ?? 'Un membro vuole sciogliere la crew.',
-  ),
-  'crew_disbanded': NotificationPresentation(
-    icon: Icons.heart_broken_rounded,
-    color: AppColors.neonRed,
-    title: (n) => _pick(n, 'title', const [
-      'Crew sciolta 💔',
-      'Fine di un\'era 🏁',
-    ]),
-    body: (n) => n.body ?? 'La crew è stata sciolta.',
-  ),
   'territory_stolen': NotificationPresentation(
     icon: Icons.flag_rounded,
-    color: AppColors.neonRed,
+    color: AppColor.danger,
     title: (n) => _pick(n, 'title', const [
       'Territorio conquistato! 🏴',
       'Ti hanno invaso! 🚩',
@@ -204,7 +134,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'level_up': NotificationPresentation(
     icon: Icons.trending_up_rounded,
-    color: AppColors.neonGreen,
+    color: AppColor.success,
     title: (n) => _pick(n, 'title', const [
       'Livello superiore! 🚀',
       'Sei salito di livello! 📈',
@@ -214,7 +144,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'speed_record': NotificationPresentation(
     icon: Icons.speed_rounded,
-    color: AppColors.neonCyan,
+    color: AppColor.cyan,
     title: (n) => _pick(n, 'title', const [
       'Nuovo record di velocità! 🏎️',
       'Velocità mai vista! 💨',
@@ -224,7 +154,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'leaderboard_overtaken': NotificationPresentation(
     icon: Icons.trending_down_rounded,
-    color: AppColors.neonRed,
+    color: AppColor.danger,
     title: (n) => _pick(n, 'title', const [
       'Sorpasso subito! 📉',
       'Ti hanno superato! 😤',
@@ -233,7 +163,7 @@ final Map<String, NotificationPresentation> _byType = {
   ),
   'distance_record': NotificationPresentation(
     icon: Icons.map_rounded,
-    color: AppColors.neonPurple,
+    color: AppColor.magenta,
     title: (n) => _pick(n, 'title', const [
       'Nuovo record di distanza! 🛣️',
       'Chilometri da leggenda! 🗺️',
@@ -245,7 +175,7 @@ final Map<String, NotificationPresentation> _byType = {
 
 final _fallback = NotificationPresentation(
   icon: Icons.notifications_rounded,
-  color: AppColors.guidaTextSecondary,
+  color: AppColor.inkMuted,
   title: (n) => n.title,
   body: (n) => n.body ?? '',
 );

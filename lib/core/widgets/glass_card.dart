@@ -2,9 +2,14 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
+
 /// Card "vetro" ricorrente nel design "Guida": sfondo scuro semi-trasparente
 /// a gradiente, bordo hairline chiaro, ombra morbida e blur di sfondo.
-/// Vedi componente_guida_driving_handoff/ per i valori originali.
+/// Trattamento invariato dal design originale (componente_guida_driving_
+/// handoff/), solo tokenizzato — la revisione verso `AppGlow.card` piatto
+/// di DESIGN.md è una scelta per-schermata, non di questo widget condiviso.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -17,10 +22,10 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
-    this.radius = 18,
+    this.padding = const EdgeInsets.all(AppSpace.md),
+    this.radius = AppRadius.card,
     this.gradientColors,
-    this.borderColor = const Color(0x29A0C8FF), // rgba(120,150,255,0.16)
+    this.borderColor = AppColor.line,
     this.onTap,
     this.blur = true,
   });
@@ -28,7 +33,10 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = gradientColors ??
-        const [Color(0xE6101624), Color(0xF0080C14)]; // ~0.9 / 0.94 alpha
+        [
+          AppColor.surface.withValues(alpha: 0.90),
+          AppColor.void_.withValues(alpha: 0.94),
+        ];
 
     final content = Container(
       padding: padding,
@@ -40,11 +48,11 @@ class GlassCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: borderColor, width: 1),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x80000000),
+            color: AppColor.void_.withValues(alpha: 0.5),
             blurRadius: 34,
-            offset: Offset(0, 16),
+            offset: const Offset(0, 16),
           ),
         ],
       ),

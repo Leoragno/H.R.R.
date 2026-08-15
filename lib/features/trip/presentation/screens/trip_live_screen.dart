@@ -16,8 +16,7 @@ import '../../../../core/widgets/neon_cta_button.dart';
 import '../../../../core/widgets/recenter_button.dart';
 import '../../../radar/domain/entities/radar_event.dart';
 import '../../../radar/presentation/providers/radar_proximity_provider.dart';
-import '../providers/crew_live_map_provider.dart';
-import '../providers/friend_live_map_provider.dart';
+import '../providers/live_map_provider.dart';
 import '../providers/trip_live_provider.dart';
 import '../utils/route_smoothing.dart';
 import '../widgets/speedometer_gauge.dart';
@@ -81,7 +80,7 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Impossibile salvare il viaggio. Riprova.'),
-          backgroundColor: AppColors.danger,
+          backgroundColor: AppColor.danger,
         ),
       );
     }
@@ -102,7 +101,7 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Annulla viaggio',
-                style: TextStyle(color: AppColors.danger)),
+                style: TextStyle(color: AppColor.danger)),
           ),
         ],
       ),
@@ -140,7 +139,7 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
               ph.openAppSettings();
             },
             child: const Text('Apri impostazioni',
-                style: TextStyle(color: AppColors.guidaCyan)),
+                style: TextStyle(color: AppColor.cyan)),
           ),
         ],
       ),
@@ -175,7 +174,7 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: Stack(
         children: [
           SafeArea(
@@ -194,20 +193,20 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
-                          color: AppColors.danger.withValues(alpha: 0.15),
+                          color: AppColor.danger.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.danger),
+                          border: Border.all(color: AppColor.danger),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.fiber_manual_record,
-                                size: 10, color: AppColors.danger),
+                                size: 10, color: AppColor.danger),
                             const SizedBox(width: 6),
                             Text(
                               tracking ? 'LIVE' : 'AVVIO...',
-                              style: AppTheme.archivo(
-                                color: AppColors.danger,
+                              style: AppType.text(
+                                color: AppColor.danger,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
                               ),
@@ -239,12 +238,12 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
                           children: [
                             Icon(Icons.gps_off_rounded,
                                 size: 48,
-                                color: AppColors.danger.withValues(alpha: 0.7)),
+                                color: AppColor.danger.withValues(alpha: 0.7)),
                             const SizedBox(height: 12),
                             Text(
                               state.errorMessage ?? 'Errore GPS',
-                              style: AppTheme.archivo(
-                                  color: AppColors.guidaTextSecondary),
+                              style: AppType.text(
+                                  color: AppColor.inkMuted),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 20),
@@ -298,12 +297,12 @@ class _RadarAlertBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isVelox = event.category == RadarCategory.velox;
-    final isCrew = event.source == RadarSource.crew;
-    final color = isCrew ? AppColors.guidaCyan : const Color(0xFFFF8A1F);
-    final label = switch ((isVelox, isCrew)) {
-      (true, true) => 'Velox segnalato dalla crew nelle vicinanze',
+    final isCommunity = event.source == RadarSource.community;
+    final color = isCommunity ? AppColor.cyan : const Color(0xFFFF8A1F);
+    final label = switch ((isVelox, isCommunity)) {
+      (true, true) => 'Velox segnalato dalla community nelle vicinanze',
       (true, false) => 'Autovelox nelle vicinanze',
-      (false, true) => 'Pattuglia segnalata dalla crew nelle vicinanze',
+      (false, true) => 'Pattuglia segnalata dalla community nelle vicinanze',
       (false, false) => 'Pattuglia nelle vicinanze',
     };
 
@@ -336,10 +335,10 @@ class _RadarAlertBanner extends StatelessWidget {
               Flexible(
                 child: Text(
                   label,
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: AppColors.textPrimary),
+                      color: AppColor.ink),
                 ),
               ),
             ],
@@ -426,11 +425,11 @@ class _MapViewState extends ConsumerState<_MapView> {
   // fix buono.
   LatLng? _cameraCenter;
 
-  // Marker + percorso degli altri membri della crew che stanno guidando ora
-  // (vedi CrewLiveMapController), tenuti per profileId così un aggiornamento
-  // di posizione fa update invece di add/remove ad ogni fix.
-  final Map<String, Line> _crewLines = {};
-  final Map<String, Symbol> _crewSymbols = {};
+  // Marker + percorso degli altri utenti che stanno guidando ora (vedi
+  // LiveMapController), tenuti per profileId così un aggiornamento di
+  // posizione fa update invece di add/remove ad ogni fix.
+  final Map<String, Line> _liveLines = {};
+  final Map<String, Symbol> _liveSymbols = {};
 
   @override
   void initState() {
@@ -533,7 +532,7 @@ class _MapViewState extends ConsumerState<_MapView> {
         await controller.updateCircle(existing, options);
       }
     } catch (_) {
-      // Vedi commento in _syncCrewDrivers.
+      // Vedi commento in _syncLiveDrivers.
     }
   }
 
@@ -558,25 +557,26 @@ class _MapViewState extends ConsumerState<_MapView> {
   Future<void> _onStyleLoaded() async {
     await _updateRouteLine();
     await _updateMeMarker();
-    await _syncCrewDrivers(_mergedDrivers());
+    await _syncLiveDrivers(ref.read(liveMapControllerProvider));
   }
 
-  /// Allinea marker+percorso degli altri driver della crew allo stato del
-  /// canale realtime: aggiunge chi ha appena iniziato a guidare, aggiorna
-  /// posizione/percorso di chi è già sulla mappa, rimuove chi ha smesso.
-  Future<void> _syncCrewDrivers(Map<String, CrewLiveDriver> drivers) async {
+  /// Allinea marker+percorso degli altri driver allo stato del canale
+  /// realtime condiviso: aggiunge chi ha appena iniziato a guidare,
+  /// aggiorna posizione/percorso di chi è già sulla mappa, rimuove chi ha
+  /// smesso.
+  Future<void> _syncLiveDrivers(Map<String, LiveDriver> drivers) async {
     final controller = _controller;
     if (controller == null) return;
 
     try {
-      for (final profileId in _crewSymbols.keys.toList()) {
+      for (final profileId in _liveSymbols.keys.toList()) {
         if (!drivers.containsKey(profileId)) {
-          await controller.removeSymbol(_crewSymbols.remove(profileId)!);
+          await controller.removeSymbol(_liveSymbols.remove(profileId)!);
         }
       }
-      for (final profileId in _crewLines.keys.toList()) {
+      for (final profileId in _liveLines.keys.toList()) {
         if (!drivers.containsKey(profileId)) {
-          await controller.removeLine(_crewLines.remove(profileId)!);
+          await controller.removeLine(_liveLines.remove(profileId)!);
         }
       }
 
@@ -590,9 +590,9 @@ class _MapViewState extends ConsumerState<_MapView> {
           textSize: 13,
           textOffset: const Offset(0, 1.4),
         );
-        final symbol = _crewSymbols[driver.profileId];
+        final symbol = _liveSymbols[driver.profileId];
         if (symbol == null) {
-          _crewSymbols[driver.profileId] =
+          _liveSymbols[driver.profileId] =
               await controller.addSymbol(symbolOptions);
         } else {
           await controller.updateSymbol(symbol, symbolOptions);
@@ -608,9 +608,9 @@ class _MapViewState extends ConsumerState<_MapView> {
           lineWidth: 3,
           lineOpacity: 0.75,
         );
-        final line = _crewLines[driver.profileId];
+        final line = _liveLines[driver.profileId];
         if (line == null) {
-          _crewLines[driver.profileId] = await controller.addLine(lineOptions);
+          _liveLines[driver.profileId] = await controller.addLine(lineOptions);
         } else {
           await controller.updateLine(line, lineOptions);
         }
@@ -618,31 +618,16 @@ class _MapViewState extends ConsumerState<_MapView> {
     } catch (_) {
       // Il supporto Symbol/Line di maplibre_gl non è uniforme su tutte le
       // piattaforme (in particolare il target web): niente marker/percorso
-      // della crew piuttosto che un'eccezione che destabilizza il render
-      // tree della mappa — il resto della Guida live resta comunque
+      // degli altri driver piuttosto che un'eccezione che destabilizza il
+      // render tree della mappa — il resto della Guida live resta comunque
       // usabile (stesso trattamento di home_map_background.dart).
     }
   }
 
-  // Crew e amici sono due provider/canali Realtime distinti (vedi
-  // friend_live_map_provider.dart) ma condividono la stessa forma
-  // [CrewLiveDriver] e lo stesso layer marker/percorso sulla mappa: unirli
-  // qui in un'unica mappa per profileId (un utente può comparire da
-  // entrambe le fonti se è sia in crew che amico — non importa quale
-  // "vince", stessa posizione) evita di duplicare _syncCrewDrivers per
-  // gli amici.
-  Map<String, CrewLiveDriver> _mergedDrivers() => {
-        ...ref.read(crewLiveMapControllerProvider),
-        ...ref.read(friendLiveMapControllerProvider),
-      };
-
   @override
   Widget build(BuildContext context) {
-    ref.listen(crewLiveMapControllerProvider, (_, __) {
-      _syncCrewDrivers(_mergedDrivers());
-    });
-    ref.listen(friendLiveMapControllerProvider, (_, __) {
-      _syncCrewDrivers(_mergedDrivers());
+    ref.listen(liveMapControllerProvider, (_, drivers) {
+      _syncLiveDrivers(drivers);
     });
 
     final center = _cameraCenter;
@@ -650,7 +635,7 @@ class _MapViewState extends ConsumerState<_MapView> {
       // Nessuna posizione risolta ancora: meglio uno spinner che aprire la
       // mappa su un centro sbagliato/arbitrario.
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.guidaCyan),
+        child: CircularProgressIndicator(color: AppColor.cyan),
       );
     }
 
@@ -697,25 +682,25 @@ class _MapViewState extends ConsumerState<_MapView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('VELOCITÀ',
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontSize: 12,
                             letterSpacing: 1.4,
-                            color: AppColors.guidaTextSecondary)),
+                            color: AppColor.inkMuted)),
                     const SizedBox(height: 6),
                     Text.rich(
                       TextSpan(
                         text: widget.state.currentSpeedKmh.toStringAsFixed(0),
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontWeight: FontWeight.w900,
                             fontSize: 38,
-                            color: AppColors.textPrimary),
+                            color: AppColor.ink),
                         children: [
                           TextSpan(
                             text: ' km/h',
-                            style: AppTheme.archivo(
+                            style: AppType.text(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
-                                color: AppColors.guidaCyan),
+                                color: AppColor.cyan),
                           ),
                         ],
                       ),
@@ -726,18 +711,18 @@ class _MapViewState extends ConsumerState<_MapView> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text('DISTANZA · DURATA',
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontSize: 12,
                             letterSpacing: 1.4,
-                            color: AppColors.guidaTextSecondary)),
+                            color: AppColor.inkMuted)),
                     const SizedBox(height: 6),
                     Text(
                       '${widget.state.distanceKm.toStringAsFixed(1)} km · '
                       '${widget.formatDuration(widget.state.elapsed)}',
-                      style: AppTheme.archivo(
+                      style: AppType.text(
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
-                          color: AppColors.textPrimary),
+                          color: AppColor.ink),
                     ),
                   ],
                 ),
@@ -768,22 +753,22 @@ class _StatCell extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: AppTheme.archivo(
-                  fontSize: 14, color: AppColors.guidaTextSecondary)),
+              style: AppType.text(
+                  fontSize: 14, color: AppColor.inkMuted)),
           const SizedBox(height: 2),
           Text.rich(
             TextSpan(
               text: value,
-              style: AppTheme.archivo(
+              style: AppType.text(
                   fontWeight: FontWeight.w700,
                   fontSize: 26,
-                  color: AppColors.textPrimary),
+                  color: AppColor.ink),
               children: [
                 if (unit.isNotEmpty)
                   TextSpan(
                     text: ' $unit',
-                    style: AppTheme.archivo(
-                        fontSize: 15, color: AppColors.guidaCyan),
+                    style: AppType.text(
+                        fontSize: 15, color: AppColor.cyan),
                   ),
               ],
             ),
@@ -810,7 +795,7 @@ class _RoundIconButton extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: Icon(icon, color: AppColors.guidaCyan, size: 22),
+          child: Icon(icon, color: AppColor.cyan, size: 22),
         ),
       ),
     );

@@ -8,11 +8,11 @@ import '../../domain/entities/achievement.dart';
 import '../providers/achievement_provider.dart';
 
 const _rarityColors = <AchievementRarity, Color>{
-  AchievementRarity.common: AppColors.rarityCommon,
-  AchievementRarity.uncommon: AppColors.rarityUncommon,
-  AchievementRarity.rare: AppColors.rarityRare,
-  AchievementRarity.epic: AppColors.rarityEpic,
-  AchievementRarity.legendary: AppColors.rarityLegendary,
+  AchievementRarity.common: AppColor.rarityCommon,
+  AchievementRarity.uncommon: AppColor.rarityUncommon,
+  AchievementRarity.rare: AppColor.rarityRare,
+  AchievementRarity.epic: AppColor.rarityEpic,
+  AchievementRarity.legendary: AppColor.rarityLegendary,
 };
 
 /// Lista Achievement del profilo — permanenti, assegnati automaticamente
@@ -25,20 +25,20 @@ class AchievementsScreen extends ConsumerWidget {
     final achievementsAsync = ref.watch(myAchievementsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColor.base,
       appBar: AppBar(title: const Text('Achievement')),
       body: achievementsAsync.when(
         loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.neonCyan)),
+            child: CircularProgressIndicator(color: AppColor.cyan)),
         error: (e, _) => Center(
           child: Text('Errore caricamento achievement',
-              style: TextStyle(color: AppColors.danger)),
+              style: TextStyle(color: AppColor.danger)),
         ),
         data: (achievements) {
           if (achievements.isEmpty) {
             return const Center(
               child: Text('Nessun achievement disponibile',
-                  style: TextStyle(color: AppColors.textSecondary)),
+                  style: TextStyle(color: AppColor.inkMuted)),
             );
           }
           final earnedCount = achievements.where((a) => a.isEarned).length;
@@ -49,8 +49,8 @@ class AchievementsScreen extends ConsumerWidget {
                 sliver: SliverToBoxAdapter(
                   child: Text(
                     'SBLOCCATI $earnedCount / ${achievements.length}',
-                    style: AppTheme.orbitron(
-                        fontSize: 13, color: AppColors.neonCyan),
+                    style: AppType.display(
+                        fontSize: 13, color: AppColor.cyan),
                   ),
                 ),
               ),
@@ -79,16 +79,16 @@ class _AchievementTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final earned = achievement.isEarned;
     final color = earned
-        ? (_rarityColors[achievement.rarity] ?? AppColors.neonCyan)
-        : AppColors.textDisabled;
+        ? (_rarityColors[achievement.rarity] ?? AppColor.cyan)
+        : AppColor.inkFaint;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: earned ? color.withOpacity(0.1) : AppColors.surfaceGlass,
+        color: earned ? color.withValues(alpha: 0.1) : AppColor.surface,
         border: Border.all(
-            color: earned ? color.withOpacity(0.4) : AppColors.border),
+            color: earned ? color.withValues(alpha: 0.4) : AppColor.line),
       ),
       child: Row(
         children: [
@@ -97,7 +97,7 @@ class _AchievementTile extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
-              color: color.withOpacity(0.16),
+              color: color.withValues(alpha: 0.16),
             ),
             child: Icon(
                 hrrIconByKey[achievement.icon] ?? Icons.emoji_events_rounded,
@@ -111,16 +111,16 @@ class _AchievementTile extends StatelessWidget {
               children: [
                 Text(
                   achievement.name,
-                  style: AppTheme.orbitron(
+                  style: AppType.display(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: earned ? Colors.white : AppColors.textDisabled,
+                    color: earned ? Colors.white : AppColor.inkFaint,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(achievement.description,
                     style: const TextStyle(
-                        fontSize: 12.5, color: AppColors.textSecondary)),
+                        fontSize: 12.5, color: AppColor.inkMuted)),
                 if (earned) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -134,7 +134,7 @@ class _AchievementTile extends StatelessWidget {
           ),
           if (!earned)
             const Icon(Icons.lock_rounded,
-                size: 18, color: AppColors.textDisabled),
+                size: 18, color: AppColor.inkFaint),
         ],
       ),
     );

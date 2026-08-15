@@ -61,8 +61,9 @@ class _TripRankCardState extends State<TripRankCard> {
   Widget build(BuildContext context) {
     final trip = widget.trip;
     return Container(
-      color: Colors.black.withValues(alpha: 0.86),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
+      color: AppColor.void_.withValues(alpha: 0.86),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
       child: Column(
         children: [
           Row(
@@ -74,7 +75,7 @@ class _TripRankCardState extends State<TripRankCard> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Expanded(
             child: Container(
               width: double.infinity,
@@ -83,25 +84,25 @@ class _TripRankCardState extends State<TripRankCard> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF16211F)
+                    AppColor.surfaceHigh
                         .withValues(alpha: _transparent ? 0.35 : 1),
-                    const Color(0xFF0C1211)
-                        .withValues(alpha: _transparent ? 0.35 : 1),
+                    AppColor.void_.withValues(alpha: _transparent ? 0.35 : 1),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(26),
+                borderRadius: BorderRadius.circular(AppRadius.card),
               ),
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 26),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpace.md, AppSpace.lg, AppSpace.md, AppSpace.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     'TripRank',
                     textAlign: TextAlign.center,
-                    style: AppTheme.archivo(
+                    style: AppType.text(
                       fontWeight: FontWeight.w800,
                       fontSize: 34,
-                      color: const Color(0xFF9DD4FF),
+                      color: AppColor.cyan,
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -130,7 +131,7 @@ class _TripRankCardState extends State<TripRankCard> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -140,76 +141,71 @@ class _TripRankCardState extends State<TripRankCard> {
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeOut),
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 5),
+                    margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                     width: i == _page ? 42 : 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color:
-                          i == _page ? Colors.white : const Color(0xFF4A4A4A),
-                      borderRadius: BorderRadius.circular(999),
+                      color: i == _page ? AppColor.ink : AppColor.line,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('Trasparente',
-                  style: AppTheme.archivo(
-                      fontSize: 18, color: const Color(0xFFDCE7F4))),
-              const SizedBox(width: 14),
+                  style: AppType.text(fontSize: 18, color: AppColor.ink)),
+              const SizedBox(width: AppSpace.sm),
               GestureDetector(
                 onTap: () => setState(() => _transparent = !_transparent),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: AppMotion.fast,
                   width: 62,
                   height: 34,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: _transparent
-                        ? AppColors.guidaCyan
-                        : const Color(0xFF4A4A4A),
-                    borderRadius: BorderRadius.circular(999),
+                    color: _transparent ? AppColor.cyan : AppColor.line,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   alignment: _transparent
                       ? Alignment.centerRight
                       : Alignment.centerLeft,
-                  child: Container(
-                    width: 26,
-                    height: 26,
-                    decoration: const BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle),
+                  child: const DecoratedBox(
+                    decoration:
+                        BoxDecoration(color: AppColor.ink, shape: BoxShape.circle),
+                    child: SizedBox(width: 26, height: 26),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           Material(
-            color: const Color(0xFF2A3450),
-            borderRadius: BorderRadius.circular(16),
+            color: AppColor.surfaceHigh,
+            borderRadius: BorderRadius.circular(AppRadius.card),
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               onTap: () => ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                     content: Text(
                         'Condivisione non ancora disponibile in questa build')),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 18),
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.ios_share_rounded,
-                        color: Colors.white, size: 20),
-                    const SizedBox(width: 10),
+                        color: AppColor.ink, size: 20),
+                    const SizedBox(width: AppSpace.sm),
                     Text('Condividi',
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontWeight: FontWeight.w700,
                             fontSize: 20,
-                            color: Colors.white)),
+                            color: AppColor.ink)),
                   ],
                 ),
               ),
@@ -239,7 +235,7 @@ class _Page0 extends StatelessWidget {
     return SingleChildScrollView(
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.md),
           Row(
             children: [
               Expanded(
@@ -250,11 +246,11 @@ class _Page0 extends StatelessWidget {
                       formatDuration(trip.durationSeconds), 'TOTAL TIME')),
             ],
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: AppSpace.lg),
           _Stat('${trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—'} km/h',
               'TOP SPEED',
               big: true),
-          const SizedBox(height: 26),
+          const SizedBox(height: AppSpace.lg),
           if (speedSeries.length >= 2)
             SizedBox(
               height: 90,
@@ -263,10 +259,9 @@ class _Page0 extends StatelessWidget {
                 child: const SizedBox.expand(),
               ),
             ),
-          const SizedBox(height: 22),
+          const SizedBox(height: AppSpace.lg),
           Text(formatDateLong(trip.startedAt),
-              style: AppTheme.archivo(
-                  fontSize: 18, color: const Color(0xFFCFDCEC))),
+              style: AppType.text(fontSize: 18, color: AppColor.inkMuted)),
         ],
       ),
     );
@@ -284,34 +279,28 @@ class _Page1 extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           Container(
             height: 200,
             decoration: BoxDecoration(
-              color: const Color(0xFF0A0E18),
-              borderRadius: BorderRadius.circular(18),
+              color: AppColor.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
             ),
             clipBehavior: Clip.antiAlias,
             child: routePoints.length >= 2
                 ? RoutePreview(points: routePoints)
                 : const Center(
-                    child: Icon(Icons.map_rounded, color: Color(0xFF2A3450))),
+                    child: Icon(Icons.map_rounded, color: AppColor.line)),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: AppSpace.lg),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('SPEED DISTRIBUTION',
-                  style: AppTheme.archivo(
-                      fontSize: 15,
-                      letterSpacing: 1,
-                      color: const Color(0xFFC2D2E6))),
-              Text('KM/H',
-                  style: AppTheme.archivo(
-                      fontSize: 15, color: const Color(0xFFC2D2E6))),
+              Text('SPEED DISTRIBUTION', style: AppType.label),
+              Text('KM/H', style: AppType.label),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           SpeedDistributionBar(bands: speedBands),
         ],
       ),
@@ -349,7 +338,7 @@ class _Page2 extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Row(
             children: [
               Expanded(
@@ -362,39 +351,32 @@ class _Page2 extends StatelessWidget {
                       small: true)),
             ],
           ),
-          const SizedBox(height: 18),
-          Text('Detailed Report',
-              style:
-                  AppTheme.archivo(fontWeight: FontWeight.w800, fontSize: 22)),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.md),
+          Text('Detailed Report', style: AppType.title),
+          const SizedBox(height: AppSpace.sm),
           for (final r in rows)
             Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              margin: const EdgeInsets.only(bottom: AppSpace.sm),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.md, vertical: AppSpace.sm),
               decoration: BoxDecoration(
-                color: const Color(0xFF131A19),
-                borderRadius: BorderRadius.circular(14),
+                color: AppColor.surfaceHigh,
+                borderRadius: BorderRadius.circular(AppRadius.card),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(r.$1,
-                      style: AppTheme.archivo(
-                          fontSize: 16, color: const Color(0xFFC2D2E6))),
+                      style: AppType.text(fontSize: 16, color: AppColor.inkMuted)),
                   Text(r.$2,
-                      style: AppTheme.archivo(
-                          fontWeight: FontWeight.w700, fontSize: 18)),
+                      style: AppType.text(fontWeight: FontWeight.w700, fontSize: 18)),
                 ],
               ),
             ),
-          const SizedBox(height: 22),
+          const SizedBox(height: AppSpace.lg),
           if (speedSeries.length >= 2) ...[
-            Text('SPEED OVER TIME',
-                style: AppTheme.archivo(
-                    fontSize: 15,
-                    letterSpacing: 1,
-                    color: const Color(0xFFC2D2E6))),
-            const SizedBox(height: 10),
+            Text('SPEED OVER TIME', style: AppType.label),
+            const SizedBox(height: AppSpace.sm),
             SizedBox(
               height: 110,
               child: CustomPaint(
@@ -403,11 +385,10 @@ class _Page2 extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 22),
+          const SizedBox(height: AppSpace.lg),
           Text(formatDateLong(trip.startedAt),
               textAlign: TextAlign.center,
-              style: AppTheme.archivo(
-                  fontSize: 16, color: const Color(0xFFCFDCEC))),
+              style: AppType.text(fontSize: 16, color: AppColor.inkMuted)),
         ],
       ),
     );
@@ -426,16 +407,13 @@ class _Stat extends StatelessWidget {
     return Column(
       children: [
         Text(value,
-            style: AppTheme.archivo(
+            style: AppType.text(
                 fontWeight: FontWeight.w800,
                 fontSize: big ? 38 : (small ? 28 : 34),
-                color: Colors.white)),
-        const SizedBox(height: 8),
+                color: AppColor.ink)),
+        const SizedBox(height: AppSpace.sm),
         Text(label,
-            style: AppTheme.archivo(
-                fontSize: small ? 13 : 14,
-                letterSpacing: 1,
-                color: const Color(0xFF8FA3BD))),
+            style: AppType.label.copyWith(fontSize: small ? 13 : 14)),
       ],
     );
   }
@@ -472,13 +450,13 @@ class _SparkPainter extends CustomPainter {
         ..lineTo(0, size.height)
         ..close();
       canvas.drawPath(
-          area, Paint()..color = AppColors.guidaCyan.withValues(alpha: 0.22));
+          area, Paint()..color = AppColor.cyan.withValues(alpha: 0.22));
     }
 
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFF9DD4FF)
+        ..color = AppColor.cyan
         ..style = PaintingStyle.stroke
         ..strokeWidth = filled ? 2.4 : 3
         ..strokeCap = StrokeCap.round
@@ -498,7 +476,7 @@ class _RoundButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xF21C2640),
+      color: AppColor.surfaceHigh.withValues(alpha: 0.95),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -506,7 +484,7 @@ class _RoundButton extends StatelessWidget {
         child: SizedBox(
           width: 52,
           height: 52,
-          child: Icon(icon, color: Colors.white, size: 22),
+          child: Icon(icon, color: AppColor.ink, size: 22),
         ),
       ),
     );

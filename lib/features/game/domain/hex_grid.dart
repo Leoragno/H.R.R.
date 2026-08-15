@@ -22,15 +22,6 @@ class HexCoord extends Equatable {
   String toString() => key;
 }
 
-/// Offset locale in "unità esagono" (multiplo del raggio) rispetto a una
-/// cella di riferimento — usato dal painter per posizionare ogni cella
-/// sullo schermo senza dover ripassare da lat/lon.
-class HexOffset {
-  final double dx; // positivo verso est
-  final double dy; // positivo verso nord
-  const HexOffset(this.dx, this.dy);
-}
-
 /// Griglia geografica fissa: origine e dimensione esagono (~80 m da
 /// bordo a bordo) sono costanti condivise 1:1 col server
 /// (`supabase/migrations/0008_territory_game.sql`) — la stessa
@@ -80,12 +71,19 @@ class HexGrid {
 
   /// I 6 vertici di [cell] come coordinate geografiche (stesso orientamento
   /// "pointy-top", vertici a -30°+60k°, già usato in pixel dal vecchio
-  /// painter), leggermente ristretti (0.94×) per lasciare un filo di
-  /// margine visibile fra celle adiacenti sulla mappa reale.
+  /// painter), leggermente ristretti (0.92×) per un filo di margine fra
+  /// celle adiacenti senza spezzare la continuità visiva di un territorio:
+  /// due celle vicine dello stesso proprietario devono ancora leggersi come
+  /// un blocco unico, non come tessere sparse. La dimensione "a schermo"
+  /// degli esagoni non dipende da qui ma dallo zoom della mappa (vedi
+  /// _kDefaultZoom in game_map_background.dart) — questo fattore serve solo
+  /// a separare i bordi, non a rimpicciolire l'esagono. Puramente estetico:
+  /// non tocca [cellOf]/[centerOf]/[hexMeters], quindi la griglia di gioco
+  /// resta invariata e identica lato server.
   static List<(double lat, double lon)> polygonOf(HexCoord cell) {
     final (centerLat, centerLon) = centerOf(cell);
     final cosLat = math.cos(centerLat * math.pi / 180);
-    const radius = hexMeters * 0.94;
+    const radius = hexMeters * 0.92;
     return [
       for (var k = 0; k < 6; k++)
         _cornerLatLon(centerLat, centerLon, cosLat, radius, k),
@@ -105,17 +103,5 @@ class HexGrid {
     final lat = centerLat + northM / _metersPerDegreeLat;
     final lon = centerLon + eastM / (_metersPerDegreeLat * cosLat);
     return (lat, lon);
-  }
-
-  /// Offset (in raggi esagono) di [cell] rispetto a [focus], per il
-  /// rendering: stessa formula di `playHexes` nel mockup, generalizzata
-  /// a qualunque dimensione in pixel scelga il painter.
-  static HexOffset offsetFrom(HexCoord focus, HexCoord cell) {
-    final cellOdd = cell.r % 2 != 0;
-    final focusOdd = focus.r % 2 != 0;
-    final dx = 1.732 *
-        (cell.q - focus.q + ((cellOdd ? 0.5 : 0) - (focusOdd ? 0.5 : 0)));
-    final dy = -1.5 * (cell.r - focus.r);
-    return HexOffset(dx, dy);
   }
 }

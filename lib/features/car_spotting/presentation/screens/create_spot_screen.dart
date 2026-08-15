@@ -139,7 +139,7 @@ class _CreateSpotScreenState extends ConsumerState<CreateSpotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.guidaBg2,
+      backgroundColor: AppColor.base,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
@@ -156,8 +156,8 @@ class _CreateSpotScreenState extends ConsumerState<CreateSpotScreen> {
                     child: Text(
                       'Nuovo Spot',
                       textAlign: TextAlign.center,
-                      style: AppTheme.chakraPetch(
-                          fontSize: 22, color: AppColors.textPrimary),
+                      style: AppType.display(
+                          fontSize: 22, color: AppColor.ink),
                     ),
                   ),
                   const SizedBox(width: 46),
@@ -196,7 +196,7 @@ class _CreateSpotScreenState extends ConsumerState<CreateSpotScreen> {
                         child: OutlinedButton(
                           onPressed: _back,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textPrimary,
+                            foregroundColor: AppColor.ink,
                             padding: const EdgeInsets.symmetric(vertical: 18),
                             side: const BorderSide(color: Color(0x33A0AAFF)),
                             shape: RoundedRectangleBorder(
@@ -257,7 +257,7 @@ class _PhotoStep extends StatelessWidget {
                     ? Image.memory(photoBytes!, fit: BoxFit.cover)
                     : const Center(
                         child: Icon(Icons.directions_car_rounded,
-                            size: 64, color: AppColors.textDisabled),
+                            size: 64, color: AppColor.inkFaint),
                       ),
               ),
               if (photoBytes == null)
@@ -283,7 +283,7 @@ class _PhotoStep extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text('LIVE',
-                            style: AppTheme.archivo(
+                            style: AppType.text(
                                 fontSize: 12, color: const Color(0xFF9DD4FF))),
                       ],
                     ),
@@ -311,7 +311,7 @@ class _PhotoStep extends StatelessWidget {
                 icon: const Icon(Icons.photo_library_rounded),
                 label: const Text('Galleria'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.guidaCyan,
+                  foregroundColor: AppColor.cyan,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   side: const BorderSide(color: Color(0x33A0AAFF)),
                   backgroundColor: const Color(0xE50C1120),
@@ -365,10 +365,10 @@ class _DetailsStep extends StatelessWidget {
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
-        style: AppTheme.archivo(color: AppColors.textPrimary),
+        style: AppType.text(color: AppColor.ink),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: AppTheme.archivo(color: AppColors.guidaTextSecondary),
+          labelStyle: AppType.text(color: AppColor.inkMuted),
           hintText: hint,
           filled: true,
           fillColor: const Color(0xE50C1120),
@@ -382,7 +382,7 @@ class _DetailsStep extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.guidaCyan),
+            borderSide: const BorderSide(color: AppColor.cyan),
           ),
         ),
       ),
@@ -420,24 +420,24 @@ class _PreviewStep extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text('$make $model'.trim(),
-            style: AppTheme.chakraPetch(
-                fontSize: 22, color: AppColors.textPrimary)),
+            style: AppType.display(
+                fontSize: 22, color: AppColor.ink)),
         if (year.isNotEmpty)
           Text(year,
-              style: AppTheme.archivo(color: AppColors.guidaTextSecondary)),
+              style: AppType.text(color: AppColor.inkMuted)),
         if (locationLabel.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(locationLabel,
                 style:
-                    AppTheme.archivo(color: AppColors.guidaCyan, fontSize: 13)),
+                    AppType.text(color: AppColor.cyan, fontSize: 13)),
           ),
         if (caption.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text(caption,
-                style: AppTheme.archivo(
-                    color: AppColors.textPrimary, fontSize: 14)),
+                style: AppType.text(
+                    color: AppColor.ink, fontSize: 14)),
           ),
       ],
     );
@@ -457,11 +457,11 @@ class _PublishingStep extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.error_outline_rounded,
-                size: 48, color: AppColors.danger),
+                size: 48, color: AppColor.danger),
             const SizedBox(height: 16),
             Text(error!,
                 textAlign: TextAlign.center,
-                style: AppTheme.archivo(color: AppColors.guidaTextSecondary)),
+                style: AppType.text(color: AppColor.inkMuted)),
             const SizedBox(height: 20),
             NeonCtaButton(label: 'Riprova', minHeight: 52, onPressed: onRetry),
           ],
@@ -472,10 +472,10 @@ class _PublishingStep extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppColors.guidaCyan),
+          const CircularProgressIndicator(color: AppColor.cyan),
           const SizedBox(height: 16),
           Text('Pubblicazione in corso…',
-              style: AppTheme.archivo(color: AppColors.guidaTextSecondary)),
+              style: AppType.text(color: AppColor.inkMuted)),
         ],
       ),
     );
@@ -498,7 +498,7 @@ class _RoundIconButton extends StatelessWidget {
         child: SizedBox(
           width: 46,
           height: 46,
-          child: Icon(icon, color: AppColors.textPrimary, size: 20),
+          child: Icon(icon, color: AppColor.ink, size: 20),
         ),
       ),
     );

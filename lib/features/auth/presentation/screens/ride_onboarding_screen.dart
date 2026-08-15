@@ -71,20 +71,20 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0E1522),
         title: Text('Il tuo modello',
-            style: AppTheme.archivo(
-                fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            style: AppType.text(
+                fontWeight: FontWeight.w800, color: AppColor.ink)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: brandCtrl,
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: const TextStyle(color: AppColor.ink),
               decoration: const InputDecoration(labelText: 'Marca'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: modelCtrl,
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: const TextStyle(color: AppColor.ink),
               decoration: const InputDecoration(labelText: 'Modello'),
             ),
           ],
@@ -130,7 +130,7 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
     final canContinue = _brand != null && _model != null && !isLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
@@ -140,19 +140,19 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
               Text(
                 'Scegli il tuo ride principale',
                 textAlign: TextAlign.center,
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontWeight: FontWeight.w900,
                   fontSize: 30,
-                  color: AppColors.textPrimary,
+                  color: AppColor.ink,
                 ),
               ).animate().fadeIn().slideY(begin: 0.1, end: 0),
               const SizedBox(height: 12),
               Text(
                 "Scegli l'auto che guidi di più",
                 textAlign: TextAlign.center,
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontSize: 16,
-                  color: AppColors.guidaTextSecondary,
+                  color: AppColor.inkMuted,
                 ),
               ),
               const Spacer(),
@@ -163,7 +163,7 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFAFAFA),
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.guidaCyan, width: 6),
+                    border: Border.all(color: AppColor.cyan, width: 6),
                   ),
                   child: const Center(
                     child: CarGlyphIcon(size: 130, color: Color(0xFF1D5C58)),
@@ -187,7 +187,7 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
                 child: TextButton(
                   onPressed: _pickCustom,
                   style: TextButton.styleFrom(
-                      foregroundColor: AppColors.guidaTextSecondary),
+                      foregroundColor: AppColor.inkMuted),
                   child: const Text(
                     'non trovi il tuo modello?',
                     style: TextStyle(decoration: TextDecoration.underline),
@@ -231,14 +231,14 @@ class _RideSelectButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 22),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.guidaCyan, width: 2),
+            border: Border.all(color: AppColor.cyan, width: 2),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 label,
-                style: AppTheme.archivo(
+                style: AppType.text(
                   fontWeight: FontWeight.w600,
                   fontSize: 19,
                   color: filled

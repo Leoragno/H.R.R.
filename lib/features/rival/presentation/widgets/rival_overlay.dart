@@ -126,7 +126,7 @@ class _RivalCard extends StatelessWidget {
                   children: [
                     Text(
                       popup.mascot.name,
-                      style: AppTheme.orbitron(
+                      style: AppType.display(
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                         color: color,
@@ -135,9 +135,9 @@ class _RivalCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       popup.phrase,
-                      style: AppTheme.archivo(
+                      style: AppType.text(
                         fontSize: 13,
-                        color: AppColors.textPrimary,
+                        color: AppColor.ink,
                         height: 1.25,
                       ),
                     ),

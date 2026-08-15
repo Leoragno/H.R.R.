@@ -44,7 +44,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final zoneBadge = _zoneBadgeLabel(state, myId);
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -55,7 +55,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             cells: state.visibleCells,
             mode: state.mapMode,
             myProfileId: myId,
-            myCrewId: me?.crewId,
           ),
           SafeArea(
             bottom: false,
@@ -179,24 +178,18 @@ class _MapModeButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
-            gradient: selected
-                ? const LinearGradient(colors: [
-                    Color(0xFF14E6FF),
-                    Color(0xFF4A5BFF),
-                    Color(0xFFFF2FD0),
-                  ])
-                : null,
+            color: selected ? AppColor.cyan : null,
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTheme.archivo(
+            style: AppType.text(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color:
-                  selected ? AppColors.guidaOnAccent : const Color(0xFFCFDCEC),
+                  selected ? AppColor.void_ : const Color(0xFFCFDCEC),
             ),
           ),
         ),
@@ -241,7 +234,7 @@ class _PlayerBadge extends StatelessWidget {
             child: Text(
               name,
               overflow: TextOverflow.ellipsis,
-              style: AppTheme.chakraPetch(
+              style: AppType.display(
                   fontWeight: FontWeight.w800, fontSize: 22),
             ),
           ),
@@ -249,7 +242,7 @@ class _PlayerBadge extends StatelessWidget {
           Text(
             '$areaText KM²',
             style:
-                AppTheme.chakraPetch(fontWeight: FontWeight.w800, fontSize: 22),
+                AppType.display(fontWeight: FontWeight.w800, fontSize: 22),
           ),
         ],
       ),
@@ -277,7 +270,7 @@ class _ZoneBadge extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             label,
-            style: AppTheme.archivo(
+            style: AppType.text(
                 fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.1),
           ),
           const SizedBox(width: 8),
@@ -303,24 +296,24 @@ class _GpsBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xE6161200),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.neonAmber.withValues(alpha: 0.4)),
+        border: Border.all(color: AppColor.amber.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
           const Icon(Icons.gps_off_rounded,
-              color: AppColors.neonAmber, size: 20),
+              color: AppColor.amber, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(message,
-                style: AppTheme.archivo(fontSize: 12.5, color: Colors.white)),
+                style: AppType.text(fontSize: 12.5, color: Colors.white)),
           ),
           TextButton(
             onPressed: onRetry,
             child: Text('Riprova',
-                style: AppTheme.archivo(
+                style: AppType.text(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.neonAmber)),
+                    color: AppColor.amber)),
           ),
         ],
       ),

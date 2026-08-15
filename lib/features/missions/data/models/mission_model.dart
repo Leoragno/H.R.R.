@@ -22,7 +22,6 @@ class MissionModel {
   final bool repeatable;
   final String? seasonId;
   final String? eventId;
-  final bool crewOnly;
   final DateTime? startsAt;
   final DateTime? endsAt;
   final DateTime createdAt;
@@ -49,7 +48,6 @@ class MissionModel {
     required this.repeatable,
     this.seasonId,
     this.eventId,
-    required this.crewOnly,
     this.startsAt,
     this.endsAt,
     required this.createdAt,
@@ -83,7 +81,6 @@ class MissionModel {
       repeatable: json['repeatable'] as bool? ?? false,
       seasonId: json['season_id'] as String?,
       eventId: json['event_id'] as String?,
-      crewOnly: json['crew_only'] as bool? ?? false,
       startsAt: json['starts_at'] == null
           ? null
           : DateTime.parse(json['starts_at'] as String),
@@ -118,7 +115,6 @@ class MissionModel {
         repeatable: repeatable,
         seasonId: seasonId,
         eventId: eventId,
-        crewOnly: crewOnly,
         startsAt: startsAt,
         endsAt: endsAt,
         createdAt: createdAt,

@@ -16,6 +16,8 @@ import '../../../../core/events/mission_event.dart';
 import '../../../../core/events/mission_event_bus.dart';
 import '../../../../core/network/supabase_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../game/domain/hex_grid.dart';
+import '../../../game/presentation/providers/territory_provider.dart';
 import '../../domain/entities/route_point.dart';
 import '../../domain/entities/trip.dart';
 import 'trip_provider.dart';
@@ -111,6 +113,18 @@ class TripMotionStats {
   final int turnsRight;
   final double? maxCorneringSpeedKmh;
 
+  // --- Aggregati per il punteggio di guida (vedi complete_trip in
+  // 0024_drive_score.sql — il punteggio finale è calcolato lì, questi sono
+  // solo gli input grezzi). Nessuno di questi è mostrato nel report al
+  // posto delle statistiche sopra: alimentano solo la RPC.
+  final int brakingHardEvents; // sottoinsieme di brakingEvents, decelerazione >5 m/s²
+  final double? brakingJerkAvgMs3; // durezza media delle frenate rilevate
+  final double? jerkRmsMs3; // fluidità: RMS del jerk longitudinale sull'intero viaggio
+  final double? turnGyroStddevAvg; // curve: media della dev. standard giroscopica per svolta
+  final int accelThenBrakeCount; // efficienza: accelerazione seguita da frenata entro 15s
+  final double? gpsFixHz; // tasso di fix GPS accettati — gate qualità dato
+  final double? gyroHz; // tasso di campioni giroscopio ricevuti — gate qualità dato
+
   const TripMotionStats({
     this.elevationGainM = 0,
     this.maxAltitudeM,
@@ -124,6 +138,13 @@ class TripMotionStats {
     this.turnsLeft = 0,
     this.turnsRight = 0,
     this.maxCorneringSpeedKmh,
+    this.brakingHardEvents = 0,
+    this.brakingJerkAvgMs3,
+    this.jerkRmsMs3,
+    this.turnGyroStddevAvg,
+    this.accelThenBrakeCount = 0,
+    this.gpsFixHz,
+    this.gyroHz,
   });
 }
 
@@ -193,6 +214,10 @@ const _kAccelMaxDt = Duration(seconds: 5);
 // essere considerato come possibile picco G.
 const _kBrakingThresholdMs2 = 0.35 * 9.81;
 const _kBrakingCooldown = Duration(seconds: 2);
+// Frenata "inchiodata" per il punteggio di guida (0024_drive_score.sql):
+// oltre questa decelerazione l'evento pesa il triplo nella componente
+// Anticipo — valore di partenza dal brief, da tarare sui dati reali.
+const _kHardBrakingThresholdMs2 = 5.0;
 // Un singolo campione anomalo dell'accelerometro (buca, telefono che
 // sbatte contro il supporto) alzerebbe il picco G per sempre, senza modo
 // di correggerlo (è un massimo monotono, vedi _onUserAccel): un vero
@@ -210,6 +235,15 @@ const _kTurnGyroCorroborationRadS = 0.15;
 // passo d'uomo, quindi il campione va scartato invece di sporcare il
 // conteggio delle svolte.
 const _kMinTurnSpeedKmh = 10.0;
+
+// Soglia di accelerazione "decisa" simmetrica a _kBrakingThresholdMs2,
+// usata solo per il pattern "accelerazione seguita da frenata" (Efficienza
+// del punteggio di guida) — non è una nuova soglia di frenata.
+const _kHardAccelThresholdMs2 = 0.35 * 9.81;
+// Finestra entro cui una frenata dopo un'accelerazione decisa conta come
+// energia sprecata (accelerato e subito ri-frenato), non due manovre
+// indipendenti.
+const _kAccelThenBrakeWindow = Duration(seconds: 15);
 
 // Filtri qualità/plausibilità sui fix GPS grezzi — senza questi, un
 // singolo fix rumoroso (tunnel, garage, palazzi alti, riaggancio GPS)
@@ -331,22 +365,23 @@ class TripLiveController extends _$TripLiveController {
   DateTime? _lastPositionAt;
   double _interpolatedKm = 0;
 
-  // --- Mappa live della crew e degli amici: vedi _joinLiveChannels /
-  // CrewLiveMapController / FriendLiveMapController. Stesso profilo
-  // (_myProfileId ecc.) alimenta entrambi i canali, che restano comunque
-  // due canali Realtime separati (crew-live-<crewId> e
-  // friend-live-<profileId>): pubblici audience diverse, RLS diverse
-  // (0009 vs 0023_friends.sql).
-  RealtimeChannel? _crewChannel;
-  RealtimeChannel? _friendChannel;
+  // --- Mappa live condivisa: vedi _joinLiveChannels / LiveMapController.
+  // Un solo canale Realtime "drivers-live" per tutti gli utenti — l'app è
+  // privata e chiusa, tutti sono già "connessi" tra loro.
+  RealtimeChannel? _liveChannel;
   String? _myProfileId;
   String? _myUsername;
   String? _myAvatarUrl;
   String? _myAccentColor;
-  DateTime? _lastCrewBroadcastAt;
-  DateTime? _lastFriendBroadcastAt;
+  DateTime? _lastLiveBroadcastAt;
   final List<RoutePoint> _points = [];
   final List<TelemetrySample> _samples = [];
+  // Esagoni territorio attraversati durante la guida — rivendicati in
+  // blocco a fine viaggio col punteggio di guida finale (vedi finishTrip),
+  // non più durante il tragitto: l'acquisizione dei pentagoni è legata a
+  // una guida registrata, mai a un tracking ambientale indipendente
+  // (0026_territory_decay_counterattack.sql).
+  final Set<HexCoord> _crossedCells = {};
   DateTime? _startedAt;
   String? _tripId;
   SharedPreferences? _prefs;
@@ -380,6 +415,22 @@ class TripLiveController extends _$TripLiveController {
   double? _gSpikeCandidateMs2;
   DateTime? _lastBrakingEventAt;
   int _brakingEvents = 0;
+
+  // --- Aggregati per il punteggio di guida (0024_drive_score.sql) ---
+  int _brakingHardEvents = 0;
+  double _brakingJerkSum = 0;
+  int _brakingJerkCount = 0;
+  double? _lastAccelMs2; // ultima accelerazione derivata dal GPS (con segno)
+  DateTime? _lastAccelAt;
+  double _jerkSumSq = 0;
+  int _jerkCount = 0;
+  DateTime? _lastHardAccelAt;
+  int _accelThenBrakeCount = 0;
+  int _gpsAcceptedFixCount = 0;
+  int _gyroSampleCount = 0;
+  double _turnWindowGyroMagSumSq = 0;
+  double _turnStddevSum = 0; // somma delle dev. standard per-svolta, per la media finale
+  int _turnStddevCount = 0;
 
   double? _lastBearing;
   double _turnAccumDeg = 0;
@@ -441,8 +492,8 @@ class TripLiveController extends _$TripLiveController {
         await ref.read(tripRepositoryProvider).startTrip(driverId: userId);
 
     // Unico evento di dominio già realmente emesso end-to-end oggi: le
-    // feature ancora placeholder (spotting/crew/friends/POI) non hanno
-    // punti reali da cui pubblicare gli altri MissionEvent.
+    // feature ancora placeholder (spotting/POI) non hanno punti reali da
+    // cui pubblicare gli altri MissionEvent.
     ref.read(missionEventBusProvider).publish(TripStarted(profileId: userId));
 
     _tripId = trip.id;
@@ -451,6 +502,7 @@ class TripLiveController extends _$TripLiveController {
     _lastPositionAt = null;
     _points.clear();
     _samples.clear();
+    _crossedCells.clear();
     _resetMotionStats();
 
     state = TripLiveState(status: TripLiveStatus.tracking, tripId: trip.id);
@@ -493,6 +545,10 @@ class TripLiveController extends _$TripLiveController {
       ..clear()
       ..addAll(saved.routePoints);
     _samples.clear();
+    _crossedCells
+      ..clear()
+      ..addAll(
+          saved.routePoints.map((p) => HexGrid.cellOf(p.lat, p.lng)));
     _resetMotionStats();
 
     state = TripLiveState(
@@ -664,14 +720,9 @@ class TripLiveController extends _$TripLiveController {
         accuracy: LocationAccuracy.high, distanceFilter: 3);
   }
 
-  /// Pubblica la guida su due canali realtime privati, entrambi solo in
-  /// lettura per gli osservatori (chi guida non legge mai il proprio):
-  /// "crew-live-<crewId>" (solo se si è in una crew, migration 0009) e
-  /// "friend-live-<profileId>" (sempre, indipendente dalla crew — la RLS
-  /// di 0023_friends.sql decide chi tra i propri amici accettati può
-  /// leggerlo). [CrewLiveMapController]/[FriendLiveMapController] sono i
-  /// lati osservatore. Nessun amico/crew, canale comunque aperto (il
-  /// friend-live è per definizione sempre pubblicato): fallisce
+  /// Pubblica la guida sul canale realtime condiviso "drivers-live", sola
+  /// lettura per gli osservatori (chi guida non legge mai il proprio) —
+  /// vedi [LiveMapController] per il lato osservatore. Fallisce
   /// silenziosamente in ogni caso, il tracking GPS locale del viaggio non
   /// dipende in alcun modo da questo.
   Future<void> _joinLiveChannels() async {
@@ -691,54 +742,33 @@ class TripLiveController extends _$TripLiveController {
         'accentColor': profile.accentColor,
       };
 
-      final friendChannel = ref.read(supabaseClientProvider).channel(
-            'friend-live-${profile.id}',
+      final liveChannel = ref.read(supabaseClientProvider).channel(
+            'drivers-live',
             opts: const RealtimeChannelConfig(private: true),
           );
-      _friendChannel = friendChannel;
-      friendChannel.subscribe((status, error) {
+      _liveChannel = liveChannel;
+      liveChannel.subscribe((status, error) {
         if (status == RealtimeSubscribeStatus.subscribed) {
-          unawaited(friendChannel.track(presence));
+          unawaited(liveChannel.track(presence));
         }
       });
-
-      final crewId = profile.crewId;
-      if (crewId != null) {
-        final crewChannel = ref.read(supabaseClientProvider).channel(
-              'crew-live-$crewId',
-              opts: const RealtimeChannelConfig(private: true),
-            );
-        _crewChannel = crewChannel;
-        crewChannel.subscribe((status, error) {
-          if (status == RealtimeSubscribeStatus.subscribed) {
-            unawaited(crewChannel.track(presence));
-          }
-        });
-      }
     } catch (_) {
-      // Best-effort: la mappa condivisa con crew/amici non deve mai
-      // bloccare o interrompere il tracking GPS locale del viaggio.
+      // Best-effort: la mappa condivisa non deve mai bloccare o
+      // interrompere il tracking GPS locale del viaggio.
     }
   }
 
   void _leaveLiveChannels() {
-    final crewChannel = _crewChannel;
-    final friendChannel = _friendChannel;
-    _crewChannel = null;
-    _friendChannel = null;
+    final liveChannel = _liveChannel;
+    _liveChannel = null;
     _myProfileId = null;
     _myUsername = null;
     _myAvatarUrl = null;
     _myAccentColor = null;
-    _lastCrewBroadcastAt = null;
-    _lastFriendBroadcastAt = null;
-    if (crewChannel != null) {
-      unawaited(crewChannel.untrack());
-      unawaited(Supabase.instance.client.removeChannel(crewChannel));
-    }
-    if (friendChannel != null) {
-      unawaited(friendChannel.untrack());
-      unawaited(Supabase.instance.client.removeChannel(friendChannel));
+    _lastLiveBroadcastAt = null;
+    if (liveChannel != null) {
+      unawaited(liveChannel.untrack());
+      unawaited(Supabase.instance.client.removeChannel(liveChannel));
     }
   }
 
@@ -762,6 +792,20 @@ class TripLiveController extends _$TripLiveController {
     _gSpikeCandidateMs2 = null;
     _lastBrakingEventAt = null;
     _brakingEvents = 0;
+    _brakingHardEvents = 0;
+    _brakingJerkSum = 0;
+    _brakingJerkCount = 0;
+    _lastAccelMs2 = null;
+    _lastAccelAt = null;
+    _jerkSumSq = 0;
+    _jerkCount = 0;
+    _lastHardAccelAt = null;
+    _accelThenBrakeCount = 0;
+    _gpsAcceptedFixCount = 0;
+    _gyroSampleCount = 0;
+    _turnWindowGyroMagSumSq = 0;
+    _turnStddevSum = 0;
+    _turnStddevCount = 0;
     _lastBearing = null;
     _turnAccumDeg = 0;
     _turnWindowStart = null;
@@ -785,6 +829,12 @@ class TripLiveController extends _$TripLiveController {
     // non con questo rumore.
     final accuracy = position.accuracy;
     if (accuracy.isFinite && accuracy > _kMinGpsAccuracyM) return;
+
+    // Tasso di fix GPS "buoni" ricevuti (indipendente da hadRealMotion:
+    // conta la qualità del segnale, non il movimento) — gate di qualità
+    // per Fluidità/Anticipo del punteggio di guida, vedi finishTrip().
+    _gpsAcceptedFixCount++;
+    _crossedCells.add(HexGrid.cellOf(position.latitude, position.longitude));
 
     final rawSpeedKmh = (position.speed.isFinite && position.speed > 0)
         ? position.speed * 3.6
@@ -898,26 +948,14 @@ class TripLiveController extends _$TripLiveController {
     };
     // Throttle allineato all'intervallo GPS nativo (1s, vedi
     // _liveLocationSettings): evita raffiche ravvicinate se la piattaforma
-    // consegna comunque più fix di quanti richiesti. Due timestamp
-    // separati perché i due canali possono sottoscriversi in momenti
-    // diversi (uno dei due potrebbe non esistere affatto, es. nessuna
-    // crew) — non devono scattare in lockstep.
-    final crewChannel = _crewChannel;
-    if (crewChannel != null &&
-        (_lastCrewBroadcastAt == null ||
-            now.difference(_lastCrewBroadcastAt!) >=
+    // consegna comunque più fix di quanti richiesti.
+    final liveChannel = _liveChannel;
+    if (liveChannel != null &&
+        (_lastLiveBroadcastAt == null ||
+            now.difference(_lastLiveBroadcastAt!) >=
                 const Duration(milliseconds: 900))) {
-      _lastCrewBroadcastAt = now;
-      unawaited(crewChannel.sendBroadcastMessage(
-          event: 'position', payload: livePayload));
-    }
-    final friendChannel = _friendChannel;
-    if (friendChannel != null &&
-        (_lastFriendBroadcastAt == null ||
-            now.difference(_lastFriendBroadcastAt!) >=
-                const Duration(milliseconds: 900))) {
-      _lastFriendBroadcastAt = now;
-      unawaited(friendChannel.sendBroadcastMessage(
+      _lastLiveBroadcastAt = now;
+      unawaited(liveChannel.sendBroadcastMessage(
           event: 'position', payload: livePayload));
     }
 
@@ -965,11 +1003,44 @@ class TripLiveController extends _$TripLiveController {
               (_maxDecelerationMs2 == null || a < _maxDecelerationMs2!)) {
             _maxDecelerationMs2 = a;
           }
+          // Jerk (derivata dell'accelerazione stessa) fra questo campione
+          // di `a` e il precedente — usato per Fluidità/Anticipo del
+          // punteggio di guida (0024_drive_score.sql). Stessa finestra di
+          // validità (_kAccelMinDt.._kAccelMaxDt) del calcolo di `a` sopra,
+          // per non dividere per un intervallo troppo corto o troppo vecchio.
+          final lastAccel = _lastAccelMs2;
+          final lastAccelAt = _lastAccelAt;
+          double? jerk;
+          if (lastAccel != null && lastAccelAt != null) {
+            final jerkDt = now.difference(lastAccelAt);
+            if (jerkDt >= _kAccelMinDt && jerkDt <= _kAccelMaxDt) {
+              jerk = (a - lastAccel) / (jerkDt.inMilliseconds / 1000);
+              _jerkSumSq += jerk * jerk;
+              _jerkCount++;
+            }
+          }
+          _lastAccelMs2 = a;
+          _lastAccelAt = now;
+
+          if (a >= _kHardAccelThresholdMs2) {
+            _lastHardAccelAt = now;
+          }
+
           if (a <= -_kBrakingThresholdMs2) {
             final cooledDown = _lastBrakingEventAt == null ||
                 now.difference(_lastBrakingEventAt!) > _kBrakingCooldown;
             if (cooledDown) {
               _brakingEvents++;
+              if (a <= -_kHardBrakingThresholdMs2) _brakingHardEvents++;
+              if (jerk != null) {
+                _brakingJerkSum += jerk.abs();
+                _brakingJerkCount++;
+              }
+              final lastHardAccelAt = _lastHardAccelAt;
+              if (lastHardAccelAt != null &&
+                  now.difference(lastHardAccelAt) <= _kAccelThenBrakeWindow) {
+                _accelThenBrakeCount++;
+              }
               _lastBrakingEventAt = now;
             }
           }
@@ -1062,6 +1133,16 @@ class TripLiveController extends _$TripLiveController {
             _turnWindowMaxSpeedKmh > _maxCorneringSpeedKmh!) {
           _maxCorneringSpeedKmh = _turnWindowMaxSpeedKmh;
         }
+        // Dev. standard della magnitudine giroscopica durante QUESTA svolta
+        // — sterzata costante (bassa) = pulita, oscillante (alta) = sporca.
+        // Componente Curve del punteggio di guida (0024_drive_score.sql).
+        // Richiede almeno 2 campioni per una varianza sensata.
+        if (_turnWindowGyroSamples > 1) {
+          final variance = (_turnWindowGyroMagSumSq / _turnWindowGyroSamples) -
+              (avgGyroMag * avgGyroMag);
+          _turnStddevSum += math.sqrt(variance < 0 ? 0 : variance);
+          _turnStddevCount++;
+        }
         _lastTurnAt = now;
       }
       _closeTurnWindow();
@@ -1075,6 +1156,7 @@ class TripLiveController extends _$TripLiveController {
     _turnWindowStart = null;
     _turnWindowMaxSpeedKmh = 0;
     _turnWindowGyroMagSum = 0;
+    _turnWindowGyroMagSumSq = 0;
     _turnWindowGyroSamples = 0;
   }
 
@@ -1108,10 +1190,15 @@ class TripLiveController extends _$TripLiveController {
 
   void _onGyro(GyroscopeEvent event) {
     _gyroEverFired = true;
+    // Tasso di campioni giroscopio ricevuti sull'intero viaggio — gate di
+    // qualità per Curve del punteggio di guida, indipendente dalle finestre
+    // di svolta (che coprono solo una piccola parte del viaggio).
+    _gyroSampleCount++;
     if (_turnWindowStart == null) return;
     final magnitude =
         math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
     _turnWindowGyroMagSum += magnitude;
+    _turnWindowGyroMagSumSq += magnitude * magnitude;
     _turnWindowGyroSamples++;
   }
 
@@ -1125,15 +1212,40 @@ class TripLiveController extends _$TripLiveController {
     _ticker?.cancel();
     state = state.copyWith(status: TripLiveStatus.finishing);
 
+    final elapsedSeconds = state.elapsed.inSeconds;
+    // RMS del jerk sull'intero viaggio (Fluidità) — null se non è mai
+    // stato possibile calcolarlo (nessuna coppia di campioni `a` valida).
+    final jerkRmsMs3 =
+        _jerkCount > 0 ? math.sqrt(_jerkSumSq / _jerkCount) : null;
+    final brakingJerkAvgMs3 =
+        _brakingJerkCount > 0 ? _brakingJerkSum / _brakingJerkCount : null;
+    final turnGyroStddevAvg =
+        _turnStddevCount > 0 ? _turnStddevSum / _turnStddevCount : null;
+    final gpsFixHz =
+        elapsedSeconds > 0 ? _gpsAcceptedFixCount / elapsedSeconds : null;
+    final gyroHz =
+        elapsedSeconds > 0 ? _gyroSampleCount / elapsedSeconds : null;
+
     final Trip finished;
     try {
       finished = await ref.read(tripRepositoryProvider).completeTrip(
             tripId: tripId,
             distanceKm: state.distanceKm,
-            durationSeconds: state.elapsed.inSeconds,
+            durationSeconds: elapsedSeconds,
             avgSpeedKmh: state.avgSpeedKmh,
             maxSpeedKmh: state.maxSpeedKmh,
             route: List.unmodifiable(_points),
+            jerkRmsMs3: jerkRmsMs3,
+            brakingSoftCount: _brakingEvents - _brakingHardEvents,
+            brakingHardCount: _brakingHardEvents,
+            brakingJerkAvgMs3: brakingJerkAvgMs3,
+            turnsCount: _turnsLeft + _turnsRight,
+            turnGyroStddevAvg: turnGyroStddevAvg,
+            totalStops: _totalStops,
+            stoppedSeconds: _stoppedTime.inSeconds,
+            accelThenBrakeCount: _accelThenBrakeCount,
+            gpsFixHz: gpsFixHz,
+            gyroHz: gyroHz,
           );
     } catch (_) {
       // Il viaggio resta 'active' lato server (nessuna riga aggiornata se
@@ -1161,6 +1273,13 @@ class TripLiveController extends _$TripLiveController {
         turnsLeft: _turnsLeft,
         turnsRight: _turnsRight,
         maxCorneringSpeedKmh: _maxCorneringSpeedKmh,
+        brakingHardEvents: _brakingHardEvents,
+        brakingJerkAvgMs3: brakingJerkAvgMs3,
+        jerkRmsMs3: jerkRmsMs3,
+        turnGyroStddevAvg: turnGyroStddevAvg,
+        accelThenBrakeCount: _accelThenBrakeCount,
+        gpsFixHz: gpsFixHz,
+        gyroHz: gyroHz,
       ),
     );
 
@@ -1169,6 +1288,23 @@ class TripLiveController extends _$TripLiveController {
       ref.read(missionEventBusProvider).publish(
             TripCompleted(profileId: userId, distanceKm: finished.distanceKm),
           );
+    }
+
+    // Rivendica in blocco gli esagoni attraversati durante la guida, col
+    // punteggio di guida appena calcolato server-side — mai prima d'ora,
+    // mai senza un viaggio completato (0026_territory_decay_
+    // counterattack.sql). Best-effort: un errore di rete qui non deve mai
+    // bloccare o invalidare il riepilogo del viaggio, che è già salvato.
+    if (_crossedCells.isNotEmpty) {
+      final cellsToClaim = _crossedCells.toList();
+      unawaited(() async {
+        try {
+          await ref.read(territoryRepositoryProvider).claimCells(
+                cellsToClaim,
+                driveScore: finished.drivingScore,
+              );
+        } catch (_) {}
+      }());
     }
 
     ref.invalidate(recentTripsProvider);
@@ -1208,6 +1344,24 @@ class TripLiveController extends _$TripLiveController {
           maxSpeedKmh: saved.maxSpeedKmh,
           route: saved.routePoints,
         );
+    // Nessun aggregato di guida raccolto per un viaggio recuperato dopo un
+    // kill del processo (mai passato da resumeTrip): drivingScore è quindi
+    // sempre null qui, quindi può solo rivendicare celle libere/decadute,
+    // mai rubarne una attiva — comunque meglio di perdere del tutto gli
+    // esagoni attraversati prima dell'interruzione.
+    final cellsToClaim = {
+      for (final p in saved.routePoints) HexGrid.cellOf(p.lat, p.lng),
+    }.toList();
+    if (cellsToClaim.isNotEmpty) {
+      unawaited(() async {
+        try {
+          await ref
+              .read(territoryRepositoryProvider)
+              .claimCells(cellsToClaim, driveScore: finished.drivingScore);
+        } catch (_) {}
+      }());
+    }
+
     ref.invalidate(recentTripsProvider);
     ref.read(lastTripSummaryControllerProvider.notifier).set(
           TripSummary(trip: finished, routePoints: saved.routePoints),
@@ -1229,6 +1383,7 @@ class TripLiveController extends _$TripLiveController {
     _lastPositionAt = null;
     _points.clear();
     _samples.clear();
+    _crossedCells.clear();
     _resetMotionStats();
     _leaveLiveChannels();
     state = const TripLiveState();

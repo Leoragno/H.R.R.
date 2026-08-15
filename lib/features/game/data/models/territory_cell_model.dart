@@ -5,13 +5,15 @@ class TerritoryCellModel {
   final int q;
   final int r;
   final String ownerId;
-  final String? crewId;
+  final DateTime claimedAt;
+  final int? driveScore;
 
   const TerritoryCellModel({
     required this.q,
     required this.r,
     required this.ownerId,
-    this.crewId,
+    required this.claimedAt,
+    this.driveScore,
   });
 
   factory TerritoryCellModel.fromJson(Map<String, dynamic> json) {
@@ -19,13 +21,15 @@ class TerritoryCellModel {
       q: json['q'] as int,
       r: json['r'] as int,
       ownerId: json['owner_id'] as String,
-      crewId: json['crew_id'] as String?,
+      claimedAt: DateTime.parse(json['claimed_at'] as String),
+      driveScore: json['drive_score'] as int?,
     );
   }
 
   TerritoryCell toEntity() => TerritoryCell(
         coord: HexCoord(q, r),
         ownerId: ownerId,
-        ownerCrewId: crewId,
+        claimedAt: claimedAt,
+        driveScore: driveScore,
       );
 }

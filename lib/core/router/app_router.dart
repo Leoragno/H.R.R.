@@ -10,15 +10,14 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/ride_onboarding_screen.dart';
 import '../../features/auth/presentation/screens/mascot_onboarding_screen.dart';
 import '../../features/game/presentation/screens/game_screen.dart';
+import '../../features/game/presentation/screens/my_territories_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
 import '../../features/trip/presentation/screens/trip_live_screen.dart';
 import '../../features/trip/presentation/screens/trip_summary_screen.dart';
 import '../../features/trip/presentation/screens/trip_detail_screen.dart';
 import '../../features/leaderboard/presentation/screens/leaderboard_screen.dart';
-import '../../features/crew/presentation/screens/crew_screen.dart';
-import '../../features/chat/presentation/screens/crew_chat_screen.dart';
-import '../../features/friends/presentation/screens/friends_screen.dart';
+import '../../features/statistics/presentation/screens/statistics_screen.dart';
 import '../../features/car_spotting/presentation/screens/car_spotting_feed_screen.dart';
 import '../../features/car_spotting/presentation/screens/create_spot_screen.dart';
 import '../../features/car_spotting/presentation/screens/leaderboard_screen.dart'
@@ -45,14 +44,13 @@ class AppRoutes {
 
   static const home = '/home';
   static const game = '/game';
+  static const myTerritories = '/game/my-territories';
   static const map = '/map';
   static const tripLive = '/trip/live';
   static const tripSummary = '/trip/summary';
   static const tripDetail = '/trip/:tripId';
   static const leaderboard = '/leaderboard';
-  static const crew = '/crew';
-  static const crewChat = '/crew/chat';
-  static const friends = '/friends';
+  static const statistics = '/statistics';
   static const carSpotting = '/car-spotting';
   static const createSpot = '/car-spotting/create';
   static const spotDetail = '/car-spotting/:spotId';
@@ -149,10 +147,6 @@ GoRouter appRouter(Ref ref) {
             TripDetailScreen(tripId: s.pathParameters['tripId']!),
       ),
       GoRoute(
-          path: AppRoutes.crewChat, builder: (c, s) => const CrewChatScreen()),
-      GoRoute(
-          path: AppRoutes.friends, builder: (c, s) => const FriendsScreen()),
-      GoRoute(
           path: AppRoutes.createSpot,
           builder: (c, s) => const CreateSpotScreen()),
       GoRoute(
@@ -163,6 +157,9 @@ GoRouter appRouter(Ref ref) {
         builder: (c, s) =>
             SpotDetailScreen(spotId: s.pathParameters['spotId']!),
       ),
+      GoRoute(
+          path: AppRoutes.myTerritories,
+          builder: (c, s) => const MyTerritoriesScreen()),
       GoRoute(
           path: AppRoutes.profile, builder: (c, s) => const ProfileScreen()),
       GoRoute(
@@ -191,7 +188,9 @@ GoRouter appRouter(Ref ref) {
           GoRoute(
               path: AppRoutes.leaderboard,
               builder: (c, s) => const LeaderboardScreen()),
-          GoRoute(path: AppRoutes.crew, builder: (c, s) => const CrewScreen()),
+          GoRoute(
+              path: AppRoutes.statistics,
+              builder: (c, s) => const StatisticsScreen()),
         ],
       ),
     ],

@@ -21,9 +21,9 @@ class LeaderboardAvatar extends StatelessWidget {
           ? Container(
               width: size,
               height: size,
-              color: AppColors.surfaceElevated,
+              color: AppColor.surfaceHigh,
               child: Icon(Icons.person_rounded,
-                  color: AppColors.textDisabled, size: size * 0.5),
+                  color: AppColor.inkFaint, size: size * 0.5),
             )
           : CachedNetworkImage(
               imageUrl: url!,
@@ -31,13 +31,13 @@ class LeaderboardAvatar extends StatelessWidget {
               height: size,
               fit: BoxFit.cover,
               placeholder: (c, u) => Container(
-                  width: size, height: size, color: AppColors.surfaceElevated),
+                  width: size, height: size, color: AppColor.surfaceHigh),
               errorWidget: (c, u, e) => Container(
                   width: size,
                   height: size,
-                  color: AppColors.surfaceElevated,
+                  color: AppColor.surfaceHigh,
                   child: Icon(Icons.person_rounded,
-                      color: AppColors.textDisabled, size: size * 0.5)),
+                      color: AppColor.inkFaint, size: size * 0.5)),
             ),
     );
     if (ringColor == null) return content;

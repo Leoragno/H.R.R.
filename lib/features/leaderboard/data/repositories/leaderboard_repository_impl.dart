@@ -12,10 +12,8 @@ class LeaderboardRepositoryImpl implements LeaderboardRepository {
     required LeaderboardMetric metric,
     required LeaderboardPeriod period,
     int limit = 50,
-    String? crewId,
   }) async {
-    final rows = await _remote.global(
-        metric: metric, period: period, limit: limit, crewId: crewId);
+    final rows = await _remote.global(metric: metric, period: period, limit: limit);
     return rows.map((r) => r.toEntity()).toList();
   }
 }

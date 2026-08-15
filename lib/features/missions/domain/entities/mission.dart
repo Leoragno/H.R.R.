@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum MissionType { daily, weekly, seasonal, crew, event, secret }
+enum MissionType { daily, weekly, seasonal, event, secret }
 
 MissionType missionTypeFromString(String value) {
   return MissionType.values
@@ -39,7 +39,6 @@ class Mission extends Equatable {
   final bool repeatable;
   final String? seasonId;
   final String? eventId;
-  final bool crewOnly;
   final DateTime? startsAt;
   final DateTime? endsAt;
   final DateTime createdAt;
@@ -66,7 +65,6 @@ class Mission extends Equatable {
     required this.repeatable,
     this.seasonId,
     this.eventId,
-    required this.crewOnly,
     this.startsAt,
     this.endsAt,
     required this.createdAt,
@@ -95,7 +93,6 @@ class Mission extends Equatable {
         repeatable,
         seasonId,
         eventId,
-        crewOnly,
         startsAt,
         endsAt,
         createdAt,

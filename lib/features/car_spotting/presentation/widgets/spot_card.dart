@@ -52,14 +52,14 @@ class SpotCard extends StatelessWidget {
                     imageUrl: spot.photoUrl,
                     fit: BoxFit.cover,
                     placeholder: (c, u) => Container(
-                        color: AppColors.surfaceElevated,
+                        color: AppColor.surfaceHigh,
                         child: const Center(
                             child: CircularProgressIndicator(
-                                color: AppColors.guidaCyan, strokeWidth: 2))),
+                                color: AppColor.cyan, strokeWidth: 2))),
                     errorWidget: (c, u, e) => Container(
-                        color: AppColors.surfaceElevated,
+                        color: AppColor.surfaceHigh,
                         child: const Icon(Icons.broken_image_rounded,
-                            color: AppColors.textDisabled)),
+                            color: AppColor.inkFaint)),
                   ),
                 ),
                 Positioned.fill(
@@ -90,7 +90,7 @@ class SpotCard extends StatelessWidget {
                   child: Text(
                     title.isEmpty ? 'Auto sconosciuta' : title,
                     style:
-                        AppTheme.chakraPetch(fontSize: 22, color: Colors.white),
+                        AppType.display(fontSize: 22, color: Colors.white),
                   ),
                 ),
               ],
@@ -104,14 +104,14 @@ class SpotCard extends StatelessWidget {
                     children: [
                       if (spot.detectedYear != null)
                         Text('${spot.detectedYear}',
-                            style: AppTheme.archivo(
-                                color: AppColors.guidaTextSecondary,
+                            style: AppType.text(
+                                color: AppColor.inkMuted,
                                 fontSize: 13)),
                       const Spacer(),
                       if (spot.authorUsername != null)
                         Text('@${spot.authorUsername}',
-                            style: AppTheme.archivo(
-                                color: AppColors.guidaCyan, fontSize: 13)),
+                            style: AppType.text(
+                                color: AppColor.cyan, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -123,8 +123,8 @@ class SpotCard extends StatelessWidget {
                         spot.ratingCount == 0
                             ? 'Non ancora votata'
                             : '${spot.averageRating.toStringAsFixed(1)} (${spot.ratingCount})',
-                        style: AppTheme.archivo(
-                            color: AppColors.guidaTextSecondary, fontSize: 12),
+                        style: AppType.text(
+                            color: AppColor.inkMuted, fontSize: 12),
                       ),
                     ],
                   ),

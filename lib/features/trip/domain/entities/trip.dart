@@ -24,6 +24,10 @@ class Trip extends Equatable {
   final double? maxSpeedKmh;
   final int xpEarned;
   final int repEarned;
+  // Punteggio di guida 0-100, calcolato server-side (0024_drive_score.sql)
+  // da fluidità/anticipo/curve/efficienza — mai da velocità, tempo o
+  // distanza. `null` se il viaggio è troppo corto per un valore onesto.
+  final int? drivingScore;
   final TripStatus status;
   final List<RoutePoint> route;
 
@@ -39,6 +43,7 @@ class Trip extends Equatable {
     this.maxSpeedKmh,
     required this.xpEarned,
     required this.repEarned,
+    this.drivingScore,
     required this.status,
     this.route = const [],
   });
@@ -56,6 +61,7 @@ class Trip extends Equatable {
         maxSpeedKmh,
         xpEarned,
         repEarned,
+        drivingScore,
         status,
         route,
       ];

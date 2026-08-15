@@ -4,10 +4,12 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 
 /// Lockup "HRR" / "HEAT RACERS" — stesso trattamento grafico dello splash
-/// screen (Orbitron + gradiente `AppColors.gradientPrimary`), riusato nelle
-/// schermate riskinnate al posto del lockup HRR del nuovo design (che usa
-/// Chakra Petch corsivo/skewed): l'utente ha chiesto di mantenere questo
-/// logo perché "era meglio" di quello del mockup.
+/// screen (Rajdhani + gradiente ciano→magenta), riusato nelle schermate
+/// riskinnate al posto del lockup HRR del nuovo design (che usa Chakra
+/// Petch corsivo/skewed): l'utente ha chiesto di mantenere questo logo
+/// perché "era meglio" di quello del mockup. Unica eccezione dichiarata
+/// alla regola "niente gradienti" di DESIGN.md: è il marchio, non un
+/// indicatore di stato.
 class HrrWordmark extends StatelessWidget {
   final double fontSize;
   final bool showTagline;
@@ -22,11 +24,11 @@ class HrrWordmark extends StatelessWidget {
   Widget build(BuildContext context) {
     final wordmark = ShaderMask(
       shaderCallback: (bounds) =>
-          const LinearGradient(colors: AppColors.gradientPrimary)
+          const LinearGradient(colors: [AppColor.cyan, AppColor.magenta])
               .createShader(bounds),
       child: Text(
         'HRR',
-        style: AppTheme.orbitron(
+        style: AppType.display(
           fontWeight: FontWeight.w900,
           fontSize: fontSize,
           color: Colors.white,
@@ -46,7 +48,7 @@ class HrrWordmark extends StatelessWidget {
         Text(
           'HEAT RACERS',
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: AppColor.inkMuted,
             fontSize: fontSize * 0.22,
             letterSpacing: fontSize * 0.1,
             fontWeight: FontWeight.w600,

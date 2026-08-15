@@ -1,7 +1,6 @@
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/events/mission_event.dart';
-import '../../domain/entities/crew_mission.dart';
 import '../../domain/entities/mission.dart';
 import '../../domain/entities/mission_claim.dart';
 import '../../domain/entities/mission_progress.dart';
@@ -64,12 +63,6 @@ class MissionRepositoryImpl implements MissionRepository {
 
   @override
   Future<int> secretMissionSlotCount() => _remote.secretMissionSlotCount();
-
-  @override
-  Future<List<CrewMission>> crewMissions(String crewId) async {
-    final missions = await _remote.crewMissions(crewId);
-    return missions.map((m) => m.toEntity()).toList();
-  }
 
   @override
   Future<Season?> activeSeason() async {

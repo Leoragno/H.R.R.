@@ -72,7 +72,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppColors.guidaBg,
+      backgroundColor: AppColor.void_,
       body: Stack(
         children: [
           Positioned.fill(
@@ -87,10 +87,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.55),
-                    Colors.black.withValues(alpha: 0),
-                    Colors.black.withValues(alpha: 0),
-                    Colors.black.withValues(alpha: 0.6),
+                    AppColor.void_.withValues(alpha: 0.55),
+                    AppColor.void_.withValues(alpha: 0),
+                    AppColor.void_.withValues(alpha: 0),
+                    AppColor.void_.withValues(alpha: 0.6),
                   ],
                   stops: const [0, 0.22, 0.55, 1],
                 ),
@@ -98,8 +98,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           Positioned(
-            right: 16,
-            bottom: MediaQuery.sizeOf(context).height * _sheetMinChildSize + 18,
+            right: AppSpace.md,
+            bottom: MediaQuery.sizeOf(context).height * _sheetMinChildSize +
+                AppSpace.md,
             child: _RecenterButton(onTap: _recenter),
           ),
           DraggableScrollableSheet(
@@ -124,14 +125,14 @@ class _RecenterButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xD8121212),
+      color: AppColor.surfaceHigh.withValues(alpha: 0.85),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: Icon(Icons.my_location_rounded, color: Colors.white, size: 26),
+          padding: EdgeInsets.all(AppSpace.md),
+          child: Icon(Icons.my_location_rounded, color: AppColor.ink, size: 26),
         ),
       ),
     );
@@ -144,12 +145,12 @@ void _showTripRecoveryDialog(
     context: context,
     barrierDismissible: false,
     builder: (dialogCtx) => AlertDialog(
-      backgroundColor: const Color(0xFF0E1522),
+      backgroundColor: AppColor.surfaceHigh,
       title: const Text('Guida interrotta'),
       content: Text(
         'L\'ultima guida si è interrotta a ${saved.distanceKm.toStringAsFixed(1)} km. '
         'Vuoi riprenderla o chiuderla qui?',
-        style: AppTheme.archivo(color: AppColors.guidaTextSecondary),
+        style: AppType.text(color: AppColor.inkMuted),
       ),
       actions: [
         TextButton(
@@ -160,7 +161,7 @@ void _showTripRecoveryDialog(
                 .discardPersistedTrip(saved);
           },
           child:
-              const Text('Scarta', style: TextStyle(color: AppColors.danger)),
+              const Text('Scarta', style: TextStyle(color: AppColor.danger)),
         ),
         TextButton(
           onPressed: () async {
@@ -180,7 +181,7 @@ void _showTripRecoveryDialog(
             if (context.mounted) context.push(AppRoutes.tripLive);
           },
           child: const Text('Riprendi',
-              style: TextStyle(color: AppColors.guidaCyan)),
+              style: TextStyle(color: AppColor.cyan)),
         ),
       ],
     ),
@@ -196,19 +197,23 @@ class _GuidaSheet extends ConsumerWidget {
     final tripsAsync = ref.watch(recentTripsProvider);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: const BoxDecoration(
+      margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xEB0D1222), Color(0xF5060810)],
+          colors: [
+            AppColor.surfaceHigh.withValues(alpha: 0.92),
+            AppColor.void_.withValues(alpha: 0.96),
+          ],
         ),
-        border: Border(
-          top: BorderSide(color: Color(0x2E7896FF), width: 1),
-          left: BorderSide(color: Color(0x2E7896FF), width: 1),
-          right: BorderSide(color: Color(0x2E7896FF), width: 1),
+        border: const Border(
+          top: BorderSide(color: AppColor.line, width: 1),
+          left: BorderSide(color: AppColor.line, width: 1),
+          right: BorderSide(color: AppColor.line, width: 1),
         ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
       ),
       child: CustomScrollView(
         controller: scrollController,
@@ -216,26 +221,27 @@ class _GuidaSheet extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Column(
               children: [
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 Container(
                   width: 96,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A3450),
-                    borderRadius: BorderRadius.circular(999),
+                    color: AppColor.line,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Guide',
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                           fontWeight: FontWeight.w900,
                           fontSize: 30,
-                          color: AppColors.textPrimary,
+                          color: AppColor.ink,
                         ),
                       ),
                       const Row(
@@ -249,7 +255,8 @@ class _GuidaSheet extends ConsumerWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.md),
                   child: NeonCtaButton(
                     label: 'Drive',
                     icon: Icons.play_arrow_rounded,
@@ -258,7 +265,8 @@ class _GuidaSheet extends ConsumerWidget {
                   ),
                 ),
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(22, 0, 22, 10),
+                  padding: EdgeInsets.fromLTRB(
+                      AppSpace.lg, 0, AppSpace.lg, AppSpace.sm),
                   child: _RadarModeSection(),
                 ),
               ],
@@ -268,7 +276,7 @@ class _GuidaSheet extends ConsumerWidget {
             loading: () => const SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
-                child: CircularProgressIndicator(color: AppColors.guidaCyan),
+                child: CircularProgressIndicator(color: AppColor.cyan),
               ),
             ),
             error: (e, _) => SliverFillRemaining(
@@ -276,7 +284,7 @@ class _GuidaSheet extends ConsumerWidget {
               child: Center(
                 child: Text('Impossibile caricare lo storico',
                     style:
-                        AppTheme.archivo(color: AppColors.guidaTextSecondary)),
+                        AppType.text(color: AppColor.inkMuted)),
               ),
             ),
             data: (trips) {
@@ -287,11 +295,12 @@ class _GuidaSheet extends ConsumerWidget {
                 );
               }
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.lg),
                 sliver: SliverList.separated(
                   itemCount: trips.length,
                   separatorBuilder: (_, __) =>
-                      const Divider(height: 1, color: Color(0xFF1B2338)),
+                      const Divider(height: 1, color: AppColor.line),
                   itemBuilder: (context, i) =>
                       _TripRow(trip: trips[i], showDivider: i > 0),
                 ),
@@ -310,18 +319,18 @@ class _EmptyTrips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const Icon(Icons.directions_car_rounded,
-              color: Color(0xFF8A8A8A), size: 30),
-          const SizedBox(width: 14),
+              color: AppColor.inkMuted, size: 30),
+          const SizedBox(width: AppSpace.md),
           Expanded(
             child: Text(
               'Ancora nessuna guida registrata. Premi Drive per iniziare.',
-              style: AppTheme.archivo(
-                  color: AppColors.guidaTextSecondary, fontSize: 16),
+              style: AppType.text(
+                  color: AppColor.inkMuted, fontSize: 16),
             ),
           ),
         ],
@@ -348,19 +357,19 @@ class _RadarModeSection extends ConsumerWidget {
             Icon(Icons.radar_rounded,
                 size: 20,
                 color: enabled
-                    ? AppColors.guidaCyan
-                    : AppColors.guidaTextSecondary),
+                    ? AppColor.cyan
+                    : AppColor.inkMuted),
             const SizedBox(width: 10),
             Expanded(
               child: Text('Rilevamento Velox/Pattuglia',
-                  style: AppTheme.archivo(
+                  style: AppType.text(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: AppColor.ink)),
             ),
             Switch.adaptive(
               value: enabled,
-              activeThumbColor: AppColors.guidaCyan,
+              activeThumbColor: AppColor.cyan,
               onChanged: (_) =>
                   ref.read(radarModeControllerProvider.notifier).toggle(),
             ),
@@ -373,8 +382,8 @@ class _RadarModeSection extends ConsumerWidget {
           Text(
             'Tutti i dati sono aggiornati in tempo reale.',
             textAlign: TextAlign.center,
-            style: AppTheme.archivo(
-                fontSize: 11.5, color: AppColors.guidaTextSecondary),
+            style: AppType.text(
+                fontSize: 11.5, color: AppColor.inkMuted),
           ),
         ],
       ],
@@ -382,8 +391,9 @@ class _RadarModeSection extends ConsumerWidget {
   }
 }
 
-/// Le 4 card di monitoraggio Velox/Pattuglia (API arancio, Crew ciano) —
-/// conteggi reali dai provider in lib/features/radar/, mai valori fissi.
+/// Le 4 card di monitoraggio Velox/Pattuglia (API arancio, community
+/// ciano) — conteggi reali dai provider in lib/features/radar/, mai
+/// valori fissi.
 class _RadarCardsGrid extends ConsumerWidget {
   const _RadarCardsGrid();
 
@@ -391,8 +401,8 @@ class _RadarCardsGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final veloxApi = ref.watch(currentVeloxApiEventsProvider);
     final pattugliaApi = ref.watch(currentPattugliaApiEventsProvider);
-    final veloxCrew = ref.watch(crewVeloxReportsProvider);
-    final pattugliaCrew = ref.watch(crewPattugliaReportsProvider);
+    final veloxCommunity = ref.watch(communityVeloxReportsProvider);
+    final pattugliaCommunity = ref.watch(communityPattugliaReportsProvider);
 
     return Column(
       children: [
@@ -403,7 +413,7 @@ class _RadarCardsGrid extends ConsumerWidget {
               Expanded(
                 child: _RadarCard(
                   icon: Icons.videocam_rounded,
-                  color: const Color(0xFFFF8A1F),
+                  color: AppColor.amber,
                   title: 'Velox API',
                   subtitle: veloxApi.when(
                     loading: () => 'Aggiornamento…',
@@ -418,7 +428,7 @@ class _RadarCardsGrid extends ConsumerWidget {
               Expanded(
                 child: _RadarCard(
                   icon: Icons.local_police_rounded,
-                  color: const Color(0xFFFF8A1F),
+                  color: AppColor.amber,
                   title: 'Pattuglia API',
                   subtitle: pattugliaApi.when(
                     loading: () => 'Aggiornamento…',
@@ -440,10 +450,10 @@ class _RadarCardsGrid extends ConsumerWidget {
               Expanded(
                 child: _RadarCard(
                   icon: Icons.videocam_rounded,
-                  color: AppColors.guidaCyan,
-                  title: 'Velox Crew',
+                  color: AppColor.cyan,
+                  title: 'Velox Community',
                   subtitle:
-                      'Segnalazioni recenti: ${veloxCrew.length} in zona.',
+                      'Segnalazioni recenti: ${veloxCommunity.length} in zona.',
                   isLoading: false,
                   hasError: false,
                 ),
@@ -452,10 +462,10 @@ class _RadarCardsGrid extends ConsumerWidget {
               Expanded(
                 child: _RadarCard(
                   icon: Icons.shield_rounded,
-                  color: AppColors.guidaCyan,
-                  title: 'Pattuglia Crew',
+                  color: AppColor.cyan,
+                  title: 'Pattuglia Community',
                   subtitle:
-                      'Segnalazioni recenti: ${pattugliaCrew.length} in zona.',
+                      'Segnalazioni recenti: ${pattugliaCommunity.length} in zona.',
                   isLoading: false,
                   hasError: false,
                 ),
@@ -486,21 +496,20 @@ class _RadarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dotColor = hasError
-        ? AppColors.danger
-        : (isLoading ? const Color(0xFF75879E) : color);
+    final dotColor =
+        hasError ? AppColor.danger : (isLoading ? AppColor.inkMuted : color);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
-        color: const Color(0xE50A0E1A),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColor.surfaceHigh.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 24),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,10 +520,10 @@ class _RadarCard extends StatelessWidget {
                       child: Text(title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTheme.archivo(
+                          style: AppType.text(
                               fontWeight: FontWeight.w700,
                               fontSize: 13.5,
-                              color: AppColors.textPrimary)),
+                              color: AppColor.ink)),
                     ),
                     Container(
                       width: 8,
@@ -529,8 +538,8 @@ class _RadarCard extends StatelessWidget {
                 Text(subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTheme.archivo(
-                        fontSize: 11, color: AppColors.guidaTextSecondary)),
+                    style: AppType.text(
+                        fontSize: 11, color: AppColor.inkMuted)),
               ],
             ),
           ),
@@ -558,7 +567,7 @@ class _TripRow extends StatelessWidget {
       onTap: () =>
           context.push(AppRoutes.tripDetail.replaceFirst(':tripId', trip.id)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
         child: Row(
           children: [
             SizedBox(
@@ -568,24 +577,24 @@ class _TripRow extends StatelessWidget {
                   ? RoutePreview(points: trip.route)
                   : CustomPaint(painter: _SparkPainter(trip.id.hashCode)),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(date,
-                      style: AppTheme.archivo(
+                      style: AppType.text(
                           fontWeight: FontWeight.w800,
                           fontSize: 20,
-                          color: AppColors.textPrimary)),
+                          color: AppColor.ink)),
                   const SizedBox(height: 2),
                   Text(timeRange,
-                      style: AppTheme.archivo(
-                          fontSize: 15, color: AppColors.guidaTextSecondary)),
+                      style: AppType.text(
+                          fontSize: 15, color: AppColor.inkMuted)),
                   Text(
                       '${trip.distanceKm.toStringAsFixed(1)} km · $duration min',
-                      style: AppTheme.archivo(
-                          fontSize: 15, color: AppColors.guidaTextSecondary)),
+                      style: AppType.text(
+                          fontSize: 15, color: AppColor.inkMuted)),
                 ],
               ),
             ),
@@ -594,17 +603,9 @@ class _TripRow extends StatelessWidget {
               children: [
                 Text(
                   trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—',
-                  style: AppTheme.archivo(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 28,
-                      color: const Color(0xFFFF8A1F)),
+                  style: AppType.metric.copyWith(fontSize: 28),
                 ),
-                Text('KM/H',
-                    style: AppTheme.archivo(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        color: const Color(0xFFDCE7F4),
-                        letterSpacing: 0.6)),
+                Text('KM/H', style: AppType.label),
               ],
             ),
           ],
@@ -640,7 +641,7 @@ class _SparkPainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..color = Colors.white
+        ..color = AppColor.inkMuted
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.6
         ..strokeCap = StrokeCap.round

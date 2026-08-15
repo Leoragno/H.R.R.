@@ -1,6 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/crew_mission_model.dart';
 import '../models/mission_claim_model.dart';
 import '../models/mission_model.dart';
 import '../models/mission_progress_model.dart';
@@ -89,16 +88,6 @@ class MissionRemoteDatasource {
   Future<int> secretMissionSlotCount() async {
     final res = await _client.rpc('get_secret_mission_slot_count');
     return res is int ? res : int.parse(res.toString());
-  }
-
-  Future<List<CrewMissionModel>> crewMissions(String crewId) async {
-    final rows = await _client
-        .from('crew_missions')
-        .select('*, missions(title, description, rep_reward, xp_reward)')
-        .eq('crew_id', crewId);
-    return (rows as List)
-        .map((r) => CrewMissionModel.fromJson(r as Map<String, dynamic>))
-        .toList();
   }
 
   Future<SeasonModel?> activeSeason() async {

@@ -88,7 +88,7 @@ class SpeedDistributionBar extends StatelessWidget {
                         const SizedBox(width: 5),
                         Flexible(
                           child: Text(b.label,
-                              style: AppTheme.archivo(
+                              style: AppType.text(
                                   fontSize: 12, color: const Color(0xFFCFDCEC)),
                               overflow: TextOverflow.ellipsis),
                         ),
@@ -96,7 +96,7 @@ class SpeedDistributionBar extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text('${(b.fraction * 100).round()}%',
-                        style: AppTheme.archivo(
+                        style: AppType.text(
                             fontWeight: FontWeight.w800, fontSize: 15)),
                   ],
                 ),
