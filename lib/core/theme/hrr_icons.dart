@@ -24,4 +24,6 @@ const hrrIconByKey = <String, IconData>{
   'speed': Icons.speed_rounded,
   'hexagon': Icons.hexagon_rounded,
   'camera': Icons.photo_camera_rounded,
+  'steering': Icons.sports_motorsports_rounded,
+  'traffic': Icons.traffic_rounded,
 };
