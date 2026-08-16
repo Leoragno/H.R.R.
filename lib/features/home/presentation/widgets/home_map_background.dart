@@ -40,8 +40,19 @@ class HomeMapBackground extends ConsumerStatefulWidget {
 }
 
 class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
-  CameraPosition _initialCamera =
-      const CameraPosition(target: HomeMapBackground._fallbackCenter, zoom: 5);
+  // Null finché non abbiamo un centro vero (fix GPS fresco o, in mancanza,
+  // il fallback Italia dopo il fallimento/timeout) — la mappa non viene
+  // montata prima (vedi build()). `initialCameraPosition` è letto da
+  // MapLibreMap solo alla creazione della platform view: aggiornarlo dopo
+  // (come faceva la vecchia `_initialCamera` via setState quando
+  // Geolocator.getLastKnownPosition risolveva più tardi) non sposta più la
+  // camera, quindi la mappa restava bloccata sul fallback Roma/zoom 5 per
+  // (quasi) tutti — nessuna posizione nota in cache è comune al primo
+  // avvio — che sembrava "non ci si può muovere" pur avendo pan/zoom
+  // tecnicamente attivi. Stesso pattern già usato in TripLiveScreen/
+  // GameMapBackground.
+  LatLng? _cameraCenter;
+  double _initialZoom = 5;
 
   MapLibreMapController? _controller;
   bool _iconsReady = false;
@@ -69,17 +80,29 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
 
   Future<void> _resolveInitialCamera() async {
     try {
-      final position = await Geolocator.getLastKnownPosition();
-      if (position == null || !mounted) return;
+      // .timeout() Dart-side, non solo LocationSettings.timeLimit: su web
+      // geolocator_web 4.1.4 passa Duration.inMicroseconds al posto di
+      // inMilliseconds nell'opzione `timeout` del browser, quindi "10
+      // secondi" diventa ~10000 secondi (~2h45) e non scatta mai in tempo
+      // utile — senza questo la mappa restava bloccata sullo spinner per
+      // ore invece di cadere sul fallback.
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      ).timeout(const Duration(seconds: 10));
+      if (!mounted) return;
       setState(() {
-        _initialCamera = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 14,
-        );
+        _cameraCenter = LatLng(position.latitude, position.longitude);
+        _initialZoom = 14;
       });
     } catch (_) {
-      // Permesso non concesso o servizio posizione assente: resta sul
-      // centro di fallback, non è un errore da mostrare all'utente.
+      // Permesso non concesso, servizio posizione assente o timeout: la
+      // mappa resterebbe altrimenti bloccata sullo spinner per sempre —
+      // meglio il centro di fallback, comunque liberamente esplorabile.
+      if (!mounted) return;
+      setState(() => _cameraCenter = HomeMapBackground._fallbackCenter);
     }
   }
 
@@ -279,11 +302,22 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
     ref.listen<Map<String, LiveDriver>>(liveMapControllerProvider,
         (previous, next) => unawaited(_syncLiveDrivers(next)));
 
+    final center = _cameraCenter;
+    if (center == null) {
+      return const ColoredBox(
+        color: AppColor.void_,
+        child: Center(
+          child: CircularProgressIndicator(color: AppColor.cyan),
+        ),
+      );
+    }
+
     return ColoredBox(
       color: AppColor.void_,
       child: MapLibreMap(
         styleString: dotenv.env['MAP_STYLE_URL'] ?? MapLibreStyles.demo,
-        initialCameraPosition: _initialCamera,
+        initialCameraPosition:
+            CameraPosition(target: center, zoom: _initialZoom),
         myLocationEnabled: true,
         myLocationRenderMode: MyLocationRenderMode.compass,
         // .none, non .tracking: qui (a differenza di TripLiveScreen durante

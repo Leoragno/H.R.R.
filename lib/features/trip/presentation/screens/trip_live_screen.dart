@@ -452,12 +452,16 @@ class _MapViewState extends ConsumerState<_MapView> {
       return;
     }
     try {
+      // .timeout() Dart-side: su web geolocator_web 4.1.4 non applica
+      // correttamente LocationSettings.timeLimit (bug noto del pacchetto,
+      // vedi home_map_background.dart), che da solo lascerebbe questa
+      // chiamata pendente per ore invece di 10 secondi.
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 10),
         ),
-      );
+      ).timeout(const Duration(seconds: 10));
       _setCameraCenter(LatLng(position.latitude, position.longitude));
     } catch (_) {
       // GPS lento/permesso non ancora confermato: restiamo in attesa, il
