@@ -14,6 +14,7 @@ import '../widgets/line_area_chart.dart';
 import '../widgets/route_preview_painter.dart';
 import '../widgets/speed_distribution_bar.dart';
 import '../widgets/trip_rank_card.dart';
+import '../widgets/trip_stat_card.dart';
 
 /// Riepilogo di fine viaggio — versione ricca secondo Guida.dc.html righe
 /// 837-992 (report) + 994-1134 (card condivisibile "TripRank", dietro il
@@ -30,43 +31,8 @@ import '../widgets/trip_rank_card.dart';
 class TripSummaryScreen extends ConsumerWidget {
   const TripSummaryScreen({super.key});
 
-  String _formatDuration(int seconds) {
-    final h = seconds ~/ 3600;
-    final m = (seconds % 3600) ~/ 60;
-    if (h > 0) return '${h}h ${m}min';
-    return '$m min';
-  }
-
   String _hm(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-
-  String _formatStoppedTime(Duration d) {
-    final m = d.inMinutes;
-    final s = d.inSeconds % 60;
-    return '${m}m ${s}s';
-  }
-
-  // Etichette contestuali sotto il valore, in stile "racing" coerente col
-  // resto dell'app — calcolate da soglie sul dato reale, non inventate.
-  String _gForceHint(double g) {
-    if (g >= 1.0) return 'Impatto forte';
-    if (g >= 0.6) return 'Frenata/curva decisa';
-    if (g >= 0.3) return 'Guida sportiva';
-    return 'Guida regolare';
-  }
-
-  String _accelHint(double a) {
-    if (a >= 6) return 'Partenza sportiva';
-    if (a >= 3) return 'Accelerazione decisa';
-    return 'Accelerazione regolare';
-  }
-
-  String _decelHint(double a) {
-    final abs = a.abs();
-    if (abs >= 8) return 'Frenata di emergenza';
-    if (abs >= 4) return 'Frenata decisa';
-    return 'Frenata regolare';
-  }
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, String tripId) async {
@@ -283,7 +249,7 @@ class TripSummaryScreen extends ConsumerWidget {
                   Expanded(
                       child: _HeroStat(
                           label: 'DURATA',
-                          value: _formatDuration(trip.durationSeconds),
+                          value: formatTripDuration(trip.durationSeconds),
                           unit: '')),
                   Expanded(
                       child: _HeroStat(
@@ -316,60 +282,61 @@ class TripSummaryScreen extends ConsumerWidget {
               mainAxisSpacing: AppSpace.sm,
               childAspectRatio: 1.4,
               children: [
-                _StatCard('Distanza', trip.distanceKm.toStringAsFixed(1), 'km'),
-                _StatCard(
-                    'Durata', _formatDuration(trip.durationSeconds), ''),
-                _StatCard('Velocità media',
+                TripStatCard('Distanza', trip.distanceKm.toStringAsFixed(1), 'km'),
+                TripStatCard(
+                    'Durata', formatTripDuration(trip.durationSeconds), ''),
+                TripStatCard('Velocità media',
                     trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—', 'km/h'),
-                _StatCard('Velocità massima',
+                TripStatCard('Velocità massima',
                     trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—', 'km/h'),
-                _StatCard('XP guadagnati', '${trip.xpEarned}', ''),
-                _StatCard('REP guadagnati', '${trip.repEarned}', ''),
+                TripStatCard('XP guadagnati', '${trip.xpEarned}', ''),
+                TripStatCard('REP guadagnati', '${trip.repEarned}', ''),
                 if (trip.drivingScore != null)
-                  _StatCard(
+                  TripStatCard(
                       'Punteggio di guida', '${trip.drivingScore}', '/100'),
-                _StatCard('Tempo da fermo',
-                    _formatStoppedTime(motion.stoppedTime), ''),
-                _StatCard('Soste totali', '${motion.totalStops}', ''),
-                _StatCard(
+                TripStatCard('Tempo da fermo',
+                    formatStoppedTime(motion.stoppedTime), ''),
+                TripStatCard('Soste totali', '${motion.totalStops}', ''),
+                TripStatCard(
                     'Tempo 0-100',
                     motion.zeroToHundredSeconds != null
                         ? motion.zeroToHundredSeconds!.toStringAsFixed(2)
                         : '—',
                     's'),
-                _StatCard('Frenate', '${motion.brakingEvents}', ''),
-                _StatCard('Svolte a sinistra', '${motion.turnsLeft}', ''),
-                _StatCard('Svolte a destra', '${motion.turnsRight}', ''),
-                _StatCard('Picco forza G', motion.peakGForce.toStringAsFixed(2),
+                TripStatCard('Frenate', '${motion.brakingEvents}', ''),
+                TripStatCard('Svolte a sinistra', '${motion.turnsLeft}', ''),
+                TripStatCard('Svolte a destra', '${motion.turnsRight}', ''),
+                TripStatCard('Cambi di corsia', '${motion.laneChanges}', ''),
+                TripStatCard('Picco forza G', motion.peakGForce.toStringAsFixed(2),
                     'G',
-                    hint: _gForceHint(motion.peakGForce)),
-                _StatCard(
+                    hint: gForceHint(motion.peakGForce)),
+                TripStatCard(
                     'Velocità max in curva',
                     motion.maxCorneringSpeedKmh != null
                         ? motion.maxCorneringSpeedKmh!.toStringAsFixed(0)
                         : '—',
                     'km/h'),
-                _StatCard(
+                TripStatCard(
                     'Accelerazione max',
                     motion.maxAccelerationMs2 != null
                         ? motion.maxAccelerationMs2!.toStringAsFixed(1)
                         : '—',
                     'm/s²',
                     hint: motion.maxAccelerationMs2 != null
-                        ? _accelHint(motion.maxAccelerationMs2!)
+                        ? accelHint(motion.maxAccelerationMs2!)
                         : null),
-                _StatCard(
+                TripStatCard(
                     'Decelerazione max',
                     motion.maxDecelerationMs2 != null
                         ? motion.maxDecelerationMs2!.abs().toStringAsFixed(1)
                         : '—',
                     'm/s²',
                     hint: motion.maxDecelerationMs2 != null
-                        ? _decelHint(motion.maxDecelerationMs2!)
+                        ? decelHint(motion.maxDecelerationMs2!)
                         : null),
-                _StatCard('Dislivello',
+                TripStatCard('Dislivello',
                     motion.elevationGainM.round().toString(), 'm'),
-                _StatCard(
+                TripStatCard(
                     'Altitudine max',
                     motion.maxAltitudeM != null
                         ? motion.maxAltitudeM!.round().toString()
@@ -554,45 +521,6 @@ class _HeroStat extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
-  final String? hint;
-  const _StatCard(this.label, this.value, this.unit, {this.hint});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpace.sm, vertical: AppSpace.sm),
-      decoration: AppGlow.card,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: AppType.caption, overflow: TextOverflow.ellipsis),
-          const Spacer(),
-          Text.rich(
-            TextSpan(
-              text: value,
-              style: AppType.metric.copyWith(fontSize: 22),
-              children: [
-                if (unit.isNotEmpty)
-                  TextSpan(text: ' $unit', style: AppType.caption),
-              ],
-            ),
-          ),
-          if (hint != null) ...[
-            const SizedBox(height: 2),
-            Text(hint!, style: AppType.caption, overflow: TextOverflow.ellipsis),
-          ],
-        ],
-      ),
     );
   }
 }

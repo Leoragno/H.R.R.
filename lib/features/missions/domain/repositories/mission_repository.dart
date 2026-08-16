@@ -9,7 +9,19 @@ import '../entities/season.dart';
 abstract class MissionRepository {
   /// Missioni attualmente visibili al chiamante (le secret non ancora
   /// completate sono già escluse lato RLS, non serve filtrarle qui).
+  /// Filtrate anche per finestra temporale attiva (starts_at/ends_at):
+  /// un'istanza daily/weekly di un periodo già chiuso non viene più
+  /// restituita, vedi [ensureCurrentPeriodMissions].
   Future<List<Mission>> activeMissions({MissionType? type});
+
+  /// Genera (se mancanti) le istanze daily/weekly/seasonal del periodo
+  /// corrente chiamando i generatori idempotenti server-side — nessuno
+  /// scheduling lato server (0003_mission_engine.sql lo lasciava
+  /// esplicitamente non implementato), quindi qualcuno deve invocarli:
+  /// qui, alla prima apertura della schermata Missioni dopo il cambio di
+  /// giorno/settimana. Idempotente (on conflict do nothing sul code
+  /// period-based): sicura da richiamare ad ogni apertura schermata.
+  Future<void> ensureCurrentPeriodMissions();
 
   Future<List<MissionProgress>> myProgress();
 

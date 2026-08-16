@@ -13,14 +13,43 @@ class MissionRemoteDatasource {
   MissionRemoteDatasource(this._client);
 
   Future<List<MissionModel>> activeMissions({String? type}) async {
+    final nowIso = DateTime.now().toUtc().toIso8601String();
     var query = _client.from('missions').select();
     if (type != null) {
       query = query.eq('type', type);
     }
-    final rows = await query.order('created_at', ascending: false);
+    // Esclude istanze daily/weekly/seasonal di un periodo già chiuso: senza
+    // questo filtro un'istanza di ieri (starts_at/ends_at nel passato)
+    // resta in lista per sempre accanto a quella di oggi, congelata (
+    // record_mission_event non fa più progredire mission_progress fuori
+    // dalla finestra). Le secret/permanenti (ends_at null) non sono mai
+    // escluse da questi filtri.
+    final rows = await query
+        .or('starts_at.is.null,starts_at.lte.$nowIso')
+        .or('ends_at.is.null,ends_at.gte.$nowIso')
+        .order('created_at', ascending: false);
     return (rows as List)
         .map((r) => MissionModel.fromJson(r as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Richiama i tre generatori idempotenti (0003_mission_engine.sql):
+  /// niente scheduling server-side, quindi qualcuno deve invocarli quando
+  /// il periodo corrente cambia — vedi MissionRepository.
+  /// generate_seasonal_missions() solleva un'eccezione se nessuna riga
+  /// `season` copre `now()` (nessuna stagione attiva pianificata): non è
+  /// un errore da propagare, la season semplicemente non genera missioni
+  /// finché non ne viene creata una nuova.
+  Future<void> ensureCurrentPeriodMissions() async {
+    try {
+      await _client.rpc('generate_daily_missions');
+    } catch (_) {}
+    try {
+      await _client.rpc('generate_weekly_missions');
+    } catch (_) {}
+    try {
+      await _client.rpc('generate_seasonal_missions');
+    } catch (_) {}
   }
 
   Future<List<MissionProgressModel>> myProgress(String profileId) async {

@@ -51,6 +51,16 @@ class TripRemoteDatasource {
     int accelThenBrakeCount = 0,
     double? gpsFixHz,
     double? gyroHz,
+    double? elevationGainM,
+    double? maxAltitudeM,
+    double? maxAccelerationMs2,
+    double? maxDecelerationMs2,
+    double? zeroToHundredSeconds,
+    double? peakGForce,
+    int turnsLeft = 0,
+    int turnsRight = 0,
+    int laneChanges = 0,
+    double? maxCorneringSpeedKmh,
   }) async {
     final res = await _client.rpc('complete_trip', params: {
       'p_trip_id': tripId,
@@ -70,6 +80,16 @@ class TripRemoteDatasource {
       'p_accel_then_brake_count': accelThenBrakeCount,
       'p_gps_fix_hz': gpsFixHz,
       'p_gyro_hz': gyroHz,
+      'p_elevation_gain_m': elevationGainM,
+      'p_max_altitude_m': maxAltitudeM,
+      'p_max_acceleration_ms2': maxAccelerationMs2,
+      'p_max_deceleration_ms2': maxDecelerationMs2,
+      'p_zero_to_hundred_seconds': zeroToHundredSeconds,
+      'p_peak_g_force': peakGForce,
+      'p_turns_left': turnsLeft,
+      'p_turns_right': turnsRight,
+      'p_lane_changes': laneChanges,
+      'p_max_cornering_speed_kmh': maxCorneringSpeedKmh,
     });
 
     final Map<String, dynamic> row = res is List

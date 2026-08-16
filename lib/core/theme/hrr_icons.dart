@@ -20,4 +20,8 @@ const hrrIconByKey = <String, IconData>{
   'search': Icons.search_rounded,
   'trophy': Icons.emoji_events_rounded,
   'collections': Icons.collections_rounded,
+  'bolt': Icons.bolt_rounded,
+  'speed': Icons.speed_rounded,
+  'hexagon': Icons.hexagon_rounded,
+  'camera': Icons.photo_camera_rounded,
 };

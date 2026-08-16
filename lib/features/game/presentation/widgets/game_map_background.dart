@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/territory_cell.dart';
 import '../../domain/hex_grid.dart';
 import '../../domain/territory_color.dart';
@@ -72,6 +73,13 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   Circle? _meCircle;
   final Map<String, Fill> _cellFills = {};
 
+  // Lo stile MapLibre (tile, colori) arriva in modo asincrono dopo che il
+  // widget nativo è già montato: senza questo la mappa resta un riquadro
+  // nero per un momento prima di popolarsi di scatto. Il fade (sotto, in
+  // build) copre quella finestra con lo stesso nero di sfondo, poi lascia
+  // apparire la mappa gradualmente invece che di colpo.
+  bool _styleLoaded = false;
+
   // Proprietario corrente di ogni cella disegnata, tenuto separato dal
   // colore: il colore può restare invariato tra due owner diversi (hash
   // collision sulla palette rivali), quindi non è un proxy affidabile per
@@ -121,6 +129,8 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   Future<void> _onStyleLoaded() async {
     await _syncCellFills();
     await _updateMeMarker();
+    if (!mounted) return;
+    setState(() => _styleLoaded = true);
   }
 
   /// Disegna solo le celle con un proprietario noto in [widget.cells]:
@@ -264,20 +274,64 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
     final lon = widget.lon;
     if (lat == null || lon == null) {
       // Nessun fix GPS ancora: sfondo pieno, niente mappa con centro
-      // arbitrario/sbagliato mostrato nel frattempo.
-      return const ColoredBox(color: AppColor.void_);
+      // arbitrario/sbagliato mostrato nel frattempo — ma uno spinner
+      // sommesso invece del nero muto, così è chiaro che sta caricando e
+      // non che lo schermo sia bloccato.
+      return const ColoredBox(
+        color: AppColor.void_,
+        child: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: AppColor.inkMuted,
+            ),
+          ),
+        ),
+      );
     }
-    return MapLibreMap(
-      styleString: dotenv.env['MAP_STYLE_URL'] ?? MapLibreStyles.demo,
-      initialCameraPosition:
-          CameraPosition(target: LatLng(lat, lon), zoom: _kDefaultZoom),
-      onMapCreated: _onMapCreated,
-      // addFill/addCircle prima che lo stile sia caricato lancia
-      // "Annotation Manager has not been initialized" — va agganciato
-      // qui, non in onMapCreated (che spara prima del caricamento stile).
-      onStyleLoadedCallback: _onStyleLoaded,
-      myLocationEnabled: false,
-      compassEnabled: false,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        MapLibreMap(
+          styleString: dotenv.env['MAP_STYLE_URL'] ?? MapLibreStyles.demo,
+          initialCameraPosition:
+              CameraPosition(target: LatLng(lat, lon), zoom: _kDefaultZoom),
+          onMapCreated: _onMapCreated,
+          // addFill/addCircle prima che lo stile sia caricato lancia
+          // "Annotation Manager has not been initialized" — va agganciato
+          // qui, non in onMapCreated (che spara prima del caricamento stile).
+          onStyleLoadedCallback: _onStyleLoaded,
+          myLocationEnabled: false,
+          compassEnabled: false,
+        ),
+        // Stesso nero di sfondo sopra la mappa finché lo stile non è
+        // pronto: senza, il riquadro nativo resta vuoto/nero di suo per
+        // un istante e poi si popola di scatto. IgnorePointer perché
+        // altrimenti, mentre svanisce, ruberebbe i tap destinati alla
+        // mappa sotto.
+        IgnorePointer(
+          child: AnimatedOpacity(
+            opacity: _styleLoaded ? 0 : 1,
+            duration: AppMotion.base,
+            curve: AppMotion.curve,
+            child: const ColoredBox(
+              color: AppColor.void_,
+              child: Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppColor.inkMuted,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

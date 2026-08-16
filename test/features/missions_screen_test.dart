@@ -94,6 +94,8 @@ class _FakeMissionRepository implements MissionRepository {
   Future<Season?> activeSeason() async => null;
   @override
   Future<List<String>> myClaimedMissionIds() async => const [];
+  @override
+  Future<void> ensureCurrentPeriodMissions() async {}
 }
 
 Future<void> _pumpMissionsScreen(WidgetTester tester) async {

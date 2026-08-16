@@ -29,6 +29,16 @@ abstract class TripRepository {
     int accelThenBrakeCount = 0,
     double? gpsFixHz,
     double? gyroHz,
+    double? elevationGainM,
+    double? maxAltitudeM,
+    double? maxAccelerationMs2,
+    double? maxDecelerationMs2,
+    double? zeroToHundredSeconds,
+    double? peakGForce,
+    int turnsLeft = 0,
+    int turnsRight = 0,
+    int laneChanges = 0,
+    double? maxCorneringSpeedKmh,
   });
 
   Future<void> discardTrip(String tripId);

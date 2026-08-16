@@ -44,7 +44,31 @@ final missionRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MissionRepositoryRef = AutoDisposeProviderRef<MissionRepository>;
-String _$activeMissionsHash() => r'c80533866cb35599f4c57b299ff5c109c6758787';
+String _$ensureMissionPeriodsHash() =>
+    r'54f73ce5fc8382ba3ce5ffd48fc2d276acddb93d';
+
+/// Genera (se serve) le istanze daily/weekly/seasonal del periodo
+/// corrente prima di leggerle — vedi MissionRepository.ensureCurrentPeriodMissions.
+/// Nessun `family`: un solo provider condiviso da tutti i tab, quindi la
+/// generazione parte una volta sola per apertura schermata (Riverpod
+/// cacha il Future), non una volta per tab osservato.
+///
+/// Copied from [ensureMissionPeriods].
+@ProviderFor(ensureMissionPeriods)
+final ensureMissionPeriodsProvider = AutoDisposeFutureProvider<void>.internal(
+  ensureMissionPeriods,
+  name: r'ensureMissionPeriodsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$ensureMissionPeriodsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef EnsureMissionPeriodsRef = AutoDisposeFutureProviderRef<void>;
+String _$activeMissionsHash() => r'6e7f1570a2c8f29f1a381f4ca0e490b15eaa6b2d';
 
 /// Copied from Dart SDK
 class _SystemHash {

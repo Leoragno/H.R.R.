@@ -919,7 +919,10 @@ class _EventsStrip extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 144,
+            // 144 andava in overflow di ~1px sul target web (metriche del
+            // font leggermente più alte del nativo): margine extra invece
+            // di stringere ulteriormente testo già a 3 righe.
+            height: 152,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.only(right: 20),

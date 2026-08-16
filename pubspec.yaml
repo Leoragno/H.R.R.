@@ -34,6 +34,10 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^13.0.1
   maplibre_gl: ^0.26.2
+  # Reverse geocoding (lat/lon -> paese/regione/stato) per "I miei
+  # territori": stesso vendor (Baseflow) di geolocator, geocoder nativo di
+  # piattaforma, nessuna chiave API da gestire.
+  geocoding: ^3.0.0
   # Upgrade del permesso di localizzazione a "Always" su iOS: dopo un primo
   # grant "When In Use", una seconda chiamata a Geolocator.requestPermission()
   # non richiede più nulla all'utente (ritorna subito lo stato corrente) — solo

@@ -21,6 +21,10 @@ class MissionRepositoryImpl implements MissionRepository {
   }
 
   @override
+  Future<void> ensureCurrentPeriodMissions() =>
+      _remote.ensureCurrentPeriodMissions();
+
+  @override
   Future<List<MissionProgress>> myProgress() async {
     final progress = await _remote.myProgress(_currentProfileId());
     return progress.map((p) => p.toEntity()).toList();

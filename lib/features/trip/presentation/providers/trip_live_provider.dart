@@ -111,6 +111,7 @@ class TripMotionStats {
   final int brakingEvents;
   final int turnsLeft;
   final int turnsRight;
+  final int laneChanges;
   final double? maxCorneringSpeedKmh;
 
   // --- Aggregati per il punteggio di guida (vedi complete_trip in
@@ -137,6 +138,7 @@ class TripMotionStats {
     this.brakingEvents = 0,
     this.turnsLeft = 0,
     this.turnsRight = 0,
+    this.laneChanges = 0,
     this.maxCorneringSpeedKmh,
     this.brakingHardEvents = 0,
     this.brakingJerkAvgMs3,
@@ -228,6 +230,17 @@ const _kTurnThresholdDeg = 25.0;
 const _kTurnWindowTimeout = Duration(seconds: 4);
 const _kTurnCooldown = Duration(seconds: 3);
 const _kTurnGyroCorroborationRadS = 0.15;
+// Cambio di corsia: stessa finestra di osservazione delle svolte
+// (_turnAccumDeg/_turnWindowStart), ma una deviazione cumulativa di
+// bearing più piccola di una svolta vera — sterzata più lieve e più
+// breve, non rumore GPS. Banda mutuata dal prototipo (Guida.dc.html,
+// 12°..45° lì, qui riscalata sulla soglia svolta locale di 25°).
+const _kLaneChangeThresholdDeg = 12.0;
+// Corroborazione giroscopica per un cambio corsia: sterzata più lieve di
+// una svolta, quindi soglia proporzionalmente più bassa di
+// _kTurnGyroCorroborationRadS.
+const _kLaneChangeGyroCorroborationRadS = 0.07;
+const _kLaneChangeCooldown = Duration(seconds: 3);
 // Sotto questa velocità il bearing tra due fix consecutivi è dominato dal
 // rumore GPS (lo spostamento reale in ~1s è piccolo quanto o meno
 // dell'errore tipico di un fix, fino a _kMinGpsAccuracyM) — a quella
@@ -441,6 +454,8 @@ class TripLiveController extends _$TripLiveController {
   DateTime? _lastTurnAt;
   int _turnsLeft = 0;
   int _turnsRight = 0;
+  DateTime? _lastLaneChangeAt;
+  int _laneChanges = 0;
   double? _maxCorneringSpeedKmh;
   bool _gyroEverFired = false;
 
@@ -815,6 +830,8 @@ class TripLiveController extends _$TripLiveController {
     _lastTurnAt = null;
     _turnsLeft = 0;
     _turnsRight = 0;
+    _lastLaneChangeAt = null;
+    _laneChanges = 0;
     _maxCorneringSpeedKmh = null;
     _gyroEverFired = false;
   }
@@ -1147,8 +1164,29 @@ class TripLiveController extends _$TripLiveController {
       }
       _closeTurnWindow();
     } else if (now.difference(_turnWindowStart!) > _kTurnWindowTimeout) {
+      _maybeCountLaneChange(now);
       _closeTurnWindow();
     }
+  }
+
+  /// Una finestra di svolta che scade senza raggiungere
+  /// _kTurnThresholdDeg non è per forza rumore: una sterzata più lieve ma
+  /// comunque intenzionale, corroborata dal giroscopio, è un cambio di
+  /// corsia — non una svolta.
+  void _maybeCountLaneChange(DateTime now) {
+    final abs = _turnAccumDeg.abs();
+    if (abs < _kLaneChangeThresholdDeg) return;
+    final canCount = _lastLaneChangeAt == null ||
+        now.difference(_lastLaneChangeAt!) > _kLaneChangeCooldown;
+    if (!canCount) return;
+    final avgGyroMag = _turnWindowGyroSamples > 0
+        ? _turnWindowGyroMagSum / _turnWindowGyroSamples
+        : 0.0;
+    final gyroCorroborated =
+        !_gyroEverFired || avgGyroMag >= _kLaneChangeGyroCorroborationRadS;
+    if (!gyroCorroborated) return;
+    _laneChanges++;
+    _lastLaneChangeAt = now;
   }
 
   void _closeTurnWindow() {
@@ -1246,6 +1284,16 @@ class TripLiveController extends _$TripLiveController {
             accelThenBrakeCount: _accelThenBrakeCount,
             gpsFixHz: gpsFixHz,
             gyroHz: gyroHz,
+            elevationGainM: _elevationGainM,
+            maxAltitudeM: _maxAltitudeM,
+            maxAccelerationMs2: _maxAccelerationMs2,
+            maxDecelerationMs2: _maxDecelerationMs2,
+            zeroToHundredSeconds: _bestZeroToHundredSeconds,
+            peakGForce: _peakGForce,
+            turnsLeft: _turnsLeft,
+            turnsRight: _turnsRight,
+            laneChanges: _laneChanges,
+            maxCorneringSpeedKmh: _maxCorneringSpeedKmh,
           );
     } catch (_) {
       // Il viaggio resta 'active' lato server (nessuna riga aggiornata se
@@ -1272,6 +1320,7 @@ class TripLiveController extends _$TripLiveController {
         brakingEvents: _brakingEvents,
         turnsLeft: _turnsLeft,
         turnsRight: _turnsRight,
+        laneChanges: _laneChanges,
         maxCorneringSpeedKmh: _maxCorneringSpeedKmh,
         brakingHardEvents: _brakingHardEvents,
         brakingJerkAvgMs3: brakingJerkAvgMs3,

@@ -20,6 +20,19 @@ class TripModel {
   final int? drivingScore;
   final TripStatus status;
   final List<RoutePoint> route;
+  final double? elevationGainM;
+  final double? maxAltitudeM;
+  final double? maxAccelerationMs2;
+  final double? maxDecelerationMs2;
+  final double? zeroToHundredSeconds;
+  final double? peakGForce;
+  final int? turnsLeft;
+  final int? turnsRight;
+  final int? laneChanges;
+  final double? maxCorneringSpeedKmh;
+  final int? brakingEvents;
+  final int? totalStops;
+  final int? stoppedSeconds;
 
   const TripModel({
     required this.id,
@@ -36,6 +49,19 @@ class TripModel {
     this.drivingScore,
     required this.status,
     this.route = const [],
+    this.elevationGainM,
+    this.maxAltitudeM,
+    this.maxAccelerationMs2,
+    this.maxDecelerationMs2,
+    this.zeroToHundredSeconds,
+    this.peakGForce,
+    this.turnsLeft,
+    this.turnsRight,
+    this.laneChanges,
+    this.maxCorneringSpeedKmh,
+    this.brakingEvents,
+    this.totalStops,
+    this.stoppedSeconds,
   });
 
   factory TripModel.fromJson(Map<String, dynamic> json) {
@@ -56,6 +82,21 @@ class TripModel {
       drivingScore: json['driving_score'] as int?,
       status: tripStatusFromString(json['status'] as String? ?? 'active'),
       route: _routeFromGeoJson(json['route_geojson']),
+      elevationGainM: (json['elevation_gain_m'] as num?)?.toDouble(),
+      maxAltitudeM: (json['max_altitude_m'] as num?)?.toDouble(),
+      maxAccelerationMs2: (json['max_acceleration_ms2'] as num?)?.toDouble(),
+      maxDecelerationMs2: (json['max_deceleration_ms2'] as num?)?.toDouble(),
+      zeroToHundredSeconds:
+          (json['zero_to_hundred_seconds'] as num?)?.toDouble(),
+      peakGForce: (json['peak_g_force'] as num?)?.toDouble(),
+      turnsLeft: json['turns_left'] as int?,
+      turnsRight: json['turns_right'] as int?,
+      laneChanges: json['lane_changes'] as int?,
+      maxCorneringSpeedKmh:
+          (json['max_cornering_speed_kmh'] as num?)?.toDouble(),
+      brakingEvents: json['braking_events'] as int?,
+      totalStops: json['total_stops'] as int?,
+      stoppedSeconds: json['stopped_seconds'] as int?,
     );
   }
 
@@ -87,5 +128,18 @@ class TripModel {
         drivingScore: drivingScore,
         status: status,
         route: route,
+        elevationGainM: elevationGainM,
+        maxAltitudeM: maxAltitudeM,
+        maxAccelerationMs2: maxAccelerationMs2,
+        maxDecelerationMs2: maxDecelerationMs2,
+        zeroToHundredSeconds: zeroToHundredSeconds,
+        peakGForce: peakGForce,
+        turnsLeft: turnsLeft,
+        turnsRight: turnsRight,
+        laneChanges: laneChanges,
+        maxCorneringSpeedKmh: maxCorneringSpeedKmh,
+        brakingEvents: brakingEvents,
+        totalStops: totalStops,
+        stoppedSeconds: stoppedSeconds,
       );
 }

@@ -30,11 +30,25 @@ MissionRepository missionRepository(MissionRepositoryRef ref) {
 
 // ---- Stato -----------------------------------------------------------------
 
+/// Genera (se serve) le istanze daily/weekly/seasonal del periodo
+/// corrente prima di leggerle — vedi MissionRepository.ensureCurrentPeriodMissions.
+/// Nessun `family`: un solo provider condiviso da tutti i tab, quindi la
+/// generazione parte una volta sola per apertura schermata (Riverpod
+/// cacha il Future), non una volta per tab osservato.
+@riverpod
+Future<void> ensureMissionPeriods(EnsureMissionPeriodsRef ref) {
+  return ref.watch(missionRepositoryProvider).ensureCurrentPeriodMissions();
+}
+
 /// Missioni attive visibili al chiamante (le secret non completate sono
 /// già escluse lato RLS). `type` filtra il tab Daily/Weekly/Season/Secret.
 @riverpod
 Future<List<Mission>> activeMissions(ActiveMissionsRef ref,
-    {MissionType? type}) {
+    {MissionType? type}) async {
+  // Aspetta che le missioni del periodo corrente esistano prima di
+  // leggerle, altrimenti il tab Daily/Weekly resta vuoto (o fermo a ieri)
+  // finché nessun altro apre l'app dopo il cambio di giorno/settimana.
+  await ref.watch(ensureMissionPeriodsProvider.future);
   final useCase =
       GetActiveMissionsUseCase(ref.watch(missionRepositoryProvider));
   return useCase(type: type);

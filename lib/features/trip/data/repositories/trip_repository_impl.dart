@@ -33,6 +33,16 @@ class TripRepositoryImpl implements TripRepository {
     int accelThenBrakeCount = 0,
     double? gpsFixHz,
     double? gyroHz,
+    double? elevationGainM,
+    double? maxAltitudeM,
+    double? maxAccelerationMs2,
+    double? maxDecelerationMs2,
+    double? zeroToHundredSeconds,
+    double? peakGForce,
+    int turnsLeft = 0,
+    int turnsRight = 0,
+    int laneChanges = 0,
+    double? maxCorneringSpeedKmh,
   }) async {
     final trip = await _remote.completeTrip(
       tripId: tripId,
@@ -52,6 +62,16 @@ class TripRepositoryImpl implements TripRepository {
       accelThenBrakeCount: accelThenBrakeCount,
       gpsFixHz: gpsFixHz,
       gyroHz: gyroHz,
+      elevationGainM: elevationGainM,
+      maxAltitudeM: maxAltitudeM,
+      maxAccelerationMs2: maxAccelerationMs2,
+      maxDecelerationMs2: maxDecelerationMs2,
+      zeroToHundredSeconds: zeroToHundredSeconds,
+      peakGForce: peakGForce,
+      turnsLeft: turnsLeft,
+      turnsRight: turnsRight,
+      laneChanges: laneChanges,
+      maxCorneringSpeedKmh: maxCorneringSpeedKmh,
     );
     return trip.toEntity();
   }

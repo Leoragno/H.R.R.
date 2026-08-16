@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/glass_card.dart';
+import '../../domain/entities/trip.dart';
 import '../providers/trip_provider.dart';
 import '../widgets/route_preview_painter.dart';
+import '../widgets/trip_stat_card.dart';
 
 class TripDetailScreen extends ConsumerWidget {
   final String tripId;
@@ -111,9 +113,20 @@ class TripDetailScreen extends ConsumerWidget {
                         value:
                             '${trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—'} km/h',
                       ),
+                      if (trip.drivingScore != null) ...[
+                        const Divider(height: 20, color: Color(0xFF1D2740)),
+                        _StatRow(
+                          label: 'Punteggio di guida',
+                          value: '${trip.drivingScore}/100',
+                        ),
+                      ],
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                Text('Statistiche del trip', style: AppType.title),
+                const SizedBox(height: AppSpace.sm),
+                _MotionStatsGrid(trip: trip),
               ],
             );
           },
@@ -150,6 +163,83 @@ class _RewardChip extends StatelessWidget {
                   color: AppColor.inkMuted, fontSize: 12)),
         ],
       ),
+    );
+  }
+}
+
+/// Stesse statistiche di TripSummaryScreen (report subito dopo la corsa),
+/// lette qui dalle colonne persistite da complete_trip
+/// (0030_persist_trip_motion_stats.sql) invece che da TripMotionStats
+/// (effimero, esiste solo mentre il viaggio è in corso). '—' per ogni
+/// campo singolarmente assente: sia sui viaggi completati prima di questa
+/// migration (tutti null) sia quando l'evento non si è mai verificato in
+/// un viaggio nuovo (es. mai una svolta -> turnsLeft/turnsRight comunque
+/// valorizzati a 0 dal client, non null — '—' resta per i soli campi che
+/// il client può davvero non calcolare, es. nessun dato di quota GPS).
+class _MotionStatsGrid extends StatelessWidget {
+  final Trip trip;
+  const _MotionStatsGrid({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final stoppedSeconds = trip.stoppedSeconds;
+    final peakG = trip.peakGForce;
+    final maxAccel = trip.maxAccelerationMs2;
+    final maxDecel = trip.maxDecelerationMs2;
+    final elevationGain = trip.elevationGainM;
+    final maxAltitude = trip.maxAltitudeM;
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: AppSpace.sm,
+      mainAxisSpacing: AppSpace.sm,
+      childAspectRatio: 1.4,
+      children: [
+        TripStatCard(
+            'Tempo da fermo',
+            stoppedSeconds != null
+                ? formatStoppedTime(Duration(seconds: stoppedSeconds))
+                : '—',
+            ''),
+        TripStatCard('Soste totali', '${trip.totalStops ?? '—'}', ''),
+        TripStatCard(
+            'Tempo 0-100',
+            trip.zeroToHundredSeconds != null
+                ? trip.zeroToHundredSeconds!.toStringAsFixed(2)
+                : '—',
+            's'),
+        TripStatCard('Frenate', '${trip.brakingEvents ?? '—'}', ''),
+        TripStatCard('Svolte a sinistra', '${trip.turnsLeft ?? '—'}', ''),
+        TripStatCard('Svolte a destra', '${trip.turnsRight ?? '—'}', ''),
+        TripStatCard('Cambi di corsia', '${trip.laneChanges ?? '—'}', ''),
+        TripStatCard('Picco forza G', peakG != null ? peakG.toStringAsFixed(2) : '—',
+            'G',
+            hint: peakG != null ? gForceHint(peakG) : null),
+        TripStatCard(
+            'Velocità max in curva',
+            trip.maxCorneringSpeedKmh != null
+                ? trip.maxCorneringSpeedKmh!.toStringAsFixed(0)
+                : '—',
+            'km/h'),
+        TripStatCard(
+            'Accelerazione max',
+            maxAccel != null ? maxAccel.toStringAsFixed(1) : '—',
+            'm/s²',
+            hint: maxAccel != null ? accelHint(maxAccel) : null),
+        TripStatCard(
+            'Decelerazione max',
+            maxDecel != null ? maxDecel.abs().toStringAsFixed(1) : '—',
+            'm/s²',
+            hint: maxDecel != null ? decelHint(maxDecel) : null),
+        TripStatCard('Dislivello',
+            elevationGain != null ? elevationGain.round().toString() : '—', 'm'),
+        TripStatCard(
+            'Altitudine max',
+            maxAltitude != null ? maxAltitude.round().toString() : '—',
+            'm'),
+      ],
     );
   }
 }
