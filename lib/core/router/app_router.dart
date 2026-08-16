@@ -24,7 +24,6 @@ import '../../features/car_spotting/presentation/screens/leaderboard_screen.dart
     as car_spotting;
 import '../../features/car_spotting/presentation/screens/spot_detail_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
-import '../../features/missions/presentation/screens/missions_screen.dart';
 import '../../features/achievements/presentation/screens/achievements_screen.dart';
 import '../../features/events/presentation/screens/events_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
@@ -56,7 +55,6 @@ class AppRoutes {
   static const spotDetail = '/car-spotting/:spotId';
   static const carSpottingLeaderboard = '/car-spotting-leaderboard';
   static const profile = '/profile';
-  static const missions = '/missions';
   static const achievements = '/achievements';
   static const events = '/events';
   static const settings = '/settings';
@@ -178,9 +176,6 @@ GoRouter appRouter(Ref ref) {
         routes: [
           GoRoute(path: AppRoutes.home, builder: (c, s) => const HomeScreen()),
           GoRoute(path: AppRoutes.game, builder: (c, s) => const GameScreen()),
-          GoRoute(
-              path: AppRoutes.missions,
-              builder: (c, s) => const MissionsScreen()),
           GoRoute(path: AppRoutes.map, builder: (c, s) => const MapScreen()),
           GoRoute(
               path: AppRoutes.carSpotting,

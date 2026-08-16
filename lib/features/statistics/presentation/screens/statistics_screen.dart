@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/notification_bell_button.dart';
 import '../../../../core/widgets/profile_avatar_button.dart';
+import '../../../trip/presentation/widgets/trip_stat_card.dart' show formatStoppedTime;
 import '../../domain/entities/user_statistics.dart';
 import '../providers/statistics_provider.dart';
 
@@ -16,8 +17,12 @@ import '../providers/statistics_provider.dart';
 ///
 /// Protagonista unico (DESIGN.md, regola 1): il Livello, in testa, con
 /// l'unico accento/glow ciano della schermata. Tutto il resto — Guida,
-/// Territorio, Spotting, Achievement, Missioni — resta su `AppGlow.card`
-/// grigio, per quanto ogni numero "vorrebbe" farsi notare.
+/// Territorio, Spotting, Achievement — resta su `AppGlow.card` grigio, per
+/// quanto ogni numero "vorrebbe" farsi notare.
+///
+/// Missioni volutamente assente: il motore missioni lato server resta
+/// attivo (mission_event_bridge_provider continua ad assegnare XP/REP),
+/// solo l'accesso da UI è stato rimosso su richiesta ("non serve").
 class StatisticsScreen extends ConsumerWidget {
   const StatisticsScreen({super.key});
 
@@ -71,6 +76,51 @@ class StatisticsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpace.lg),
               _StatSection(
+                title: 'DETTAGLI DI GUIDA',
+                tiles: [
+                  _StatTile(
+                      label: 'Dislivello totale',
+                      value: stats.elevationGainTotalM.round().toString(),
+                      unit: 'm'),
+                  _StatTile(
+                      label: 'Altitudine max',
+                      value: stats.maxAltitudeM.round().toString(),
+                      unit: 'm'),
+                  _StatTile(
+                      label: 'Picco G',
+                      value: stats.peakGForce.toStringAsFixed(2),
+                      unit: 'G'),
+                  _StatTile(
+                      label: 'Miglior 0-100',
+                      value: stats.bestZeroToHundredSeconds != null
+                          ? stats.bestZeroToHundredSeconds!.toStringAsFixed(2)
+                          : '—',
+                      unit: stats.bestZeroToHundredSeconds != null ? 's' : null),
+                  _StatTile(
+                      label: 'Vel. max in curva',
+                      value: stats.maxCorneringSpeedKmh.toStringAsFixed(0),
+                      unit: 'km/h'),
+                  _StatTile(
+                      label: 'Accelerazione max',
+                      value: stats.maxAccelerationMs2.toStringAsFixed(1),
+                      unit: 'm/s²'),
+                  _StatTile(
+                      label: 'Decelerazione max',
+                      value: stats.maxDecelerationMs2.toStringAsFixed(1),
+                      unit: 'm/s²'),
+                  _StatTile(label: 'Svolte totali', value: '${stats.turnsTotal}'),
+                  _StatTile(
+                      label: 'Cambi corsia', value: '${stats.laneChangesTotal}'),
+                  _StatTile(label: 'Frenate totali', value: '${stats.brakingEventsTotal}'),
+                  _StatTile(label: 'Soste totali', value: '${stats.totalStopsTotal}'),
+                  _StatTile(
+                      label: 'Tempo da fermo',
+                      value: formatStoppedTime(
+                          Duration(seconds: stats.stoppedSecondsTotal))),
+                ],
+              ),
+              const SizedBox(height: AppSpace.lg),
+              _StatSection(
                 title: 'TERRITORIO',
                 tiles: [
                   _StatTile(label: 'Esagoni', value: '${stats.territoryCellCount}'),
@@ -103,13 +153,6 @@ class StatisticsScreen extends ConsumerWidget {
                 subtitle:
                     'Sbloccati ${stats.achievementsEarned} / ${stats.achievementsTotal}',
                 onTap: () => context.push(AppRoutes.achievements),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              _NavCard(
-                icon: Icons.flag_circle_rounded,
-                title: 'Missioni',
-                subtitle: 'Completate ${stats.missionsCompleted}',
-                onTap: () => context.push(AppRoutes.missions),
               ),
             ],
           ),
