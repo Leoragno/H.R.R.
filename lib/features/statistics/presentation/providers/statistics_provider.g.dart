@@ -26,11 +26,12 @@ final statisticsRemoteDatasourceProvider =
 // ignore: unused_element
 typedef StatisticsRemoteDatasourceRef
     = AutoDisposeProviderRef<StatisticsRemoteDatasource>;
-String _$myStatisticsHash() => r'5ed06471e0c9a3a3806375c1e11746bd8c63c72b';
+String _$myStatisticsHash() => r'0c648ff1572473e84fe2a3b428af63fea6acfff4';
 
 /// Combina dati già presenti in altre feature — nessuna nuova tabella/RPC
-/// (a parte il conteggio spot, vedi [StatisticsRemoteDatasource]). La
-/// velocità massima non è ovunque esposta: si prende dalla classifica
+/// (a parte il conteggio spot e l'aggregato statistiche di guida, vedi
+/// [StatisticsRemoteDatasource]). La velocità massima non è ovunque
+/// esposta: si prende dalla classifica
 /// "velocità" (limite alto per non perdere la propria riga se non si è
 /// nei primi 50) filtrata sulla propria; se non compare (mai guidato, o
 /// oltre il limite) resta 0 — stesso comportamento già accettato altrove

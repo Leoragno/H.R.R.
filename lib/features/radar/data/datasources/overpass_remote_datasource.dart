@@ -46,7 +46,14 @@ class OverpassRemoteDatasource {
       final response = await _dio.post<dynamic>(
         url,
         data: {'data': query},
-        options: Options(contentType: Headers.formUrlEncodedContentType),
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          headers: {
+            // L'istanza pubblica risponde 406 allo User-Agent di default
+            // di Dart/Dio (stesso motivo per cui Waze sotto ne imposta uno).
+            'User-Agent': 'H.R.R-App/1.0',
+          },
+        ),
       );
       final events = _parse(response.data);
       _cache[bounds] = _CacheEntry(events, DateTime.now());

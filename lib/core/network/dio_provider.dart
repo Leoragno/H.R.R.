@@ -9,6 +9,9 @@ part 'dio_provider.g.dart';
 /// principio del [supabaseClientProvider] unico.
 @Riverpod(keepAlive: true)
 Dio dio(Ref ref) => Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
+      connectTimeout: const Duration(seconds: 10),
+      // La query Overpass dichiara [timeout:25] lato server: il client deve
+      // aspettare almeno quello, altrimenti si taglia la risposta prima che
+      // l'istanza pubblica (spesso lenta) finisca di rispondere.
+      receiveTimeout: const Duration(seconds: 30),
     ));

@@ -1249,6 +1249,17 @@ class TripLiveController extends _$TripLiveController {
     await _gyroSub?.cancel();
     _ticker?.cancel();
     state = state.copyWith(status: TripLiveStatus.finishing);
+    // TripLiveScreen sostituisce la mappa live con uno spinner appena lo
+    // stato passa a "finishing" (vedi _FinishingView), per smontare la
+    // PlatformView nativa MapLibre PRIMA della navigazione verso il
+    // riepilogo. Ma quello smontaggio nativo lato Android non è istantaneo:
+    // se la RPC sotto risponde più in fretta di quanto richieda, il
+    // pushReplacement successivo arriva a metà dello smontaggio della
+    // mappa — il flash/schermo nero (a volte bloccato) osservato premendo
+    // "Termina viaggio". Questa pausa dà tempo reale al frame senza mappa
+    // di essere disegnato e alla PlatformView di chiudersi per bene prima
+    // di proseguire.
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final elapsedSeconds = state.elapsed.inSeconds;
     // RMS del jerk sull'intero viaggio (Fluidità) — null se non è mai

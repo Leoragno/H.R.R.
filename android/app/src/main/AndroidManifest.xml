@@ -4,6 +4,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- Canale voce push-to-talk "Auto amiche" in Guida live, vedi
+         VoiceChannelController. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <!-- Foreground service per il tracking GPS della guida a schermo bloccato/app
          in background: la notifica persistente mantiene il tracking "in foreground"
          agli occhi del sistema, senza richiedere ACCESS_BACKGROUND_LOCATION. -->

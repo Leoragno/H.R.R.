@@ -26,6 +26,26 @@ final overpassRemoteDatasourceProvider =
 // ignore: unused_element
 typedef OverpassRemoteDatasourceRef
     = AutoDisposeProviderRef<OverpassRemoteDatasource>;
+String _$openGatsoPoiRemoteDatasourceHash() =>
+    r'45f57f32e1164718cea4d0f4687b3d63d5b42854';
+
+/// See also [openGatsoPoiRemoteDatasource].
+@ProviderFor(openGatsoPoiRemoteDatasource)
+final openGatsoPoiRemoteDatasourceProvider =
+    Provider<OpenGatsoPoiRemoteDatasource>.internal(
+  openGatsoPoiRemoteDatasource,
+  name: r'openGatsoPoiRemoteDatasourceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$openGatsoPoiRemoteDatasourceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef OpenGatsoPoiRemoteDatasourceRef
+    = ProviderRef<OpenGatsoPoiRemoteDatasource>;
 String _$wazeRemoteDatasourceHash() =>
     r'79876cab15874a72b5d5ea000971e4d0fb1ae9ce';
 
@@ -65,7 +85,7 @@ final communityReportsRemoteDatasourceProvider =
 // ignore: unused_element
 typedef CommunityReportsRemoteDatasourceRef
     = AutoDisposeProviderRef<CommunityReportsRemoteDatasource>;
-String _$radarRepositoryHash() => r'3073452cd27f65df863b7485a071dbe73cf3fcff';
+String _$radarRepositoryHash() => r'e28e4286515745c56a708262af42bacd8e65a2c8';
 
 /// See also [radarRepository].
 @ProviderFor(radarRepository)

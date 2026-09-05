@@ -27,6 +27,10 @@ Flutter/flutter_export_environment.sh
 ServiceDefinitions.json
 Runner/GeneratedPluginRegistrant.*
 
+# Generato a runtime dal workflow ios_ipa.yml (contiene il Team ID/nome
+# profilo passati come secrets): mai da committare.
+ExportOptions.plist
+
 # Exceptions to above rules.
 !default.mode1v3
 !default.mode2v3

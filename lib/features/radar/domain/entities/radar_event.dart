@@ -20,6 +20,17 @@ class RadarEvent extends Equatable {
   final double lon;
   final DateTime? reportedAt;
 
+  /// Per i velox `source == api`: true se il punto è confermato da più di
+  /// una fonte indipendente (oggi Overpass/OSM + Open-GATSO-POI, vedi
+  /// [VeloxSourceMerger]), false se viene da una sola fonte non
+  /// incrociata. Nessun database di velox è "verità assoluta" da solo —
+  /// la UI distingue le due situazioni con la stessa icona a opacità
+  /// diversa (mai un colore nuovo, vedi DESIGN.md). Irrilevante per
+  /// pattuglie (fonte singola Waze, per natura non incrociabile: sono
+  /// mobili) e per le segnalazioni community: per queste resta sempre
+  /// `true` così l'opacità non cambia rispetto a oggi.
+  final bool verified;
+
   const RadarEvent({
     required this.id,
     required this.category,
@@ -27,6 +38,7 @@ class RadarEvent extends Equatable {
     required this.lat,
     required this.lon,
     this.reportedAt,
+    this.verified = true,
   });
 
   static const validity = Duration(minutes: 90);
@@ -38,5 +50,6 @@ class RadarEvent extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, category, source, lat, lon, reportedAt];
+  List<Object?> get props =>
+      [id, category, source, lat, lon, reportedAt, verified];
 }

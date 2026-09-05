@@ -6,7 +6,7 @@ part of 'game_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$gameControllerHash() => r'3e6c53437cd187eed362e1d34a1040940980021d';
+String _$gameControllerHash() => r'de95861e9bde5141da61e3b4138a9b14bbeb7e47';
 
 /// Stato di sola lettura della mappa territorio: mostra le celle
 /// possedute e la propria posizione, ma non rivendica più nulla in

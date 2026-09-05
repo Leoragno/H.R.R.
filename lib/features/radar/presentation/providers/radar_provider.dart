@@ -7,6 +7,7 @@ import '../../../../core/network/dio_provider.dart';
 import '../../../../core/network/supabase_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/community_reports_remote_datasource.dart';
+import '../../data/datasources/open_gatso_poi_remote_datasource.dart';
 import '../../data/datasources/overpass_remote_datasource.dart';
 import '../../data/datasources/waze_remote_datasource.dart';
 import '../../data/repositories/radar_repository_impl.dart';
@@ -23,6 +24,13 @@ OverpassRemoteDatasource overpassRemoteDatasource(
         OverpassRemoteDatasourceRef ref) =>
     OverpassRemoteDatasource(ref.watch(dioProvider));
 
+@Riverpod(keepAlive: true)
+OpenGatsoPoiRemoteDatasource openGatsoPoiRemoteDatasource(
+        OpenGatsoPoiRemoteDatasourceRef ref) =>
+    // keepAlive: la cache in memoria del dump (~9MB, 24h) non deve
+    // svuotarsi ad ogni dispose del provider — vedi il datasource.
+    OpenGatsoPoiRemoteDatasource(ref.watch(dioProvider));
+
 @riverpod
 WazeRemoteDatasource wazeRemoteDatasource(WazeRemoteDatasourceRef ref) =>
     WazeRemoteDatasource(ref.watch(dioProvider));
@@ -35,6 +43,7 @@ CommunityReportsRemoteDatasource communityReportsRemoteDatasource(
 @riverpod
 RadarRepository radarRepository(RadarRepositoryRef ref) => RadarRepositoryImpl(
       ref.watch(overpassRemoteDatasourceProvider),
+      ref.watch(openGatsoPoiRemoteDatasourceProvider),
       ref.watch(wazeRemoteDatasourceProvider),
       ref.watch(communityReportsRemoteDatasourceProvider),
     );

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show Point;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -14,6 +14,7 @@ import '../../../radar/domain/entities/radar_bounds.dart';
 import '../../../radar/domain/entities/radar_event.dart';
 import '../../../radar/presentation/providers/radar_provider.dart';
 import '../../../radar/presentation/widgets/radar_icons.dart';
+import '../../../radar/presentation/widgets/report_option_tile.dart';
 import '../../../trip/presentation/providers/live_map_provider.dart';
 
 /// Mappa reale (MapLibre GL + tile OpenFreeMap/OSM) dietro la sheet Guida,
@@ -203,16 +204,33 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
     });
   }
 
+  // Raggio fisso attorno al centro mappa, non più proporzionale al
+  // riquadro visibile: a zoom stretto (es. appena centrati sul GPS) lo
+  // schermo da solo copre un'area minuscola — quasi mai un velox dentro
+  // anche se ce ne sono nei dintorni, dato quanto sono sparsi i dati OSM
+  // (~1 ogni 15km² in zone dense, verificato). L'utente si aspetta "i
+  // velox della zona", non solo quelli esattamente in vista.
+  static const _queryRadiusKm = 20.0;
+  static const _kmPerDegLat = 111.0;
+
   Future<void> _updateVisibleBounds() async {
     final controller = _controller;
     if (controller == null) return;
     try {
       final region = await controller.getVisibleRegion();
+      final centerLat =
+          (region.northeast.latitude + region.southwest.latitude) / 2;
+      final centerLon =
+          (region.northeast.longitude + region.southwest.longitude) / 2;
+      const latDelta = _queryRadiusKm / _kmPerDegLat;
+      final kmPerDegLon =
+          _kmPerDegLat * math.cos(centerLat * math.pi / 180).abs();
+      final lonDelta = _queryRadiusKm / kmPerDegLon.clamp(1.0, _kmPerDegLat);
       final bounds = RadarBounds.quantized(
-        south: region.southwest.latitude,
-        west: region.southwest.longitude,
-        north: region.northeast.latitude,
-        east: region.northeast.longitude,
+        south: centerLat - latDelta,
+        west: centerLon - lonDelta,
+        north: centerLat + latDelta,
+        east: centerLon + lonDelta,
       );
       if (!mounted) return;
       ref.read(mapBoundsControllerProvider.notifier).update(bounds);
@@ -248,6 +266,10 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
               e.source == RadarSource.community,
             ),
             iconSize: 0.42,
+            // Stessa icona, mai un colore in più (vedi DESIGN.md): un
+            // velox confermato da più fonti (RadarEvent.verified) resta
+            // pieno, uno da fonte singola non incrociata si attenua.
+            iconOpacity: e.verified ? 1.0 : 0.55,
           ),
       ];
       final symbols = await controller.addSymbols(options);
@@ -260,7 +282,7 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
     }
   }
 
-  Future<void> _onMapLongPress(Point<double> point, LatLng coords) async {
+  Future<void> _onMapLongPress(math.Point<double> point, LatLng coords) async {
     if (!ref.read(radarModeControllerProvider)) return;
     if (!mounted) return;
 
@@ -270,13 +292,13 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
       builder: (ctx) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ReportOptionTile(
+          ReportOptionTile(
             icon: Icons.videocam_rounded,
             label: 'Velox',
             onTap: () => Navigator.of(ctx).pop(RadarCategory.velox),
           ),
           const SizedBox(height: AppSpace.sm),
-          _ReportOptionTile(
+          ReportOptionTile(
             icon: Icons.shield_rounded,
             label: 'Pattuglia',
             onTap: () => Navigator.of(ctx).pop(RadarCategory.pattuglia),
@@ -334,41 +356,6 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
         onStyleLoadedCallback: _onStyleLoaded,
         onCameraIdle: _onCameraIdle,
         onMapLongClick: _onMapLongPress,
-      ),
-    );
-  }
-}
-
-class _ReportOptionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _ReportOptionTile(
-      {required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColor.surfaceHigh,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.md, vertical: AppSpace.md),
-          child: Row(
-            children: [
-              Icon(icon, color: AppColor.cyan),
-              const SizedBox(width: AppSpace.sm),
-              Text(label,
-                  style: AppType.text(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 17,
-                      color: AppColor.ink)),
-            ],
-          ),
-        ),
       ),
     );
   }

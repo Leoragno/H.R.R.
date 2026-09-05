@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 
-/// Tachimetro digitale del design Guida: anello di tacche colorate per
-/// fascia di velocità (verde→ciano→viola→magenta man mano che ci si
-/// avvicina a [maxSpeed]) con il numero grande al centro — non un
-/// tachimetro analogico con lancetta.
+/// Tachimetro digitale del design Guida: anello di tacche che si accendono
+/// in ciano man mano che ci si avvicina a [maxSpeed], con il numero grande
+/// al centro — non un tachimetro analogico con lancetta. Un solo accento
+/// acceso (regola 1 di DESIGN.md): niente arcobaleno di colori per fascia
+/// di velocità, le tacche spente restano grigie.
 class SpeedometerGauge extends StatelessWidget {
   final double speed;
   final double maxSpeed;
@@ -41,7 +42,7 @@ class SpeedometerGauge extends StatelessWidget {
                 style: AppType.text(
                   fontWeight: FontWeight.w700,
                   fontSize: 88,
-                  color: Colors.white,
+                  color: AppColor.ink,
                   letterSpacing: -3,
                 ),
               ),
@@ -90,7 +91,7 @@ class _GaugePainter extends CustomPainter {
       final t = i / (_tickCount - 1);
       final angle = _start + _sweep * t;
       final lit = i <= litTicks;
-      final color = lit ? _colorForT(t) : const Color(0xFF232B45);
+      final color = lit ? AppColor.cyan : const Color(0xFF232B45);
 
       final outer = Offset(
         center.dx + radius * 0.98 * math.cos(angle),
@@ -107,20 +108,6 @@ class _GaugePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(inner, outer, tickPaint);
     }
-  }
-
-  Color _colorForT(double t) {
-    const colors = [
-      Color(0xFF7EE0A5),
-      Color(0xFF35E0FF),
-      Color(0xFF2F6BFF),
-      Color(0xFFC23DFF),
-      Color(0xFFFF2D55),
-    ];
-    final scaled = t * (colors.length - 1);
-    final i = scaled.floor().clamp(0, colors.length - 2);
-    final localT = scaled - i;
-    return Color.lerp(colors[i], colors[i + 1], localT)!;
   }
 
   @override

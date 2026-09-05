@@ -6,7 +6,7 @@ part of 'dio_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dioHash() => r'605013ded5d47341cfe129e105d6309de5892f3e';
+String _$dioHash() => r'95b5b1fa0dd2fae3ceea46110ab6e8c5668292dc';
 
 /// Client HTTP condiviso per le chiamate a servizi esterni (Overpass, Waze
 /// — vedi lib/features/radar/). Un solo Dio per tutta l'app, stesso
