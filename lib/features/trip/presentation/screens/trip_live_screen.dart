@@ -291,8 +291,11 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
                   ),
                 // Barra "Auto amiche" collassata: inline, sopra la CTA — mai
                 // in overlay qui, altrimenti la copre (vedi _AmicheCard).
+                // Visibile in entrambe le viste (non solo Mappa): è l'unico
+                // punto da cui si vede chi altro sta guidando ora e si
+                // accede al PTT, non deve dipendere dal toggle mappa/
+                // tachimetro.
                 if (state.status == TripLiveStatus.tracking &&
-                    _view == _LiveView.map &&
                     !_amicheExpanded)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
@@ -308,8 +311,8 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
                       // Nascosta (non solo coperta) quando il pannello Auto
                       // amiche è espanso: un solo elemento con glow per
                       // schermata, il PTT diventa il protagonista — vedi
-                      // regola 1 di DESIGN.md.
-                      visible: !(_view == _LiveView.map && _amicheExpanded),
+                      // regola 1 di DESIGN.md. Vale in entrambe le viste.
+                      visible: !_amicheExpanded,
                       maintainState: true,
                       maintainAnimation: true,
                       maintainSize: true,
@@ -328,10 +331,9 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
           // Pannello "Auto amiche" espanso: solo qui in overlay assoluto,
           // apposta sopra la CTA "Termina viaggio" (stesso trattamento del
           // bottom sheet nei mock) — la barra collassata sopra resta invece
-          // sempre inline, non deve mai coprire nulla.
-          if (_view == _LiveView.map &&
-              state.status == TripLiveStatus.tracking &&
-              _amicheExpanded)
+          // sempre inline, non deve mai coprire nulla. Visibile in entrambe
+          // le viste, stesso motivo della barra collassata sopra.
+          if (state.status == TripLiveStatus.tracking && _amicheExpanded)
             Positioned(
               left: 0,
               right: 0,
