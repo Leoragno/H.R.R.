@@ -15,6 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/events/mission_event.dart';
 import '../../../../core/events/mission_event_bus.dart';
 import '../../../../core/network/supabase_provider.dart';
+import '../../../../core/utils/tracking_wakelock.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../game/domain/hex_grid.dart';
 import '../../../game/presentation/providers/territory_provider.dart';
@@ -466,6 +467,7 @@ class TripLiveController extends _$TripLiveController {
       _userAccelSub?.cancel();
       _gyroSub?.cancel();
       _ticker?.cancel();
+      unawaited(TrackingWakelock.disable());
       _leaveLiveChannels();
     });
     return const TripLiveState();
@@ -473,7 +475,12 @@ class TripLiveController extends _$TripLiveController {
 
   Future<void> startTrip() async {
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
+    // unableToDetermine: su Web i browser senza Permissions API (Safari)
+    // non permettono di leggere lo stato — senza una richiesta esplicita qui
+    // il prompt comparirebbe solo dopo l'avvio del viaggio, e un rifiuto
+    // arriverebbe come errore dello stream a viaggio già aperto.
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.unableToDetermine) {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.denied ||
@@ -532,7 +539,12 @@ class TripLiveController extends _$TripLiveController {
   /// TripStarted (già pubblicato al primo avvio di questo viaggio).
   Future<void> resumeTrip(PersistedTripState saved) async {
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
+    // unableToDetermine: su Web i browser senza Permissions API (Safari)
+    // non permettono di leggere lo stato — senza una richiesta esplicita qui
+    // il prompt comparirebbe solo dopo l'avvio del viaggio, e un rifiuto
+    // arriverebbe come errore dello stream a viaggio già aperto.
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.unableToDetermine) {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.denied ||
@@ -625,7 +637,14 @@ class TripLiveController extends _$TripLiveController {
     _positionSub?.cancel();
     _positionSub = Geolocator.getPositionStream(
       locationSettings: _liveLocationSettings(),
-    ).listen(_onPosition);
+      // Errori transitori (timeout/posizione non disponibile: frequenti nel
+      // watchPosition dei browser, soprattutto su iOS al chiuso) non devono
+      // risalire come eccezioni non gestite — lo stream resta attivo e il
+      // prossimo fix valido riprende normalmente.
+    ).listen(_onPosition, onError: (_) {});
+
+    // Solo Web/PWA: senza schermo acceso il browser sospende il GPS.
+    unawaited(TrackingWakelock.enable());
 
     unawaited(_joinLiveChannels());
 
@@ -720,6 +739,15 @@ class TripLiveController extends _$TripLiveController {
           notificationText: 'Tocca per tornare all\'app',
           notificationChannelName: 'Guida in corso',
           setOngoing: true,
+          // Senza wake lock, a schermo spento/app in background la CPU va
+          // in sleep e i fix GPS non vengono elaborati: arrivano tutti
+          // insieme al risveglio (cioè quando si riapre l'app), e il
+          // tracciato salta dall'ultimo punto visto a quello di adesso in
+          // linea retta. Il foreground service da solo non basta.
+          enableWakeLock: true,
+          // Tiene sveglio anche il Wi-Fi: il canale Realtime (posizioni
+          // live + voce "Auto amiche") non si addormenta a schermo spento.
+          enableWifiLock: true,
         ),
       );
     }
@@ -1248,6 +1276,7 @@ class TripLiveController extends _$TripLiveController {
     await _userAccelSub?.cancel();
     await _gyroSub?.cancel();
     _ticker?.cancel();
+    unawaited(TrackingWakelock.disable());
     state = state.copyWith(status: TripLiveStatus.finishing);
     // TripLiveScreen sostituisce la mappa live con uno spinner appena lo
     // stato passa a "finishing" (vedi _FinishingView), per smontare la
@@ -1380,6 +1409,7 @@ class TripLiveController extends _$TripLiveController {
     await _userAccelSub?.cancel();
     await _gyroSub?.cancel();
     _ticker?.cancel();
+    unawaited(TrackingWakelock.disable());
     if (tripId != null) {
       await ref.read(tripRepositoryProvider).discardTrip(tripId);
     }

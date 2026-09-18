@@ -9,6 +9,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/network/supabase_provider.dart';
@@ -24,6 +25,14 @@ const _kMaxRecordSeconds = 8;
 const _kMinRecordMs = 300;
 const _kChannelName = 'drivers-live';
 
+/// Canali "radio" selezionabili (1..N). Sono un filtro applicato ai
+/// messaggi, non topic Realtime separati: la RLS di 0027_remove_crew_
+/// friends.sql autorizza solo il topic 'drivers-live', quindi tutti restano
+/// su quello e ognuno ascolta solo i clip col proprio numero di canale.
+const kVoiceChannelCount = 8;
+const _kDefaultVoiceChannel = 1;
+const _kVoiceChannelPrefsKey = 'hrr_voice_channel_v1';
+
 /// Chi ha appena parlato sul canale — solo per l'indicatore "in arrivo"
 /// nella UI, mai persistito.
 class VoiceActivity {
@@ -36,11 +45,13 @@ class VoiceChannelState {
   final bool recording;
   final bool sending;
   final VoiceActivity? speaking;
+  final int channel;
 
   const VoiceChannelState({
     this.recording = false,
     this.sending = false,
     this.speaking,
+    this.channel = _kDefaultVoiceChannel,
   });
 
   VoiceChannelState copyWith({
@@ -48,11 +59,13 @@ class VoiceChannelState {
     bool? sending,
     VoiceActivity? speaking,
     bool clearSpeaking = false,
+    int? channel,
   }) {
     return VoiceChannelState(
       recording: recording ?? this.recording,
       sending: sending ?? this.sending,
       speaking: clearSpeaking ? null : (speaking ?? this.speaking),
+      channel: channel ?? this.channel,
     );
   }
 }
@@ -69,14 +82,18 @@ class _IncomingClip {
 /// [LiveMapController]/TripLiveController), stesso topic già autorizzato
 /// dalla RLS in 0027_remove_crew_friends.sql: nessuna nuova migration.
 ///
-/// Ogni pressione registra un clip PCM16 mono 8kHz in memoria (via
-/// [AudioRecorder.startStream], niente file per la ripresa), lo incapsula
-/// in un WAV minimale e lo invia in broadcast in base64. In ricezione i
-/// clip vengono messi in coda e riprodotti uno alla volta, così due "spinte"
-/// ravvicinate non si accavallano.
+/// Un tocco ([toggleTalking]) avvia la registrazione di un clip PCM16 mono
+/// 8kHz in memoria (via [AudioRecorder.startStream], niente file per la
+/// ripresa), un secondo tocco — o il tetto di [_kMaxRecordSeconds] — lo
+/// ferma, lo incapsula in un WAV minimale e lo invia in broadcast in
+/// base64. Non serve tenere premuto: chi guida ha una mano sola libera. In
+/// ricezione i clip del proprio canale (vedi [selectChannel]) vengono messi
+/// in coda e riprodotti uno alla volta, così due "spinte" ravvicinate non
+/// si accavallano.
 @riverpod
 class VoiceChannelController extends _$VoiceChannelController {
   RealtimeChannel? _channel;
+  bool _disposed = false;
   final AudioRecorder _recorder = AudioRecorder();
   final AudioPlayer _player = AudioPlayer();
 
@@ -92,7 +109,49 @@ class VoiceChannelController extends _$VoiceChannelController {
   VoiceChannelState build() {
     ref.onDispose(_teardown);
     if (ref.watch(authStateProvider).valueOrNull != null) _join();
+    unawaited(_restoreChannel());
     return const VoiceChannelState();
+  }
+
+  /// Ripristina l'ultimo canale scelto: gli amici si accordano su un canale
+  /// una volta, non ad ogni viaggio.
+  Future<void> _restoreChannel() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt(_kVoiceChannelPrefsKey);
+      if (_disposed || saved == null) return;
+      if (saved < 1 || saved > kVoiceChannelCount) return;
+      state = state.copyWith(channel: saved);
+    } catch (_) {
+      // Preferenza non leggibile: si resta sul canale di default.
+    }
+  }
+
+  /// Cambia canale — ignorato mentre si sta registrando, per non spedire
+  /// mezzo messaggio su un canale e il resto su un altro. Svuota la coda di
+  /// riproduzione: i clip in attesa erano del canale precedente.
+  Future<void> selectChannel(int channel) async {
+    if (channel < 1 || channel > kVoiceChannelCount) return;
+    if (state.recording || channel == state.channel) return;
+    _playQueue.clear();
+    state = state.copyWith(channel: channel);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_kVoiceChannelPrefsKey, channel);
+    } catch (_) {
+      // Persistenza best-effort: il canale resta valido per la sessione.
+    }
+  }
+
+  /// Un solo tasto: avvia la registrazione se ferma, la ferma e invia se in
+  /// corso. Ignorato durante l'invio del clip precedente.
+  Future<void> toggleTalking() async {
+    if (state.sending) return;
+    if (state.recording) {
+      await stopTalking();
+    } else {
+      await startTalking();
+    }
   }
 
   void _join() {
@@ -113,6 +172,11 @@ class VoiceChannelController extends _$VoiceChannelController {
     final audioB64 = payload['audio'] as String?;
     final sampleRate = (payload['sampleRate'] as num?)?.toInt() ?? _kSampleRate;
     if (profileId == null || profileId == myId || audioB64 == null) return;
+    // Client senza selezione canale (versioni precedenti) non mandano il
+    // campo: contano come canale 1, quello di default.
+    final channel =
+        (payload['channel'] as num?)?.toInt() ?? _kDefaultVoiceChannel;
+    if (channel != state.channel) return;
 
     try {
       final pcm = base64Decode(audioB64);
@@ -231,6 +295,7 @@ class VoiceChannelController extends _$VoiceChannelController {
         'profileId': profile.id,
         'username': profile.username,
         'sampleRate': _kSampleRate,
+        'channel': state.channel,
         'audio': base64Encode(bytes),
       });
     } catch (_) {
@@ -241,6 +306,7 @@ class VoiceChannelController extends _$VoiceChannelController {
   }
 
   void _teardown() {
+    _disposed = true;
     _maxDurationTimer?.cancel();
     unawaited(_recordSub?.cancel());
     unawaited(_recorder.dispose());

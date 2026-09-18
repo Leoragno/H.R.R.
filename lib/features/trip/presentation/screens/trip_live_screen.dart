@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,13 +47,13 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
   RadarEvent? _activeAlert;
   Timer? _alertHideTimer;
 
-  // Stato del pannello "Auto amiche" (canale drivers-live condiviso, vedi
-  // LiveMapController): espanso mostra la lista dei driver online + il
-  // pulsante PTT, collassato mostra solo il riepilogo. Gli altri driver
-  // sono sempre visibili sulla mappa (vedi _MapView), indipendentemente da
-  // questo stato — stesso comportamento di home_map_background.dart. Il
-  // canale voce vero e proprio vive in VoiceChannelController
-  // (voice_channel_provider.dart), agganciato direttamente da _PttButton.
+  // Stato della tendina "Auto amiche": espansa mostra solo la scelta del
+  // canale (si chiude da sola alla selezione), collassata mostra la barra
+  // con il microfono push-to-talk. Gli altri driver sono sempre visibili
+  // sulla mappa (vedi _MapView), indipendentemente da questo stato — stesso
+  // comportamento di home_map_background.dart. Il canale voce vero e proprio
+  // vive in VoiceChannelController (voice_channel_provider.dart), agganciato
+  // direttamente da _AutoAmicheCollapsedBar.
   bool _amicheExpanded = false;
 
   @override
@@ -244,6 +246,14 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
                     ],
                   ),
                 ),
+                // Solo Web/PWA (iPhone/Safari inclusi): senza schermo acceso il
+                // browser sospende la geolocalizzazione, vedi TrackingWakelock.
+                // Su app native il tracking sopravvive a schermo spento.
+                if (kIsWeb && state.status == TripLiveStatus.tracking)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(18, 10, 18, 0),
+                    child: _KeepScreenOnNotice(),
+                  ),
                 if (state.status == TripLiveStatus.error)
                   Expanded(
                     child: Center(
@@ -343,18 +353,45 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
                   child: _AmicheCard(
-                    child: _ExpandedGroup(
-                      drivers: ref.watch(liveMapControllerProvider),
-                      myPosition: state.routePoints.isEmpty
-                          ? null
-                          : state.routePoints.last,
-                      onCollapse: () =>
-                          setState(() => _amicheExpanded = false),
+                    child: _ChannelPicker(
+                      onClose: () => setState(() => _amicheExpanded = false),
                     ),
                   ),
                 ),
               ),
             ).animate().fadeIn(duration: 180.ms).slideY(begin: 0.12, end: 0),
+        ],
+      ),
+    );
+  }
+}
+
+/// Promemoria per chi guida da browser: il GPS si ferma se lo schermo si
+/// spegne. Grigio apposta (niente accento/glow): l'elemento acceso della
+/// schermata resta la CTA "Termina viaggio", vedi regola 1 di DESIGN.md.
+class _KeepScreenOnNotice extends StatelessWidget {
+  const _KeepScreenOnNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColor.surface,
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        border: Border.all(color: AppColor.line),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.smartphone_rounded,
+              size: 16, color: AppColor.inkMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Mantieni lo schermo acceso per continuare il tracciamento GPS',
+              style: AppType.text(fontSize: 12, color: AppColor.inkMuted),
+            ),
+          ),
         ],
       ),
     );
@@ -991,6 +1028,9 @@ class _AmicheCard extends StatelessWidget {
 
 /// Barra collassata "Auto amiche" — sempre inline nel flusso (mai in
 /// overlay) mentre si è in vista mappa, così non copre mai la CTA sotto.
+/// A destra il microfono è il push-to-talk (un tocco per parlare, un
+/// secondo per inviare: chi guida non può tenere premuto); il resto della
+/// barra apre la scelta del canale.
 class _AutoAmicheCollapsedBar extends ConsumerWidget {
   final double speedKmh;
   final VoidCallback onTap;
@@ -1001,16 +1041,25 @@ class _AutoAmicheCollapsedBar extends ConsumerWidget {
     final onlineCount = ref.watch(liveMapControllerProvider).length;
     // Tiene vivo il canale voce (provider autoDispose) anche a pannello
     // chiuso: un "push" ricevuto mentre il gruppo è collassato deve
-    // comunque riprodursi, non solo quando _ExpandedGroup/_PttButton sono
-    // montati.
-    final speaking = ref.watch(voiceChannelControllerProvider).speaking;
+    // comunque riprodursi, non solo quando _ChannelPicker è montato.
+    final voice = ref.watch(voiceChannelControllerProvider);
+    final notifier = ref.read(voiceChannelControllerProvider.notifier);
 
     return _AmicheCard(
       child: _CollapsedBar(
         speedKmh: speedKmh,
         onlineCount: onlineCount,
-        speaking: speaking,
-        onTap: onTap,
+        voice: voice,
+        // Il canale non si cambia a metà registrazione (vedi
+        // VoiceChannelController.selectChannel).
+        onOpenChannels: voice.recording ? null : onTap,
+        onToggleTalk: () {
+          if (voice.sending) return;
+          // Chi guida non guarda lo schermo: la vibrazione conferma che la
+          // registrazione è partita / il messaggio è stato inviato.
+          HapticFeedback.mediumImpact();
+          notifier.toggleTalking();
+        },
       ),
     );
   }
@@ -1019,21 +1068,34 @@ class _AutoAmicheCollapsedBar extends ConsumerWidget {
 class _CollapsedBar extends StatelessWidget {
   final double speedKmh;
   final int onlineCount;
-  final VoiceActivity? speaking;
-  final VoidCallback onTap;
+  final VoiceChannelState voice;
+  final VoidCallback? onOpenChannels;
+  final VoidCallback onToggleTalk;
   const _CollapsedBar({
     required this.speedKmh,
     required this.onlineCount,
-    required this.speaking,
-    required this.onTap,
+    required this.voice,
+    required this.onOpenChannels,
+    required this.onToggleTalk,
   });
+
+  String get _status {
+    if (voice.recording) return 'In onda · tocca per inviare';
+    if (voice.sending) return 'Invio...';
+    final speaking = voice.speaking;
+    if (speaking != null) {
+      return '${speaking.username.isEmpty ? "Qualcuno" : speaking.username} parla';
+    }
+    return 'Canale ${voice.channel} · $onlineCount online';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final highlight = voice.recording || voice.speaking != null;
     return Padding(
       padding: const EdgeInsets.all(18),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1064,54 +1126,48 @@ class _CollapsedBar extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
-          GestureDetector(
-            onTap: onTap,
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedContainer(
-                      duration: AppMotion.base,
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: speaking != null
-                            ? AppColor.cyan.withValues(alpha: 0.22)
-                            : AppColor.surfaceHigh,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.mic_rounded,
-                          color: AppColor.cyan, size: 16),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('AUTO AMICHE',
-                        style: AppType.text(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: AppColor.ink)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (speaking != null)
-                      _Pill(
-                          text:
-                              '${speaking!.username.isEmpty ? "Qualcuno" : speaking!.username} parla',
-                          tint: AppColor.cyan)
-                    else
-                      _Pill(text: '$onlineCount Online', tint: AppColor.cyan),
-                    const SizedBox(width: 6),
-                    const _Pill(text: 'Canale 1', tint: AppColor.inkMuted),
-                  ],
-                ),
-              ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: onOpenChannels,
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('AUTO AMICHE',
+                          style: AppType.text(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: AppColor.ink)),
+                      if (onOpenChannels != null)
+                        const Icon(Icons.keyboard_arrow_up_rounded,
+                            color: AppColor.inkMuted, size: 18),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _status,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: AppType.text(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: highlight ? AppColor.cyan : AppColor.inkMuted),
+                  ),
+                ],
+              ),
             ),
+          ),
+          const SizedBox(width: 12),
+          _MicButton(
+            recording: voice.recording,
+            busy: voice.sending,
+            onTap: onToggleTalk,
           ),
         ],
       ),
@@ -1119,50 +1175,73 @@ class _CollapsedBar extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  final String text;
-  final Color tint;
-  const _Pill({required this.text, required this.tint});
+/// Push-to-talk a tocco singolo: primo tocco registra, secondo tocco ferma
+/// e invia il clip (vedi VoiceChannelController.toggleTalking). Mai un glow
+/// qui: sulla schermata l'elemento acceso è già la CTA "Termina viaggio"
+/// (regola 1 di DESIGN.md) — lo stato attivo si legge dal riempimento.
+class _MicButton extends StatelessWidget {
+  final bool recording;
+  final bool busy;
+  final VoidCallback onTap;
+  const _MicButton({
+    required this.recording,
+    required this.busy,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: tint.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: tint.withValues(alpha: 0.4)),
+    final iconColor = recording
+        ? AppColor.void_
+        : busy
+            ? AppColor.inkFaint
+            : AppColor.cyan;
+    return Semantics(
+      button: true,
+      label: recording ? 'Invia messaggio vocale' : 'Parla',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: recording ? AppColor.cyan : AppColor.surfaceHigh,
+            border:
+                Border.all(color: recording ? AppColor.cyan : AppColor.line),
+          ),
+          child: Icon(
+            recording ? Icons.mic_rounded : Icons.mic_none_rounded,
+            color: iconColor,
+            size: 26,
+          ),
+        ),
       ),
-      child: Text(text,
-          style: AppType.text(
-              fontSize: 11, fontWeight: FontWeight.w600, color: tint)),
     );
   }
 }
 
-class _ExpandedGroup extends ConsumerWidget {
-  final Map<String, LiveDriver> drivers;
-  final RoutePoint? myPosition;
-  final VoidCallback onCollapse;
-
-  const _ExpandedGroup({
-    required this.drivers,
-    required this.myPosition,
-    required this.onCollapse,
-  });
+/// Tendina "Auto amiche": serve solo a scegliere il canale. Un tocco su un
+/// numero lo seleziona e chiude subito il pannello — la lista degli utenti
+/// online non serve a chi guida.
+class _ChannelPicker extends ConsumerWidget {
+  final VoidCallback onClose;
+  const _ChannelPicker({required this.onClose});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final speakingId =
-        ref.watch(voiceChannelControllerProvider.select((s) => s.speaking))
-            ?.profileId;
+    final current =
+        ref.watch(voiceChannelControllerProvider.select((s) => s.channel));
+    final notifier = ref.read(voiceChannelControllerProvider.notifier);
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: onCollapse,
+            onTap: onClose,
             behavior: HitTestBehavior.opaque,
             child: Center(
               child: Container(
@@ -1184,225 +1263,87 @@ class _ExpandedGroup extends ConsumerWidget {
                       fontSize: 14,
                       color: AppColor.ink)),
               const SizedBox(width: 6),
-              Text('· Canale 1',
-                  style:
-                      AppType.text(fontSize: 13, color: AppColor.inkMuted)),
+              Text('· scegli il canale',
+                  style: AppType.text(fontSize: 13, color: AppColor.inkMuted)),
               const Spacer(),
               IconButton(
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                 icon: const Icon(Icons.keyboard_arrow_down_rounded,
                     color: AppColor.inkMuted),
-                onPressed: onCollapse,
+                onPressed: onClose,
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          if (drivers.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Text('Nessun altro utente online ora.',
-                  style:
-                      AppType.text(color: AppColor.inkMuted, fontSize: 13)),
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final cardWidth = (constraints.maxWidth - 10) / 2;
-                return Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (final driver in drivers.values)
-                      SizedBox(
-                        width: cardWidth,
-                        child: _DriverCard(
-                          driver: driver,
-                          myPosition: myPosition,
-                          isSpeaking: driver.profileId == speakingId,
-                        ),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const perRow = 4;
+              const gap = 10.0;
+              final chipWidth =
+                  (constraints.maxWidth - gap * (perRow - 1)) / perRow;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (var n = 1; n <= kVoiceChannelCount; n++)
+                    SizedBox(
+                      width: chipWidth,
+                      child: _ChannelChip(
+                        number: n,
+                        selected: n == current,
+                        onTap: () {
+                          notifier.selectChannel(n);
+                          onClose();
+                        },
                       ),
-                  ],
-                );
-              },
-            ),
-          const SizedBox(height: 22),
-          const Center(child: _PttButton()),
+                    ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-class _DriverCard extends StatelessWidget {
-  final LiveDriver driver;
-  final RoutePoint? myPosition;
-  final bool isSpeaking;
-  const _DriverCard({
-    required this.driver,
-    required this.myPosition,
-    required this.isSpeaking,
+class _ChannelChip extends StatelessWidget {
+  final int number;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ChannelChip({
+    required this.number,
+    required this.selected,
+    required this.onTap,
   });
 
-  String get _initial {
-    final t = driver.username.trim();
-    return t.isEmpty ? '?' : t[0].toUpperCase();
-  }
-
-  String _locationLabel() {
-    final me = myPosition;
-    if (me == null) return 'Online';
-    final meters =
-        Geolocator.distanceBetween(me.lat, me.lng, driver.lat, driver.lng);
-    if (meters < 1000) return 'Vicino (${meters.round()}m)';
-    return '${(meters / 1000).toStringAsFixed(1)} km';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final color = _hexToColor(driver.accentColor);
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColor.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(
-          color: isSpeaking ? AppColor.cyan : AppColor.line,
-          width: isSpeaking ? 1.4 : 1,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Canale $number',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColor.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: selected ? AppColor.cyan : AppColor.line),
+          ),
+          child: Text('$number',
+              style: AppType.text(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: selected ? AppColor.cyan : AppColor.ink)),
         ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.22),
-              shape: BoxShape.circle,
-              border: Border.all(color: color, width: 1.4),
-            ),
-            child: Text(_initial,
-                style: AppType.text(
-                    fontWeight: FontWeight.w800, fontSize: 14, color: color)),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(driver.username.isEmpty ? 'Driver' : driver.username,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.text(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColor.ink)),
-                Text('Online',
-                    style: AppType.text(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColor.cyan)),
-                Text(_locationLabel(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.text(
-                        fontSize: 11, color: AppColor.inkMuted)),
-              ],
-            ),
-          ),
-          Icon(
-            isSpeaking ? Icons.mic_rounded : Icons.mic_none_rounded,
-            size: 14,
-            color: isSpeaking ? AppColor.cyan : AppColor.inkFaint,
-          ),
-        ],
-      ),
     );
   }
-}
-
-/// Pulsante push-to-talk: tenuto premuto registra e invia sul canale voce
-/// reale (VoiceChannelController), rilasciato ferma e spedisce il clip —
-/// vedi voice_channel_provider.dart per l'invio/ricezione via broadcast
-/// Realtime sullo stesso topic "drivers-live" delle posizioni.
-class _PttButton extends ConsumerStatefulWidget {
-  const _PttButton();
-
-  @override
-  ConsumerState<_PttButton> createState() => _PttButtonState();
-}
-
-class _PttButtonState extends ConsumerState<_PttButton> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) => setState(() => _pressed = value);
-
-  @override
-  Widget build(BuildContext context) {
-    final voice = ref.watch(voiceChannelControllerProvider);
-    final notifier = ref.read(voiceChannelControllerProvider.notifier);
-    final speaking = voice.speaking;
-
-    final label = voice.recording
-        ? 'REGISTRAZIONE...'
-        : voice.sending
-            ? 'INVIO...'
-            : speaking != null
-                ? '${speaking.username.isEmpty ? "Qualcuno" : speaking.username} sta parlando'
-                : 'PREMI PER PARLARE';
-    final active = _pressed || voice.recording;
-
-    return GestureDetector(
-      onTapDown: voice.sending ? null : (_) {
-        _setPressed(true);
-        notifier.startTalking();
-      },
-      onTapUp: (_) {
-        _setPressed(false);
-        notifier.stopTalking();
-      },
-      onTapCancel: () {
-        _setPressed(false);
-        notifier.stopTalking();
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedScale(
-            scale: active ? 1.08 : 1.0,
-            duration: AppMotion.fast,
-            child: Container(
-              width: 76,
-              height: 76,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColor.cyan,
-                boxShadow:
-                    AppGlow.soft(AppColor.cyan, opacity: active ? 0.55 : 0.35),
-              ),
-              child: Icon(
-                voice.recording ? Icons.mic_rounded : Icons.mic_none_rounded,
-                color: AppColor.void_,
-                size: 32,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(label.toUpperCase(),
-              style: AppType.label.copyWith(color: AppColor.cyan)),
-        ],
-      ),
-    );
-  }
-}
-
-Color _hexToColor(String hex) {
-  final normalized = hex.replaceFirst('#', '');
-  final value = int.tryParse(normalized, radix: 16) ?? 0x35E0FF;
-  return Color(0xFF000000 | value);
 }
 
 class _StatCell extends StatelessWidget {
