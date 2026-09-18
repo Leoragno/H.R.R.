@@ -18,23 +18,31 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="HRR — Heat Racing Racers: trasforma la guida di ogni giorno in un'esperienza racing.">
+  <meta name="theme-color" content="#07080B">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="hrr_app">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HRR">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>hrr_app</title>
+  <title>HRR</title>
   <link rel="manifest" href="manifest.json">
 
   <!-- MapLibre GL JS — versione allineata al pacchetto maplibre_gl_web -->
   <script src='https://unpkg.com/maplibre-gl@^5.24.0/dist/maplibre-gl.js'></script>
   <link href='https://unpkg.com/maplibre-gl@^5.24.0/dist/maplibre-gl.css' rel='stylesheet'/>
+
+  <!-- Sfondo scuro fin dal primo frame: senza, la PWA lampeggia di bianco
+       prima che Flutter disegni la prima schermata. -->
+  <style>
+    html, body { background-color: #07080B; margin: 0; }
+  </style>
 </head>
 <body>
   <!--

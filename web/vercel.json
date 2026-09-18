@@ -1,0 +1,16 @@
+{
+  "headers": [
+    {
+      "source": "/(index.html|flutter_service_worker.js|flutter_bootstrap.js|version.json|manifest.json)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/(canvaskit|assets|icons)/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    }
+  ]
+}
