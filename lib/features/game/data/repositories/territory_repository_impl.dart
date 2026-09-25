@@ -11,10 +11,9 @@ class TerritoryRepositoryImpl implements TerritoryRepository {
   TerritoryRepositoryImpl(this._remote);
 
   @override
-  Future<TerritoryClaimResult> claimCells(List<HexCoord> cells,
-      {int? driveScore}) {
+  Future<TerritoryClaimResult> claimCells(List<HexCoord> cells) {
     if (cells.isEmpty) return Future.value(TerritoryClaimResult.zero);
-    return _remote.claimCells(cells, driveScore: driveScore);
+    return _remote.claimCells(cells);
   }
 
   @override

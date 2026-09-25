@@ -62,7 +62,15 @@ class LiveMapController extends _$LiveMapController {
   @override
   Map<String, LiveDriver> build() {
     ref.onDispose(_leave);
-    if (ref.watch(authStateProvider).valueOrNull != null) _join();
+
+    // Usiamo ref.read invece di ref.watch per evitare che l'intero controller
+    // venga distrutto e ricreato a ogni minima variazione dello stato di auth.
+    // Il join avviene all'inizializzazione del provider.
+    final authState = ref.read(authStateProvider).valueOrNull;
+    if (authState != null) {
+      _join();
+    }
+
     return const {};
   }
 

@@ -12,14 +12,12 @@ class TerritoryRemoteDatasource {
   TerritoryRemoteDatasource(this._client);
 
   Future<TerritoryClaimResult> claimCells(
-    List<HexCoord> cells, {
-    int? driveScore,
-  }) async {
+    List<HexCoord> cells,
+  ) async {
     final row = await _client.rpc('claim_territory_cells', params: {
       'p_cells': [
         for (final c in cells) {'q': c.q, 'r': c.r}
       ],
-      'p_drive_score': driveScore,
     }).single();
     return TerritoryClaimResult(
       freshCount: (row['fresh_count'] as num).toInt(),

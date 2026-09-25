@@ -272,7 +272,7 @@ const _kMinGpsAccuracyM = 25.0;
 // buono (5-15m), non allo stesso livello del `distanceFilter` nativo
 // (3m, vedi _liveLocationSettings), che scarterebbe solo i fix
 // pressoché identici e lascerebbe passare comunque il rumore.
-const _kJitterDistanceM = 8.0;
+const _kJitterDistanceM = 5.0;
 // Velocità implicita (spazio/tempo tra due fix consecutivi) oltre la
 // quale lo spostamento non può essere un'auto in marcia reale: un
 // "teletrasporto" da riaggancio GPS va scartato, non sommato alla
@@ -1390,7 +1390,6 @@ class TripLiveController extends _$TripLiveController {
         try {
           await ref.read(territoryRepositoryProvider).claimCells(
                 cellsToClaim,
-                driveScore: finished.drivingScore,
               );
         } catch (_) {}
       }());
@@ -1445,9 +1444,7 @@ class TripLiveController extends _$TripLiveController {
     if (cellsToClaim.isNotEmpty) {
       unawaited(() async {
         try {
-          await ref
-              .read(territoryRepositoryProvider)
-              .claimCells(cellsToClaim, driveScore: finished.drivingScore);
+          await ref.read(territoryRepositoryProvider).claimCells(cellsToClaim);
         } catch (_) {}
       }());
     }
