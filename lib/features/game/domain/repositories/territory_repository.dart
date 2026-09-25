@@ -11,8 +11,7 @@ abstract class TerritoryRepository {
   /// rivendicare celle libere/decadute, mai rubarne una attiva). Va
   /// chiamata solo a fine guida (vedi TripLiveController.finishTrip):
   /// l'acquisizione territorio non è più ambientale/indipendente.
-  Future<TerritoryClaimResult> claimCells(List<HexCoord> cells,
-      {int? driveScore});
+  Future<TerritoryClaimResult> claimCells(List<HexCoord> cells);
 
   /// Celle possedute in una finestra rettangolare (in celle) attorno a
   /// [focus] — per disegnare la mappa.
