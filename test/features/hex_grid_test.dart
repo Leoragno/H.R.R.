@@ -73,4 +73,26 @@ void main() {
       expect(minGap, lessThan(HexGrid.hexMeters * 0.2));
     });
   });
+
+  group('HexGrid.cellsAlong', () {
+    test('riempe le celle intermedie fra due fix distanti sullo stesso rigo',
+        () {
+      final a = HexGrid.centerOf(const HexCoord(0, 0));
+      final b = HexGrid.centerOf(const HexCoord(3, 0));
+      final cells = HexGrid.cellsAlong(a.$1, a.$2, b.$1, b.$2);
+      expect(cells, containsAll(const [
+        HexCoord(0, 0),
+        HexCoord(1, 0),
+        HexCoord(2, 0),
+        HexCoord(3, 0),
+      ]));
+      expect(cells.length, 4);
+    });
+
+    test('segmento nullo restituisce solo la cella del punto', () {
+      final a = HexGrid.centerOf(const HexCoord(5, 2));
+      expect(HexGrid.cellsAlong(a.$1, a.$2, a.$1, a.$2),
+          {const HexCoord(5, 2)});
+    });
+  });
 }

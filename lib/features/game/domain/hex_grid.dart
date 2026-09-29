@@ -49,6 +49,32 @@ class HexGrid {
     return HexCoord(q, r);
   }
 
+  /// Celle attraversate dal segmento A→B, estremi inclusi, campionando
+  /// ogni ~hexMeters/4 lungo la retta (passo abbastanza fitto da non
+  /// saltare una cella tagliata di striscio). Serve a riempire i buchi fra
+  /// due fix GPS distanti: il chiamante decide fino a che distanza la
+  /// retta è una stima credibile della strada percorsa.
+  static Set<HexCoord> cellsAlong(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    final north = (lat2 - lat1) * _metersPerDegreeLat;
+    final east = (lon2 - lon1) *
+        _metersPerDegreeLat *
+        math.cos(lat1 * math.pi / 180);
+    final meters = math.sqrt(north * north + east * east);
+    final steps = math.max(1, (meters / (hexMeters / 4)).ceil());
+    return {
+      for (var i = 0; i <= steps; i++)
+        cellOf(
+          lat1 + (lat2 - lat1) * i / steps,
+          lon1 + (lon2 - lon1) * i / steps,
+        ),
+    };
+  }
+
   /// Area di una cella in km² — costante geometrica pura (esagono
   /// regolare di lato `hexMeters`).
   static double cellAreaKm2() {

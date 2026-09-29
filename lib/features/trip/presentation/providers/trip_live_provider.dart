@@ -279,6 +279,30 @@ const _kJitterDistanceM = 5.0;
 // distanza percorsa né disegnato come tratto di percorso.
 const _kMaxPlausibleSpeedMs = 83.3; // 300 km/h
 const _kMaxPlausibleSpeedKmh = 300.0;
+// Distanza massima fra due fix accettati entro cui gli esagoni intermedi
+// si stimano lungo la retta. In background (navigatore in primo piano) i
+// fix possono diradarsi: senza riempimento restano buchi nel territorio
+// attraversato. Oltre questa soglia la retta taglierebbe isolati/curve e
+// assegnerebbe celle fuori strada, quindi si prendono solo gli estremi.
+const _kMaxCellInterpolationM = 200.0;
+
+/// Esagoni attraversati lungo un tracciato già registrato (ripresa dopo
+/// kill del processo), con lo stesso riempimento dei buchi di _onPosition.
+Set<HexCoord> _cellsAlongRoute(List<RoutePoint> points) {
+  final cells = <HexCoord>{};
+  for (var i = 0; i < points.length; i++) {
+    final p = points[i];
+    cells.add(HexGrid.cellOf(p.lat, p.lng));
+    if (i == 0) continue;
+    final prev = points[i - 1];
+    final meters =
+        Geolocator.distanceBetween(prev.lat, prev.lng, p.lat, p.lng);
+    if (meters <= _kMaxCellInterpolationM) {
+      cells.addAll(HexGrid.cellsAlong(prev.lat, prev.lng, p.lat, p.lng));
+    }
+  }
+  return cells;
+}
 
 const _kActiveTripPrefsKey = 'hrr_active_trip_v1';
 
@@ -574,8 +598,7 @@ class TripLiveController extends _$TripLiveController {
     _samples.clear();
     _crossedCells
       ..clear()
-      ..addAll(
-          saved.routePoints.map((p) => HexGrid.cellOf(p.lat, p.lng)));
+      ..addAll(_cellsAlongRoute(saved.routePoints));
     _resetMotionStats();
 
     state = TripLiveState(
@@ -879,7 +902,13 @@ class TripLiveController extends _$TripLiveController {
     // conta la qualità del segnale, non il movimento) — gate di qualità
     // per Fluidità/Anticipo del punteggio di guida, vedi finishTrip().
     _gpsAcceptedFixCount++;
-    _crossedCells.add(HexGrid.cellOf(position.latitude, position.longitude));
+
+    // Orario del fix, non di consegna: in background Android recapita i
+    // fix a raffica (anche decine insieme al risveglio della CPU). Con
+    // DateTime.now() due fix distanti ~1s arrivavano a pochi ms l'uno
+    // dall'altro, la velocità implicita sembrava un teletrasporto e fix
+    // buoni venivano scartati, lasciando buchi nel percorso.
+    final fixAt = position.timestamp;
 
     final rawSpeedKmh = (position.speed.isFinite && position.speed > 0)
         ? position.speed * 3.6
@@ -907,10 +936,14 @@ class TripLiveController extends _$TripLiveController {
       // invece di sommarlo alla distanza o disegnarlo come tratto di
       // percorso. _lastPosition resta quello precedente, stesso motivo del
       // filtro accuratezza sopra.
-      final dtSeconds =
-          lastAt != null ? now.difference(lastAt).inMilliseconds / 1000 : 0.0;
+      final dtSeconds = lastAt != null
+          ? fixAt.difference(lastAt).inMilliseconds / 1000
+          : 0.0;
       final impliedSpeedMs = dtSeconds > 0 ? meters / dtSeconds : 0.0;
       if (impliedSpeedMs > _kMaxPlausibleSpeedMs) return;
+      // Fix fuori ordine (dt negativo) o duplicato: nessuna informazione
+      // nuova, e confrontarlo col successivo falserebbe il tetto sopra.
+      if (dtSeconds < 0) return;
 
       // Filtra il jitter GPS da fermo: sotto la soglia è rumore, non
       // movimento reale. La soglia sta sopra l'errore tipico di un fix
@@ -951,8 +984,19 @@ class TripLiveController extends _$TripLiveController {
         _lastBearing = bearing;
       }
     }
+    // Esagoni solo per fix sopravvissuti ai filtri sopra: prima venivano
+    // aggiunti anche quelli poi scartati come teletrasporto, cioè celle
+    // fuori strada. Fra due fix vicini si riempiono anche le celle
+    // intermedie (vedi _kMaxCellInterpolationM).
+    if (last != null && meters <= _kMaxCellInterpolationM) {
+      _crossedCells.addAll(HexGrid.cellsAlong(last.latitude, last.longitude,
+          position.latitude, position.longitude));
+    } else {
+      _crossedCells.add(HexGrid.cellOf(position.latitude, position.longitude));
+    }
+
     _lastPosition = position;
-    _lastPositionAt = now;
+    _lastPositionAt = fixAt;
 
     // Aggiunge il punto al tracciato solo su movimento reale: i fix
     // scartati come jitter (sopra) altrimenti si accumulano come punti
@@ -1438,9 +1482,7 @@ class TripLiveController extends _$TripLiveController {
     // sempre null qui, quindi può solo rivendicare celle libere/decadute,
     // mai rubarne una attiva — comunque meglio di perdere del tutto gli
     // esagoni attraversati prima dell'interruzione.
-    final cellsToClaim = {
-      for (final p in saved.routePoints) HexGrid.cellOf(p.lat, p.lng),
-    }.toList();
+    final cellsToClaim = _cellsAlongRoute(saved.routePoints).toList();
     if (cellsToClaim.isNotEmpty) {
       unawaited(() async {
         try {
