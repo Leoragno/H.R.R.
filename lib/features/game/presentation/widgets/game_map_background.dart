@@ -54,6 +54,11 @@ class GameMapBackground extends ConsumerStatefulWidget {
   final Map<String, TerritoryCell> cells;
   final GameMapMode mode;
   final String? myProfileId;
+  // Bordi (sud, ovest, nord, est) dell'area inquadrata a camera ferma —
+  // il chiamante ricarica le celle di quella zona.
+  final void Function(
+          double southLat, double westLon, double northLat, double eastLon)?
+      onViewportChanged;
 
   const GameMapBackground({
     super.key,
@@ -62,6 +67,7 @@ class GameMapBackground extends ConsumerStatefulWidget {
     required this.cells,
     required this.mode,
     required this.myProfileId,
+    this.onViewportChanged,
   });
 
   @override
@@ -126,9 +132,29 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
     super.dispose();
   }
 
+  Future<void> _onCameraIdle() async {
+    final controller = _controller;
+    final callback = widget.onViewportChanged;
+    if (controller == null || callback == null) return;
+    try {
+      final bounds = await controller.getVisibleRegion();
+      if (!mounted) return;
+      callback(
+        bounds.southwest.latitude,
+        bounds.southwest.longitude,
+        bounds.northeast.latitude,
+        bounds.northeast.longitude,
+      );
+    } catch (_) {
+      // Regione visibile non disponibile su questa piattaforma: resta la
+      // finestra attorno al GPS caricata dal controller.
+    }
+  }
+
   Future<void> _onStyleLoaded() async {
     await _syncCellFills();
     await _updateMeMarker();
+    unawaited(_onCameraIdle());
     if (!mounted) return;
     setState(() => _styleLoaded = true);
   }
@@ -303,6 +329,7 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
           // "Annotation Manager has not been initialized" — va agganciato
           // qui, non in onMapCreated (che spara prima del caricamento stile).
           onStyleLoadedCallback: _onStyleLoaded,
+          onCameraIdle: () => unawaited(_onCameraIdle()),
           myLocationEnabled: false,
           compassEnabled: false,
         ),

@@ -82,6 +82,14 @@ class GameState {
 // possedute — abbastanza larga da riempire lo schermo alla mappa reale.
 const _kViewCols = 20;
 const _kViewRows = 34;
+// Tetto della finestra quando l'utente allontana lo zoom (~15×13 km):
+// oltre, gli esagoni sono comunque puntini e la query diventerebbe
+// l'intera tabella.
+const _kMaxViewCols = 100;
+const _kMaxViewRows = 100;
+// Margine (in celle) oltre il bordo visibile: un piccolo pan non deve
+// scoprire subito una fascia vuota in attesa della prossima query.
+const _kViewMarginCells = 4;
 
 // Fix troppo impreciso (tunnel, garage, edifici alti): scartato prima di
 // spostare il focus della mappa.
@@ -106,6 +114,13 @@ class GameController extends _$GameController {
   // TOKEN_REFRESHED, che Supabase spara periodicamente): solo il primo
   // deve resettare lo stato/riavviare il watch delle celle.
   String? _trackedUserId;
+  // Finestra attualmente inquadrata dalla mappa (vedi [onViewportChanged]):
+  // null finché la camera non si è mai fermata, e allora si usa il focus
+  // GPS. Senza questa, spostando la mappa verso territori lontani dalla
+  // propria posizione non comparivano mai (restava la finestra del GPS).
+  HexCoord? _viewCenter;
+  int _viewCols = _kViewCols;
+  int _viewRows = _kViewRows;
 
   @override
   GameState build() {
@@ -141,6 +156,7 @@ class GameController extends _$GameController {
     }
 
     state = const GameState();
+    _viewCenter = null;
     unawaited(_refreshMyCellCount(userId));
     unawaited(fetchPosition());
     _watchCellChanges();
@@ -209,7 +225,9 @@ class GameController extends _$GameController {
         focusLon: position.longitude,
         gpsStatus: GameGpsStatus.tracking,
       );
-      if (focusChanged) unawaited(_refreshVisibleCells());
+      if (focusChanged && _viewCenter == null) {
+        unawaited(_refreshVisibleCells());
+      }
     } catch (_) {
       state = state.copyWith(gpsStatus: GameGpsStatus.tracking);
       // GPS momentaneamente non disponibile: l'utente può ritentare col
@@ -220,15 +238,46 @@ class GameController extends _$GameController {
   /// Alias esplicito per il pulsante "Centra" della UI.
   Future<void> recenterNow() => fetchPosition();
 
+  /// Chiamato dalla mappa a camera ferma (pan/zoom terminato) coi bordi
+  /// dell'area visibile: ricarica le celle di quella zona invece di quella
+  /// attorno al GPS.
+  void onViewportChanged(
+    double southLat,
+    double westLon,
+    double northLat,
+    double eastLon,
+  ) {
+    final sw = HexGrid.cellOf(southLat, westLon);
+    final ne = HexGrid.cellOf(northLat, eastLon);
+    final center =
+        HexGrid.cellOf((southLat + northLat) / 2, (westLon + eastLon) / 2);
+    final cols = ((ne.q - sw.q).abs() / 2).ceil() + _kViewMarginCells;
+    final rows = ((ne.r - sw.r).abs() / 2).ceil() + _kViewMarginCells;
+    final clampedCols = cols.clamp(_kViewCols, _kMaxViewCols);
+    final clampedRows = rows.clamp(_kViewRows, _kMaxViewRows);
+    if (center == _viewCenter &&
+        clampedCols == _viewCols &&
+        clampedRows == _viewRows) {
+      return;
+    }
+    _viewCenter = center;
+    _viewCols = clampedCols;
+    _viewRows = clampedRows;
+    unawaited(_refreshVisibleCells());
+  }
+
   Future<void> _refreshVisibleCells() async {
-    final focus = state.focus;
+    final focus = _viewCenter ?? state.focus;
     if (focus == null) return;
     try {
       final cells = await ref.read(territoryRepositoryProvider).cellsNear(
             focus: focus,
-            cols: _kViewCols,
-            rows: _kViewRows,
+            cols: _viewCols,
+            rows: _viewRows,
           );
+      // Risposta superata da un pan successivo: la query della nuova
+      // finestra è già partita, non sovrascriverla con quella vecchia.
+      if (focus != (_viewCenter ?? state.focus)) return;
       state = state.copyWith(
         visibleCells: {for (final c in cells) c.coord.key: c},
       );

@@ -55,6 +55,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             cells: state.visibleCells,
             mode: state.mapMode,
             myProfileId: myId,
+            onViewportChanged: controller.onViewportChanged,
           ),
           SafeArea(
             bottom: false,
