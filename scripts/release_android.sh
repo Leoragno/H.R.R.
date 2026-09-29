@@ -3,6 +3,12 @@
 # HRR — Pubblica un aggiornamento dell'APK agli amici.
 #
 #   scripts/release_android.sh "Novità di questa versione"
+#   scripts/release_android.sh --no-notify "Novità"   # nessuna push
+#
+# --no-notify registra comunque la versione (l'app la propone
+# all'apertura) ma non manda la notifica a tutti — es. la prima release
+# con l'aggiornamento in-app, distribuita a mano col link GitHub perché
+# le versioni precedenti non hanno ancora il pulsante "Aggiorna".
 #
 # 1. aumenta la versione in pubspec.yaml (patch + build number: Android
 #    installa un aggiornamento solo se il build number cresce);
@@ -19,6 +25,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+NOTIFY=1
+if [[ "${1:-}" == "--no-notify" ]]; then
+  NOTIFY=0
+  shift
+fi
 NOTES="${1:-}"
 REPO="Leoragno/H.R.R."
 ABIS=(arm64-v8a armeabi-v7a x86_64)
@@ -73,7 +84,12 @@ gh release create "$TAG" "$DIST"/*.apk \
 
 # --- 4. Supabase: versione + notifica push -----------------------------
 SQL_NOTES=${NOTES//\'/\'\'}
-supabase db query --linked \
-  "select public.publish_app_release($NEW_BUILD, '$NEW_NAME', '$APKS_JSON'::jsonb, nullif('$SQL_NOTES', '')) as notificati;"
+if [[ $NOTIFY == 1 ]]; then
+  supabase db query --linked \
+    "select public.publish_app_release($NEW_BUILD, '$NEW_NAME', '$APKS_JSON'::jsonb, nullif('$SQL_NOTES', '')) as notificati;"
+else
+  supabase db query --linked \
+    "insert into public.app_releases (version_code, version_name, apks, notes) values ($NEW_BUILD, '$NEW_NAME', '$APKS_JSON'::jsonb, nullif('$SQL_NOTES', '')) returning version_code;"
+fi
 
 echo ">> Pubblicata HRR $NEW_NAME (build $NEW_BUILD)."
