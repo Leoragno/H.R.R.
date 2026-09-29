@@ -79,6 +79,7 @@ dependencies:
   wakelock_plus: ^1.7.0
   package_info_plus: ^10.2.1
   ota_update: ^7.1.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/app_update/app_update_prompt.dart';
+import '../../features/app_update/web_update_banner.dart';
 import '../../features/music/presentation/widgets/music_drawer.dart';
 import '../../features/rival/presentation/widgets/rival_overlay.dart';
 import '../router/app_router.dart';
@@ -50,8 +51,10 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColor.base,
       drawer: const MusicDrawer(),
-      body: AppUpdatePrompt(
-        child: RivalOverlay(child: NotificationToastOverlay(child: child)),
+      body: WebUpdateBanner(
+        child: AppUpdatePrompt(
+          child: RivalOverlay(child: NotificationToastOverlay(child: child)),
+        ),
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(
