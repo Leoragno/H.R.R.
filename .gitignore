@@ -52,3 +52,8 @@ app.*.map.json
 
 # Materiale di riferimento non usato dall'app (non in pubspec assets)
 /colonne sonore/
+
+# Chiave di firma APK e relative password: MAI su git (repo pubblico).
+# Tenerne una copia di backup fuori da questo PC.
+/android/keystore/
+/android/key.properties

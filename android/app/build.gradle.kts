@@ -1,3 +1,16 @@
+import java.util.Properties
+
+// Chiave di firma delle APK distribuite agli amici (vedi scripts/
+// release_android.sh): android/key.properties + android/keystore/, entrambi
+// fuori da git. È una copia della debug key con cui erano firmate le APK
+// già installate, così l'aggiornamento in-app non richiede di
+// disinstallare. Se manca (altro PC senza backup) si ripiega sulla debug
+// key locale, che però NON aggiornerebbe le installazioni esistenti.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -37,11 +50,21 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (keystoreProperties.containsKey("storeFile")) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

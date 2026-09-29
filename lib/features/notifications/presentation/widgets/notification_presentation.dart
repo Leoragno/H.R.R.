@@ -132,6 +132,14 @@ final Map<String, NotificationPresentation> _byType = {
     ]),
     body: (n) => n.body ?? 'Qualcuno ti ha rubato un esagono.',
   ),
+  // Nuova APK pubblicata (0036_app_releases.sql): l'avviso "Aggiorna" lo
+  // mostra AppUpdatePrompt all'apertura, qui solo la voce nel feed.
+  'app_update': NotificationPresentation(
+    icon: Icons.system_update_rounded,
+    color: AppColor.cyan,
+    title: (n) => n.title,
+    body: (n) => n.body ?? 'Apri l\'app e tocca Aggiorna.',
+  ),
   'level_up': NotificationPresentation(
     icon: Icons.trending_up_rounded,
     color: AppColor.success,
