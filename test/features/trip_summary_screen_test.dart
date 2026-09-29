@@ -94,7 +94,11 @@ void main() {
       'Elevation Over Time',
       'Elimina trip',
     ]) {
-      await tester.scrollUntilVisible(find.text(label), 300,
+      // Passo piccolo: con 300 px, in fondo alla lista il drag sforava
+      // oltre "Elevation Over Time" (subito sotto a Speed Over Time)
+      // prima che entrasse mai nel viewport, e il test falliva pur con la
+      // sezione presente.
+      await tester.scrollUntilVisible(find.text(label), 100,
           scrollable: listFinder);
       expect(find.text(label), findsOneWidget);
     }

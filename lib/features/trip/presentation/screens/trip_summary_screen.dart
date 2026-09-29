@@ -506,9 +506,13 @@ class _HeroStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Flexible(
-          child: Text(label, style: AppType.label, overflow: TextOverflow.ellipsis),
-        ),
+        // Niente Flexible qui: la Column sta in una ListView (altezza non
+        // limitata) e un figlio flessibile manda in errore il layout
+        // dell'intera riga. L'ellissi orizzontale basta con maxLines: 1.
+        Text(label,
+            style: AppType.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
         const SizedBox(height: AppSpace.xs),
         Text.rich(
           TextSpan(
