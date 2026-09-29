@@ -251,15 +251,21 @@ class GameController extends _$GameController {
     final ne = HexGrid.cellOf(northLat, eastLon);
     final center =
         HexGrid.cellOf((southLat + northLat) / 2, (westLon + eastLon) / 2);
-    final cols = ((ne.q - sw.q).abs() / 2).ceil() + _kViewMarginCells;
-    final rows = ((ne.r - sw.r).abs() / 2).ceil() + _kViewMarginCells;
-    final clampedCols = cols.clamp(_kViewCols, _kMaxViewCols);
-    final clampedRows = rows.clamp(_kViewRows, _kMaxViewRows);
-    if (center == _viewCenter &&
-        clampedCols == _viewCols &&
-        clampedRows == _viewRows) {
+    final needCols = ((ne.q - sw.q).abs() / 2).ceil();
+    final needRows = ((ne.r - sw.r).abs() / 2).ceil();
+    // Area inquadrata già interamente dentro la finestra caricata (pan
+    // piccolo, o zoom in): nessuna nuova query. Il realtime tiene
+    // comunque aggiornata la finestra corrente.
+    final loaded = _viewCenter;
+    if (loaded != null &&
+        (center.q - loaded.q).abs() + needCols <= _viewCols &&
+        (center.r - loaded.r).abs() + needRows <= _viewRows) {
       return;
     }
+    final clampedCols =
+        (needCols + _kViewMarginCells).clamp(_kViewCols, _kMaxViewCols);
+    final clampedRows =
+        (needRows + _kViewMarginCells).clamp(_kViewRows, _kMaxViewRows);
     _viewCenter = center;
     _viewCols = clampedCols;
     _viewRows = clampedRows;

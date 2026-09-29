@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math' show Point;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -74,10 +76,22 @@ class GameMapBackground extends ConsumerStatefulWidget {
   ConsumerState<GameMapBackground> createState() => GameMapBackgroundState();
 }
 
+// Tutte le celle stanno in un'unica sorgente GeoJSON + un layer fill con
+// colore/opacità letti dalle proprietà di ogni feature: un solo
+// setGeoJsonSource per aggiornare l'intera mappa. Prima ogni cella era
+// un'annotazione Fill separata, aggiunta/rimossa/aggiornata con una
+// chiamata di piattaforma a testa — con centinaia di celle e un refresh a
+// ogni pan la mappa laggava vistosamente.
+const _kCellsSourceId = 'hrr-cells';
+const _kCellsLayerId = 'hrr-cells-fill';
+
 class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   MapLibreMapController? _controller;
   Circle? _meCircle;
-  final Map<String, Fill> _cellFills = {};
+  bool _cellsLayerReady = false;
+  // Ultimo GeoJSON inviato: evita di ricaricare la sorgente se niente è
+  // cambiato (es. rebuild per un fix GPS o un cambio di pannello).
+  String? _lastCellsSignature;
 
   // Lo stile MapLibre (tile, colori) arriva in modo asincrono dopo che il
   // widget nativo è già montato: senza questo la mappa resta un riquadro
@@ -86,14 +100,10 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   // apparire la mappa gradualmente invece che di colpo.
   bool _styleLoaded = false;
 
-  // Proprietario corrente di ogni cella disegnata, tenuto separato dal
-  // colore: il colore può restare invariato tra due owner diversi (hash
-  // collision sulla palette rivali), quindi non è un proxy affidabile per
-  // "la proprietà è cambiata". Aggiornati ogni sync, indipendentemente dal
-  // fatto che il fill venga ridisegnato o meno — usati al tap per risalire
-  // a chi possiede la cella toccata.
-  final Map<String, String> _ownerByCellKey = {};
-  final Map<String, String> _cellKeyByFillId = {};
+  // Proprietario di ogni feature disegnata, indicizzato per id numerico
+  // della feature GeoJSON (posizione nella lista): MapLibre GL JS scarta
+  // gli id stringa, quindi sul web il tap non saprebbe quale cella è.
+  final List<String> _ownerByFeatureId = [];
 
   /// Ricentra la camera sulla posizione live corrente — chiamato dal
   /// pulsante "centra" di GameScreen via GlobalKey, dato che la camera
@@ -123,12 +133,12 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
 
   void _onMapCreated(MapLibreMapController controller) {
     _controller = controller;
-    controller.onFillTapped.add(_onFillTapped);
+    controller.onFeatureTapped.add(_onFeatureTapped);
   }
 
   @override
   void dispose() {
-    _controller?.onFillTapped.remove(_onFillTapped);
+    _controller?.onFeatureTapped.remove(_onFeatureTapped);
     super.dispose();
   }
 
@@ -152,6 +162,26 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   }
 
   Future<void> _onStyleLoaded() async {
+    final controller = _controller;
+    if (controller != null) {
+      try {
+        await controller.addGeoJsonSource(
+            _kCellsSourceId, _featureCollection(const []));
+        await controller.addFillLayer(
+          _kCellsSourceId,
+          _kCellsLayerId,
+          const FillLayerProperties(
+            fillColor: [Expressions.get, 'color'],
+            fillOutlineColor: [Expressions.get, 'color'],
+            fillOpacity: [Expressions.get, 'opacity'],
+          ),
+        );
+        _cellsLayerReady = true;
+        _lastCellsSignature = null;
+      } catch (_) {
+        // Vedi commento in _syncCellFills.
+      }
+    }
     await _syncCellFills();
     await _updateMeMarker();
     unawaited(_onCameraIdle());
@@ -164,66 +194,46 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   /// nulla da rimuovere/aggiungere per loro — si vede la mappa reale.
   Future<void> _syncCellFills() async {
     final controller = _controller;
-    if (controller == null) return;
+    if (controller == null || !_cellsLayerReady) return;
 
     try {
-      final cells = widget.cells;
-      for (final key in _cellFills.keys.toList()) {
-        if (!cells.containsKey(key)) {
-          final fill = _cellFills.remove(key)!;
-          _cellKeyByFillId.remove(fill.id);
-          _ownerByCellKey.remove(key);
-          await controller.removeFill(fill);
-        }
-      }
-
-      final addKeys = <String>[];
-      final addOptions = <FillOptions>[];
-      for (final entry in cells.entries) {
+      final features = <Map<String, dynamic>>[];
+      final owners = <String>[];
+      for (final entry in widget.cells.entries) {
         final color = _colorFor(entry.value, widget.mode, widget.myProfileId);
-        final existing = _cellFills[entry.key];
-        if (color == null) {
-          if (existing != null) {
-            _cellKeyByFillId.remove(existing.id);
-            _ownerByCellKey.remove(entry.key);
-            await controller.removeFill(_cellFills.remove(entry.key)!);
-          }
-          continue;
-        }
-        // Aggiornato a ogni passata, non solo quando il colore cambia: è la
-        // fonte di verità per il tap, indipendente da eventuali collisioni
-        // di colore fra due proprietari diversi sulla palette rivali.
-        _ownerByCellKey[entry.key] = entry.value.ownerId;
-        final hex = _colorToHex(color);
-        final opacity = _fillOpacityFor(entry.value);
-        if (existing == null) {
-          addKeys.add(entry.key);
-          addOptions.add(FillOptions(
-            geometry: [
-              [
-                for (final (lat, lon) in HexGrid.polygonOf(entry.value.coord))
-                  LatLng(lat, lon),
-              ],
-            ],
-            fillColor: hex,
-            fillOutlineColor: hex,
-            fillOpacity: opacity,
-          ));
-        } else if (existing.options.fillColor != hex ||
-            existing.options.fillOpacity != opacity) {
-          await controller.updateFill(
-            existing,
-            FillOptions(fillColor: hex, fillOutlineColor: hex, fillOpacity: opacity),
-          );
-        }
+        if (color == null) continue;
+        final featureId = owners.length;
+        owners.add(entry.value.ownerId);
+        final ring = [
+          for (final (lat, lon) in HexGrid.polygonOf(entry.value.coord))
+            [lon, lat],
+        ];
+        ring.add(ring.first); // GeoJSON: anello chiuso.
+        features.add({
+          'type': 'Feature',
+          'id': featureId,
+          'properties': {
+            'key': entry.key,
+            'color': _colorToHex(color),
+            // Arrotondata: lo sbiadimento dipende da DateTime.now(), e
+            // senza arrotondare la firma sotto cambierebbe a ogni sync.
+            'opacity': (_fillOpacityFor(entry.value) * 100).round() / 100,
+          },
+          'geometry': {
+            'type': 'Polygon',
+            'coordinates': [ring],
+          },
+        });
       }
-      if (addOptions.isNotEmpty) {
-        final added = await controller.addFills(addOptions);
-        for (var i = 0; i < added.length; i++) {
-          _cellFills[addKeys[i]] = added[i];
-          _cellKeyByFillId[added[i].id] = addKeys[i];
-        }
-      }
+      _ownerByFeatureId
+        ..clear()
+        ..addAll(owners);
+
+      final collection = _featureCollection(features);
+      final signature = jsonEncode(collection);
+      if (signature == _lastCellsSignature) return;
+      _lastCellsSignature = signature;
+      await controller.setGeoJsonSource(_kCellsSourceId, collection);
     } catch (_) {
       // Il supporto Fill/Circle di maplibre_gl non è uniforme su tutte le
       // piattaforme (in particolare il target web): niente territori
@@ -236,9 +246,20 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   /// solo l'id proprietario (non tutti sono in classifica, limitata ai top
   /// player), quindi il nome va risolto al volo con una query mirata
   /// invece di dipendere da territoryStandingsProvider.
-  void _onFillTapped(Fill fill) {
-    final key = _cellKeyByFillId[fill.id];
-    final ownerId = key == null ? null : _ownerByCellKey[key];
+  void _onFeatureTapped(
+    Point<double> point,
+    LatLng coordinates,
+    String id,
+    String layerId,
+    Annotation? annotation,
+  ) {
+    if (layerId != _kCellsLayerId) return;
+    // Nativo restituisce "3", web a volte "3.0": entrambi validi.
+    final index = int.tryParse(id) ?? double.tryParse(id)?.toInt();
+    final ownerId =
+        index != null && index >= 0 && index < _ownerByFeatureId.length
+            ? _ownerByFeatureId[index]
+            : null;
     if (ownerId == null) return;
     unawaited(_showOwnerName(ownerId));
   }
@@ -379,6 +400,9 @@ Color? _colorFor(
     myProfileId: myProfileId,
   );
 }
+
+Map<String, dynamic> _featureCollection(List<Map<String, dynamic>> features) =>
+    {'type': 'FeatureCollection', 'features': features};
 
 String _colorToHex(Color c) {
   String channel(double v) =>
