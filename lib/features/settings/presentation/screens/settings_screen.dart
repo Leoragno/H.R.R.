@@ -15,6 +15,7 @@ import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/data/car_catalog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../home/presentation/widgets/whats_new_overlay.dart';
 import '../../../missions/domain/entities/drive_pass.dart';
 import '../../../missions/presentation/providers/economy_providers.dart';
 import '../../../radar/presentation/providers/radar_provider.dart';
@@ -43,8 +44,7 @@ String _hex(Color c) =>
 /// in `profiles.accent_color`. I colori bloccati arrivano con il pass di
 /// guida (fase economia XP).
 ///
-/// Non ancora qui (manca la funzione nell'app): registrazione automatica,
-/// rivedi novità, piano.
+/// AIUTO › rivedi le novità (overlay della Home).
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -325,6 +325,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onTap: () => ref
                             .read(radarModeControllerProvider.notifier)
                             .toggle(),
+                      ),
+                    ]),
+                    const _Group('Aiuto'),
+                    _Rows(children: [
+                      _Row(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'Rivedi le novità',
+                        sub: 'il tour di HRR 2.0 in 7 schermate',
+                        onTap: () => showWhatsNew(context),
                       ),
                     ]),
                     const _Group('Account'),

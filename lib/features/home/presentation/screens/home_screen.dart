@@ -23,6 +23,7 @@ import '../../../trip/domain/entities/trip.dart';
 import '../../../trip/presentation/providers/trip_live_provider.dart';
 import '../../../trip/presentation/providers/trip_provider.dart';
 import '../widgets/home_map_background.dart';
+import '../widgets/whats_new_overlay.dart';
 
 /// Home / tab "Guida" — HEAT. Protagonista: AVVIA GUIDA (unico elemento
 /// pieno d'accento con glow). Sopra: mappa reale come sfondo, barra con
@@ -39,6 +40,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   MapLibreMapController? _mapController;
 
   static const _mapHeight = 450.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Novità HEAT: una sola volta, la prima apertura della Home.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybeShowWhatsNew(context);
+    });
+  }
 
   Future<void> _recenter() async {
     final controller = _mapController;
