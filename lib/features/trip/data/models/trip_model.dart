@@ -34,6 +34,7 @@ class TripModel {
   final int? totalStops;
   final int? stoppedSeconds;
   final List<XpLine> xpBreakdown;
+  final List<RoutePoint> brakePoints;
 
   const TripModel({
     required this.id,
@@ -64,6 +65,7 @@ class TripModel {
     this.totalStops,
     this.stoppedSeconds,
     this.xpBreakdown = const [],
+    this.brakePoints = const [],
   });
 
   factory TripModel.fromJson(Map<String, dynamic> json) {
@@ -108,8 +110,17 @@ class TripModel {
               xp: (l['xp'] as num?)?.toInt() ?? 0,
             ),
       ],
+      brakePoints: brakePointsFromJson(json['brake_points']),
     );
   }
+
+  /// `brake_points` (0042): [[lat, lng], ...].
+  static List<RoutePoint> brakePointsFromJson(dynamic v) => [
+        if (v is List)
+          for (final p in v)
+            if (p is List && p.length >= 2 && p[0] is num && p[1] is num)
+              RoutePoint((p[0] as num).toDouble(), (p[1] as num).toDouble()),
+      ];
 
   /// `route_geojson` è un LineString GeoJSON standard: coordinate in
   /// ordine [lng, lat], da invertire per ottenere i nostri RoutePoint.
@@ -153,5 +164,6 @@ class TripModel {
         totalStops: totalStops,
         stoppedSeconds: stoppedSeconds,
         xpBreakdown: xpBreakdown,
+        brakePoints: brakePoints,
       );
 }

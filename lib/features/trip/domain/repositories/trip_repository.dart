@@ -5,6 +5,9 @@ import '../entities/trip.dart';
 abstract class TripRepository {
   Future<Trip> startTrip({required String driverId, String? carId});
 
+  /// Posizioni delle frenate brusche del viaggio appena completato.
+  Future<void> saveBrakePoints(String tripId, List<RoutePoint> points);
+
   /// Chiama la RPC `complete_trip`: il server ricalcola XP/REP e il
   /// punteggio di guida dalla telemetria inviata (mai fidarsi di un valore
   /// calcolato dal client). `route` viene salvato lato server solo se

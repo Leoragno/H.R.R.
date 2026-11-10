@@ -54,6 +54,10 @@ class Trip extends Equatable {
   /// viaggi precedenti.
   final List<XpLine> xpBreakdown;
 
+  /// Punti delle frenate brusche sul percorso (trips.brake_points, 0042).
+  /// Vuota sui viaggi precedenti.
+  final List<RoutePoint> brakePoints;
+
   const Trip({
     required this.id,
     required this.driverId,
@@ -83,6 +87,7 @@ class Trip extends Equatable {
     this.totalStops,
     this.stoppedSeconds,
     this.xpBreakdown = const [],
+    this.brakePoints = const [],
   });
 
   @override
@@ -115,6 +120,7 @@ class Trip extends Equatable {
         totalStops,
         stoppedSeconds,
         xpBreakdown,
+        brakePoints,
       ];
 }
 

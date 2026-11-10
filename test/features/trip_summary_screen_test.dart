@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:hrr_app/features/trip/data/models/trip_model.dart';
 import 'package:hrr_app/features/trip/domain/entities/trip.dart';
 import 'package:hrr_app/features/trip/presentation/providers/trip_live_provider.dart';
 import 'package:hrr_app/features/trip/presentation/screens/trip_summary_screen.dart';
@@ -64,6 +65,7 @@ void main() {
     final summary = TripSummary(
       trip: _fakeTrip(),
       routePoints: _fakeRoute(),
+      brakePoints: const [RoutePoint(45.4650, 9.1950)],
       samples: _fakeSamples(),
     );
 
@@ -140,5 +142,19 @@ void main() {
     // Nessun campione -> niente sezione elevazione.
     expect(find.text('Elevation Over Time'), findsNothing);
     expect(find.text('Elimina viaggio'), findsOneWidget);
+  });
+
+  test('brake_points: [[lat, lng]] validi, il resto scartato', () {
+    expect(
+      TripModel.brakePointsFromJson([
+        [45.1, 9.2],
+        [45, 9],
+        ['x', 1],
+        [1],
+        'no',
+      ]),
+      const [RoutePoint(45.1, 9.2), RoutePoint(45, 9)],
+    );
+    expect(TripModel.brakePointsFromJson(null), isEmpty);
   });
 }

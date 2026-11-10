@@ -136,6 +136,7 @@ class TripSummaryScreen extends ConsumerWidget {
               index: i++,
               child: _RouteBox(
                 points: summary.routePoints,
+                brakePoints: summary.brakePoints,
                 brakes: motion.brakingEvents,
               ),
             ),
@@ -379,8 +380,13 @@ class _FlowBand extends StatelessWidget {
 }
 
 class _RouteBox extends StatelessWidget {
-  const _RouteBox({required this.points, required this.brakes});
+  const _RouteBox({
+    required this.points,
+    required this.brakes,
+    this.brakePoints = const [],
+  });
   final List<RoutePoint> points;
+  final List<RoutePoint> brakePoints;
   final int brakes;
 
   @override
@@ -400,7 +406,7 @@ class _RouteBox extends StatelessWidget {
                 Positioned.fill(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 18),
-                    child: RoutePreview(points: points),
+                    child: RoutePreview(points: points, brakes: brakePoints),
                   ),
                 ),
               Positioned(

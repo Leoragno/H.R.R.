@@ -80,6 +80,10 @@ class TripRepositoryImpl implements TripRepository {
   Future<void> discardTrip(String tripId) => _remote.discardTrip(tripId);
 
   @override
+  Future<void> saveBrakePoints(String tripId, List<RoutePoint> points) =>
+      _remote.saveBrakePoints(tripId, points);
+
+  @override
   Future<List<Trip>> recentTrips(String driverId, {int limit = 20}) async {
     final trips = await _remote.recentTrips(driverId, limit: limit);
     return trips.map((t) => t.toEntity()).toList();

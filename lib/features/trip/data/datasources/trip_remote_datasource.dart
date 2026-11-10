@@ -98,6 +98,17 @@ class TripRemoteDatasource {
     return TripModel.fromJson(row);
   }
 
+  /// Salva le frenate brusche sul percorso (RPC 0042, solo proprio viaggio
+  /// completato).
+  Future<void> saveBrakePoints(String tripId, List<RoutePoint> points) async {
+    await _client.rpc('set_trip_brake_points', params: {
+      'p_trip_id': tripId,
+      'p_points': [
+        for (final p in points) [p.lat, p.lng],
+      ],
+    });
+  }
+
   Future<void> discardTrip(String tripId) async {
     await _client.from('trips').update({
       'status': 'discarded',

@@ -9,7 +9,10 @@ import '../utils/route_smoothing.dart';
 /// anteprima neon nella schermata di Fine Viaggio.
 class RoutePreview extends StatelessWidget {
   final List<RoutePoint> points;
-  const RoutePreview({super.key, required this.points});
+
+  /// Frenate brusche: segnate in oro sul tracciato.
+  final List<RoutePoint> brakes;
+  const RoutePreview({super.key, required this.points, this.brakes = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +20,7 @@ class RoutePreview extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return CustomPaint(
-      painter: _RoutePainter(points),
+      painter: _RoutePainter(points, brakes),
       child: const SizedBox.expand(),
     );
   }
@@ -25,7 +28,8 @@ class RoutePreview extends StatelessWidget {
 
 class _RoutePainter extends CustomPainter {
   final List<RoutePoint> points;
-  _RoutePainter(this.points);
+  final List<RoutePoint> brakes;
+  _RoutePainter(this.points, this.brakes);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -80,9 +84,22 @@ class _RoutePainter extends CustomPainter {
     final endPoint = toOffset(points.last);
     canvas.drawCircle(startPoint, 5, Paint()..color = AppColor.ink);
     canvas.drawCircle(endPoint, 5, Paint()..color = AppColor.magenta);
+
+    // Frenate brusche: anello oro sul punto del percorso.
+    for (final b in brakes) {
+      final o = toOffset(b);
+      canvas.drawCircle(o, 6, Paint()..color = AppColor.deep);
+      canvas.drawCircle(
+          o,
+          5,
+          Paint()
+            ..color = AppColor.gold
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5);
+    }
   }
 
   @override
   bool shouldRepaint(covariant _RoutePainter oldDelegate) =>
-      oldDelegate.points != points;
+      oldDelegate.points != points || oldDelegate.brakes != brakes;
 }

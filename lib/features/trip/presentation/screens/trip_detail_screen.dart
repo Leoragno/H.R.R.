@@ -126,7 +126,8 @@ class _Body extends StatelessWidget {
                 Positioned.fill(
                   top: top + 50,
                   bottom: 30,
-                  child: RoutePreview(points: trip.route),
+                  child: RoutePreview(
+                      points: trip.route, brakes: trip.brakePoints),
                 ),
               const Positioned(
                 left: 0,
@@ -161,7 +162,11 @@ class _Body extends StatelessWidget {
                   children: [
                     const _Legend(color: AppColor.ink, label: 'PARTENZA'),
                     const SizedBox(width: 12),
-                    _Legend(color: AppColor.accent, label: 'ARRIVO'),
+                    const _Legend(color: AppColor.magenta, label: 'ARRIVO'),
+                    if (trip.brakePoints.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      const _Legend(color: AppColor.gold, label: 'FRENATE'),
+                    ],
                   ],
                 ),
               ),

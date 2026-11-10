@@ -162,11 +162,15 @@ class TripMotionStats {
 class TripSummary {
   final Trip trip;
   final List<RoutePoint> routePoints;
+
+  /// Dove sono avvenute le frenate brusche (ultimo punto GPS accettato).
+  final List<RoutePoint> brakePoints;
   final List<TelemetrySample> samples;
   final TripMotionStats motionStats;
   const TripSummary({
     required this.trip,
     required this.routePoints,
+    this.brakePoints = const [],
     this.samples = const [],
     this.motionStats = const TripMotionStats(),
   });
@@ -457,6 +461,7 @@ class TripLiveController extends _$TripLiveController {
   double? _gSpikeCandidateMs2;
   DateTime? _lastBrakingEventAt;
   int _brakingEvents = 0;
+  final List<RoutePoint> _brakePoints = [];
 
   // --- Aggregati per il punteggio di guida (0024_drive_score.sql) ---
   int _brakingHardEvents = 0;
@@ -863,6 +868,7 @@ class TripLiveController extends _$TripLiveController {
     _gSpikeCandidateMs2 = null;
     _lastBrakingEventAt = null;
     _brakingEvents = 0;
+    _brakePoints.clear();
     _brakingHardEvents = 0;
     _brakingJerkSum = 0;
     _brakingJerkCount = 0;
@@ -1124,6 +1130,7 @@ class TripLiveController extends _$TripLiveController {
                 now.difference(_lastBrakingEventAt!) > _kBrakingCooldown;
             if (cooledDown) {
               _brakingEvents++;
+              if (_points.isNotEmpty) _brakePoints.add(_points.last);
               if (a <= -_kHardBrakingThresholdMs2) _brakingHardEvents++;
               if (jerk != null) {
                 _brakingJerkSum += jerk.abs();
@@ -1392,9 +1399,19 @@ class TripLiveController extends _$TripLiveController {
       rethrow;
     }
 
+    // Frenate sul percorso (0042): best effort, il Risultato le mostra
+    // comunque dal riepilogo in memoria.
+    if (_brakePoints.isNotEmpty) {
+      unawaited(ref
+          .read(tripRepositoryProvider)
+          .saveBrakePoints(tripId, List.of(_brakePoints))
+          .catchError((_) {}));
+    }
+
     final summary = TripSummary(
       trip: finished,
       routePoints: List.unmodifiable(_points),
+      brakePoints: List.unmodifiable(_brakePoints),
       samples: List.unmodifiable(_samples),
       motionStats: TripMotionStats(
         elevationGainM: _elevationGainM,
