@@ -12,6 +12,8 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../rival/presentation/providers/active_mascot_provider.dart';
 import '../../domain/entities/territory_cell.dart';
 import '../../domain/territory_color.dart';
+import '../../domain/hex_grid.dart';
+import '../../domain/territory_attack.dart';
 import '../../domain/territory_decay.dart';
 import '../providers/game_controller.dart';
 import '../providers/territory_provider.dart';
@@ -172,6 +174,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   ),
                   const SizedBox(height: 6),
                 ],
+                if (selected == null && !state.panelExpanded)
+                  if (ref.watch(territoryAttackProvider).valueOrNull
+                      case final attack?)
+                    _AttackCard(
+                      attack: attack,
+                      onShow: () {
+                        final (lat, lon) = HexGrid.centerOf(attack.cells.first);
+                        _mapKey.currentState?.focusOn(lat, lon);
+                      },
+                    ),
                 if (selected != null && !state.panelExpanded)
                   _CellCard(
                     key: ValueKey(selected.coord.key),
@@ -510,6 +522,70 @@ class _CellCard extends ConsumerWidget {
           color: c,
         ),
       );
+}
+
+/// "SOTTO ATTACCO": qualcuno ti ha rubato esagoni nelle ultime 24 ore e
+/// li tiene ancora. Per riprenderli basta ripassarci con un FLOW più alto
+/// del suo (claim_territory_cells): DIFENDI avvia la guida, il tocco sulla
+/// card porta la mappa sugli esagoni. Rosso = rivale (DESIGN.md).
+class _AttackCard extends StatelessWidget {
+  const _AttackCard({required this.attack, required this.onShow});
+  final TerritoryAttack attack;
+  final VoidCallback onShow;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = attack.count;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: HeatPanel(
+        shape: const ChamferBorder(cut: 12, bottomLeft: true),
+        borderColor: AppColor.danger,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        onTap: onShow,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: AppColor.danger, size: 20),
+                const SizedBox(width: 6),
+                Text('SOTTO ATTACCO',
+                    style: AppType.label.copyWith(
+                        fontSize: 13,
+                        letterSpacing: 2,
+                        color: AppColor.danger)),
+                const Spacer(),
+                Text(attackAgo(attack.lastAt, DateTime.now()),
+                    style:
+                        AppType.text(fontSize: 12, color: AppColor.inkMuted)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${attack.thiefName} ti ha preso '
+              '${n == 1 ? 'un esagono' : '$n esagoni'}',
+              style: AppType.display(fontSize: 20, letterSpacing: .4),
+            ),
+            Text(
+              attack.flowToBeat != null
+                  ? 'ripassaci con FLOW sopra ${attack.flowToBeat} per riprenderl${n == 1 ? 'o' : 'i'}.'
+                  : 'ripassaci guidando per riprenderl${n == 1 ? 'o' : 'i'}.',
+              style: AppType.text(fontSize: 13, color: AppColor.inkMuted),
+            ),
+            const SizedBox(height: 10),
+            HeatGhostButton(
+              label: 'DIFENDI',
+              icon: Icons.shield_rounded,
+              height: 44,
+              onPressed: () => context.push(AppRoutes.tripLive),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _GpsBanner extends StatelessWidget {

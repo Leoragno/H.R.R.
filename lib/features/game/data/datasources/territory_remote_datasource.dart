@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/territory_claim_result.dart';
 import '../../domain/hex_grid.dart';
+import '../../domain/territory_attack.dart';
 import '../models/territory_cell_model.dart';
 import '../models/territory_standing_model.dart';
 
@@ -72,6 +73,61 @@ class TerritoryRemoteDatasource {
       'p_profile_id': profileId,
     });
     return (count as num).toInt();
+  }
+
+  /// Esagoni rubati a [profileId] nelle ultime [within] e ancora in mano
+  /// al ladro (card "SOTTO ATTACCO" di Gioca).
+  Future<({List<LostCell> lost, Map<String, String> names})> recentLosses(
+    String profileId, {
+    Duration within = const Duration(hours: 24),
+  }) async {
+    final since = DateTime.now().toUtc().subtract(within).toIso8601String();
+    final log = await _client
+        .from('territory_claim_log')
+        .select('q, r, claimant_id, claimed_at')
+        .eq('previous_owner_id', profileId)
+        .gte('claimed_at', since)
+        .order('claimed_at', ascending: false)
+        .limit(60);
+    final rows = (log as List).cast<Map<String, dynamic>>();
+    if (rows.isEmpty) {
+      return (lost: const <LostCell>[], names: const <String, String>{});
+    }
+
+    final pairs = {for (final r in rows) '${r['q']}:${r['r']}': r};
+    final cells = await _client
+        .from('territory_cells')
+        .select('q, r, owner_id, drive_score')
+        .or(pairs.values
+            .map((r) => 'and(q.eq.${r['q']},r.eq.${r['r']})')
+            .join(','));
+    final owner = {
+      for (final c in (cells as List).cast<Map<String, dynamic>>())
+        '${c['q']}:${c['r']}': c,
+    };
+    final lost = <LostCell>[
+      for (final r in rows)
+        if (owner['${r['q']}:${r['r']}'] case final c?
+            when c['owner_id'] == r['claimant_id'])
+          LostCell(
+            cell: HexCoord((r['q'] as num).toInt(), (r['r'] as num).toInt()),
+            thiefId: r['claimant_id'] as String,
+            at: DateTime.parse(r['claimed_at'] as String),
+            thiefScore: (c['drive_score'] as num?)?.toInt(),
+          ),
+    ];
+    final ids = {for (final l in lost) l.thiefId};
+    final names = <String, String>{};
+    if (ids.isNotEmpty) {
+      final profiles = await _client
+          .from('profiles')
+          .select('id, username')
+          .inFilter('id', ids.toList());
+      for (final p in (profiles as List).cast<Map<String, dynamic>>()) {
+        names[p['id'] as String] = (p['username'] as String?) ?? 'qualcuno';
+      }
+    }
+    return (lost: lost, names: names);
   }
 
   Future<String?> profileDisplayName(String profileId) async {

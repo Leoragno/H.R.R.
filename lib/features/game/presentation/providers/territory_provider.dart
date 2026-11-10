@@ -7,6 +7,7 @@ import '../../data/repositories/territory_repository_impl.dart';
 import '../../domain/entities/territory_cell.dart';
 import '../../domain/entities/territory_standing.dart';
 import '../../domain/repositories/territory_repository.dart';
+import '../../domain/territory_attack.dart';
 
 part 'territory_provider.g.dart';
 
@@ -44,3 +45,19 @@ Future<List<TerritoryCell>> myTerritories(MyTerritoriesRef ref) async {
   if (profile == null) return const [];
   return ref.watch(territoryRepositoryProvider).myTerritories(profile.id);
 }
+
+/// Card "SOTTO ATTACCO" di Gioca (provider a mano: build_runner è rotto).
+/// Null se nelle ultime 24 ore nessuno ti ha rubato esagoni che tiene
+/// ancora, o se la lettura fallisce.
+final territoryAttackProvider =
+    FutureProvider.autoDispose<TerritoryAttack?>((ref) async {
+  final me = ref.watch(authStateProvider).valueOrNull?.id;
+  if (me == null) return null;
+  try {
+    final r =
+        await ref.watch(territoryRemoteDatasourceProvider).recentLosses(me);
+    return TerritoryAttack.latest(r.lost, (id) => r.names[id] ?? 'qualcuno');
+  } catch (_) {
+    return null;
+  }
+});

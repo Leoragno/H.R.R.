@@ -114,6 +114,14 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   /// Ricentra la camera sulla posizione live corrente — chiamato dal
   /// pulsante "centra" di GameScreen via GlobalKey, dato che la camera
   /// non segue più automaticamente ogni fix GPS.
+  /// Porta la camera su un punto (es. gli esagoni rubati della card
+  /// "SOTTO ATTACCO").
+  Future<void> focusOn(double lat, double lon) async {
+    await _controller?.animateCamera(
+      CameraUpdate.newLatLngZoom(LatLng(lat, lon), _kDefaultZoom),
+    );
+  }
+
   Future<void> recenter() async {
     final controller = _controller;
     final lat = widget.lat;
