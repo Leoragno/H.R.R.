@@ -329,3 +329,20 @@ as $$
 $$;
 
 grant execute on function public.xp_ranking_between(timestamptz, timestamptz) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 4. Solo utenti autenticati: Postgres concede EXECUTE a PUBLIC di
+--    default, quindi lo si toglie e lo si ridà ad authenticated.
+-- ---------------------------------------------------------------------
+revoke all on function public.touch_last_seen() from public, anon;
+revoke all on function public.my_challenges() from public, anon;
+revoke all on function public.create_challenge(uuid, text, int, int) from public, anon;
+revoke all on function public.respond_challenge(uuid, boolean) from public, anon;
+revoke all on function public.cancel_challenge(uuid) from public, anon;
+revoke all on function public.xp_ranking_between(timestamptz, timestamptz) from public, anon;
+grant execute on function public.touch_last_seen() to authenticated;
+grant execute on function public.my_challenges() to authenticated;
+grant execute on function public.create_challenge(uuid, text, int, int) to authenticated;
+grant execute on function public.respond_challenge(uuid, boolean) to authenticated;
+grant execute on function public.cancel_challenge(uuid) to authenticated;
+grant execute on function public.xp_ranking_between(timestamptz, timestamptz) to authenticated;
