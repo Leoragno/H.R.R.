@@ -48,8 +48,8 @@ class SpeedometerGauge extends StatelessWidget {
                 duration: const Duration(milliseconds: 800),
                 curve: Curves.easeOut,
                 builder: (_, v, __) => CustomPaint(
-                  painter: _GaugePainter(
-                      speed: v, maxSpeed: maxSpeed, accent: a),
+                  painter:
+                      _GaugePainter(speed: v, maxSpeed: maxSpeed, accent: a),
                 ),
               ),
             ),

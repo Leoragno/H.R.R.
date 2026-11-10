@@ -20,7 +20,8 @@ NotificationsRemoteDatasource notificationsRemoteDatasource(
 
 @riverpod
 NotificationRepository notificationRepository(NotificationRepositoryRef ref) =>
-    NotificationRepositoryImpl(ref.watch(notificationsRemoteDatasourceProvider));
+    NotificationRepositoryImpl(
+        ref.watch(notificationsRemoteDatasourceProvider));
 
 // ---- Toast per l'arrivo di una nuova notifica ------------------------------
 
@@ -70,7 +71,9 @@ class NotificationsController extends _$NotificationsController {
         final fresh = rows.where((n) => !knownIds.contains(n.id)).toList();
         state = rows;
         if (fresh.isNotEmpty) {
-          ref.read(notificationToastControllerProvider.notifier).show(fresh.first);
+          ref
+              .read(notificationToastControllerProvider.notifier)
+              .show(fresh.first);
         }
       },
       onError: (_) {

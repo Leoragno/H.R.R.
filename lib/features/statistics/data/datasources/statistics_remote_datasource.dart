@@ -13,10 +13,8 @@ class StatisticsRemoteDatasource {
   StatisticsRemoteDatasource(this._client);
 
   Future<int> mySpotCount(String profileId) async {
-    final rows = await _client
-        .from('spots')
-        .select('id')
-        .eq('author_id', profileId);
+    final rows =
+        await _client.from('spots').select('id').eq('author_id', profileId);
     return (rows as List).length;
   }
 

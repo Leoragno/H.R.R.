@@ -154,10 +154,7 @@ class _RivalCard extends StatelessWidget {
         .animate()
         .fadeIn(duration: 250.ms)
         .slideX(
-            begin: 0.35,
-            end: 0,
-            curve: Curves.easeOutBack,
-            duration: 380.ms)
+            begin: 0.35, end: 0, curve: Curves.easeOutBack, duration: 380.ms)
         .scale(
             begin: const Offset(0.85, 0.85),
             end: const Offset(1, 1),

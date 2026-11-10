@@ -227,8 +227,8 @@ class VoiceChannelController extends _$VoiceChannelController {
     try {
       await _player.setFilePath(file.path);
       await _player.play();
-      await _player.playerStateStream.firstWhere(
-          (s) => s.processingState == ProcessingState.completed);
+      await _player.playerStateStream
+          .firstWhere((s) => s.processingState == ProcessingState.completed);
     } finally {
       try {
         await file.delete();

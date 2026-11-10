@@ -32,8 +32,8 @@ class PilotsScreen extends ConsumerWidget {
                 child: IconButton(
                   onPressed: () =>
                       context.canPop() ? context.pop() : context.go('/home'),
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: AppColor.ink),
+                  icon:
+                      const Icon(Icons.arrow_back_rounded, color: AppColor.ink),
                 ),
               ),
             ),
@@ -260,7 +260,8 @@ class _CollectionCard extends StatelessWidget {
             monogram: archetype.monogram,
             width: 52,
             locked: !seen,
-            color: isMain ? accent : (seen ? AppColor.lineMuted : AppColor.line),
+            color:
+                isMain ? accent : (seen ? AppColor.lineMuted : AppColor.line),
             textColor: isMain ? accent : AppColor.ink,
             glow: isMain,
           ),
@@ -393,8 +394,7 @@ class _PilotSheet extends StatelessWidget {
                 Text('COME SI OTTIENE',
                     style: AppType.label.copyWith(fontSize: 12)),
                 const SizedBox(height: 4),
-                Text(a.howToGet,
-                    style: AppType.body.copyWith(height: 1.4)),
+                Text(a.howToGet, style: AppType.body.copyWith(height: 1.4)),
               ],
             ),
           ),

@@ -35,7 +35,8 @@ class MascotAvatar extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => _PlaceholderBadge(mascot: mascot, size: size),
+      errorBuilder: (_, __, ___) =>
+          _PlaceholderBadge(mascot: mascot, size: size),
     );
     if (!mascot.hasCrown) return avatar;
     // R3X e DUST nel materiale originale hanno una corona — badge in alto

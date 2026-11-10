@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
-import 'web_reload_stub.dart' if (dart.library.js_interop) 'web_reload_web.dart';
+import 'web_reload_stub.dart'
+    if (dart.library.js_interop) 'web_reload_web.dart';
 
 /// Id della build web, iniettato da scripts/deploy_web.sh
 /// (--dart-define=WEB_BUILD_ID) e scritto anche in build.json accanto
@@ -114,8 +115,8 @@ class _WebUpdateBannerState extends State<WebUpdateBanner>
                       const SizedBox(width: AppSpace.sm),
                       Expanded(
                         child: Text('Nuova versione di H.R.R. disponibile',
-                            style: AppType.caption
-                                .copyWith(color: AppColor.ink)),
+                            style:
+                                AppType.caption.copyWith(color: AppColor.ink)),
                       ),
                       TextButton(
                         onPressed: _reloading ? null : _reload,

@@ -119,13 +119,18 @@ class TripMotionStats {
   // 0024_drive_score.sql — il punteggio finale è calcolato lì, questi sono
   // solo gli input grezzi). Nessuno di questi è mostrato nel report al
   // posto delle statistiche sopra: alimentano solo la RPC.
-  final int brakingHardEvents; // sottoinsieme di brakingEvents, decelerazione >5 m/s²
+  final int
+      brakingHardEvents; // sottoinsieme di brakingEvents, decelerazione >5 m/s²
   final double? brakingJerkAvgMs3; // durezza media delle frenate rilevate
-  final double? jerkRmsMs3; // fluidità: RMS del jerk longitudinale sull'intero viaggio
-  final double? turnGyroStddevAvg; // curve: media della dev. standard giroscopica per svolta
-  final int accelThenBrakeCount; // efficienza: accelerazione seguita da frenata entro 15s
+  final double?
+      jerkRmsMs3; // fluidità: RMS del jerk longitudinale sull'intero viaggio
+  final double?
+      turnGyroStddevAvg; // curve: media della dev. standard giroscopica per svolta
+  final int
+      accelThenBrakeCount; // efficienza: accelerazione seguita da frenata entro 15s
   final double? gpsFixHz; // tasso di fix GPS accettati — gate qualità dato
-  final double? gyroHz; // tasso di campioni giroscopio ricevuti — gate qualità dato
+  final double?
+      gyroHz; // tasso di campioni giroscopio ricevuti — gate qualità dato
 
   const TripMotionStats({
     this.elevationGainM = 0,
@@ -295,8 +300,7 @@ Set<HexCoord> _cellsAlongRoute(List<RoutePoint> points) {
     cells.add(HexGrid.cellOf(p.lat, p.lng));
     if (i == 0) continue;
     final prev = points[i - 1];
-    final meters =
-        Geolocator.distanceBetween(prev.lat, prev.lng, p.lat, p.lng);
+    final meters = Geolocator.distanceBetween(prev.lat, prev.lng, p.lat, p.lng);
     if (meters <= _kMaxCellInterpolationM) {
       cells.addAll(HexGrid.cellsAlong(prev.lat, prev.lng, p.lat, p.lng));
     }
@@ -467,7 +471,8 @@ class TripLiveController extends _$TripLiveController {
   int _gpsAcceptedFixCount = 0;
   int _gyroSampleCount = 0;
   double _turnWindowGyroMagSumSq = 0;
-  double _turnStddevSum = 0; // somma delle dev. standard per-svolta, per la media finale
+  double _turnStddevSum =
+      0; // somma delle dev. standard per-svolta, per la media finale
   int _turnStddevCount = 0;
 
   double? _lastBearing;
@@ -936,9 +941,8 @@ class TripLiveController extends _$TripLiveController {
       // invece di sommarlo alla distanza o disegnarlo come tratto di
       // percorso. _lastPosition resta quello precedente, stesso motivo del
       // filtro accuratezza sopra.
-      final dtSeconds = lastAt != null
-          ? fixAt.difference(lastAt).inMilliseconds / 1000
-          : 0.0;
+      final dtSeconds =
+          lastAt != null ? fixAt.difference(lastAt).inMilliseconds / 1000 : 0.0;
       final impliedSpeedMs = dtSeconds > 0 ? meters / dtSeconds : 0.0;
       if (impliedSpeedMs > _kMaxPlausibleSpeedMs) return;
       // Fix fuori ordine (dt negativo) o duplicato: nessuna informazione

@@ -91,6 +91,6 @@ class TerritoryRemoteDatasource {
   /// a ogni evento, invece di tentare di ricostruire lo stato dai payload.
   Stream<void> watchCellChanges() =>
       _client.from('territory_cells').stream(primaryKey: ['q', 'r']).map(
-            (_) {},
-          );
+        (_) {},
+      );
 }

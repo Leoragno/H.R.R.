@@ -25,8 +25,7 @@ class RadarIconSet {
   /// Nomi immagine -> bytes PNG, pronti per `controller.addImage`.
   static Future<Map<String, Uint8List>> render({double size = 96}) async {
     return {
-      veloxApiId:
-          await _rasterizeIcon(Icons.videocam_rounded, _apiColor, size),
+      veloxApiId: await _rasterizeIcon(Icons.videocam_rounded, _apiColor, size),
       veloxCommunityId:
           await _rasterizeIcon(Icons.videocam_rounded, _communityColor, size),
       pattugliaCommunityId:
@@ -61,8 +60,7 @@ class RadarIconSet {
     return _finish(recorder, size);
   }
 
-  static Future<Uint8List> _rasterizePoliceCap(
-      Color color, double size) async {
+  static Future<Uint8List> _rasterizePoliceCap(Color color, double size) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final paint = Paint()..color = color;

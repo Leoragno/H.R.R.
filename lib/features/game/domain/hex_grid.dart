@@ -61,9 +61,8 @@ class HexGrid {
     double lon2,
   ) {
     final north = (lat2 - lat1) * _metersPerDegreeLat;
-    final east = (lon2 - lon1) *
-        _metersPerDegreeLat *
-        math.cos(lat1 * math.pi / 180);
+    final east =
+        (lon2 - lon1) * _metersPerDegreeLat * math.cos(lat1 * math.pi / 180);
     final meters = math.sqrt(north * north + east * east);
     final steps = math.max(1, (meters / (hexMeters / 4)).ceil());
     return {

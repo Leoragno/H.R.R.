@@ -9,7 +9,8 @@ class PushTokenRemoteDatasource {
   final SupabaseClient _client;
   PushTokenRemoteDatasource(this._client);
 
-  Future<void> register({required String token, required String platform}) async {
+  Future<void> register(
+      {required String token, required String platform}) async {
     await _client.rpc('register_push_token', params: {
       'p_token': token,
       'p_platform': platform,

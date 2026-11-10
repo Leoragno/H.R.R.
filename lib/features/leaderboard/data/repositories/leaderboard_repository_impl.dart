@@ -13,7 +13,8 @@ class LeaderboardRepositoryImpl implements LeaderboardRepository {
     required LeaderboardPeriod period,
     int limit = 50,
   }) async {
-    final rows = await _remote.global(metric: metric, period: period, limit: limit);
+    final rows =
+        await _remote.global(metric: metric, period: period, limit: limit);
     return rows.map((r) => r.toEntity()).toList();
   }
 }

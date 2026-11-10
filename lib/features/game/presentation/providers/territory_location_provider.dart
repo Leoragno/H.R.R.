@@ -63,7 +63,8 @@ Future<Map<String, TerritoryLocation>> territoryCellLocations(
 
   final locationByBucketKey = <String, TerritoryLocation>{};
   await Future.wait(coordByBucketKey.entries.map((entry) async {
-    locationByBucketKey[entry.key] = await _resolve(entry.value.$1, entry.value.$2);
+    locationByBucketKey[entry.key] =
+        await _resolve(entry.value.$1, entry.value.$2);
   }));
 
   return {

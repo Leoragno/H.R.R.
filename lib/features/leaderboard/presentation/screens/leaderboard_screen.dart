@@ -270,8 +270,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
         child: Text(
           _gapLine(list, myId),
-          style: AppType.text(
-              fontSize: 13, color: AppColor.inkMuted, height: 1.4),
+          style:
+              AppType.text(fontSize: 13, color: AppColor.inkMuted, height: 1.4),
         ),
       ),
     ];
@@ -280,7 +280,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   /// "ti mancano 240 XP per superare giulia.v." / "sei in testa…".
   String _gapLine(List<LeaderboardEntry> list, String? myId) {
     final i = list.indexWhere((e) => e.profileId == myId);
-    if (i == -1) return 'non sei ancora in questa classifica. guida per entrarci.';
+    if (i == -1)
+      return 'non sei ancora in questa classifica. guida per entrarci.';
     if (i == 0) return 'sei in testa. difendi il primo posto.';
     final me = list[i].valueFor(_metric);
     final above = list[i - 1].valueFor(_metric);
@@ -437,8 +438,7 @@ class _MetricSheet extends StatelessWidget {
                           fontSize: 18,
                           italic: false,
                           letterSpacing: 1.2,
-                          color:
-                              m == selected ? AppColor.accent : AppColor.ink,
+                          color: m == selected ? AppColor.accent : AppColor.ink,
                         ),
                       ),
                     ),
@@ -482,11 +482,7 @@ class _LeaderHero extends StatelessWidget {
     if (!reduce) {
       hero = hero
           .animate(onPlay: (c) => c.repeat(reverse: true))
-          .moveY(
-              begin: 0,
-              end: -8,
-              duration: 2250.ms,
-              curve: Curves.easeInOut);
+          .moveY(begin: 0, end: -8, duration: 2250.ms, curve: Curves.easeInOut);
     }
 
     return Container(
@@ -611,9 +607,12 @@ LinearGradient? _flagGradient(String? country) {
     begin: begin,
     end: end,
     colors: [
-      f[0].withValues(alpha: .35), f[0].withValues(alpha: .35),
-      f[1].withValues(alpha: .20), f[1].withValues(alpha: .20),
-      f[2].withValues(alpha: .30), f[2].withValues(alpha: .30),
+      f[0].withValues(alpha: .35),
+      f[0].withValues(alpha: .35),
+      f[1].withValues(alpha: .20),
+      f[1].withValues(alpha: .20),
+      f[2].withValues(alpha: .30),
+      f[2].withValues(alpha: .30),
       const Color(0x00000000),
     ],
     stops: const [0, .10, .10, .20, .20, .30, .46],

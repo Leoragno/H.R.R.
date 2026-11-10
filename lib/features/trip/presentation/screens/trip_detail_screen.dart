@@ -14,7 +14,12 @@ import '../../domain/entities/trip.dart';
 import '../providers/trip_provider.dart';
 import '../widgets/route_preview_painter.dart';
 import '../widgets/trip_stat_card.dart'
-    show accelHint, decelHint, formatStoppedTime, formatTripDuration, gForceHint;
+    show
+        accelHint,
+        decelHint,
+        formatStoppedTime,
+        formatTripDuration,
+        gForceHint;
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
@@ -41,8 +46,8 @@ class TripDetailScreen extends ConsumerWidget {
               child: const Text('Annulla')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Elimina',
-                style: TextStyle(color: AppColor.danger)),
+            child:
+                const Text('Elimina', style: TextStyle(color: AppColor.danger)),
           ),
         ],
       ),
@@ -69,8 +74,8 @@ class TripDetailScreen extends ConsumerWidget {
                 alignment: Alignment.centerLeft,
                 child: IconButton(
                   onPressed: () => context.pop(),
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: AppColor.ink),
+                  icon:
+                      const Icon(Icons.arrow_back_rounded, color: AppColor.ink),
                 ),
               ),
               Expanded(
@@ -107,14 +112,16 @@ class _Body extends StatelessWidget {
     var i = 0;
 
     return ListView(
-      padding: EdgeInsets.only(bottom: 30 + MediaQuery.paddingOf(context).bottom),
+      padding:
+          EdgeInsets.only(bottom: 30 + MediaQuery.paddingOf(context).bottom),
       children: [
         // Tracciato a tutta larghezza su griglia scura.
         SizedBox(
           height: 250 + top,
           child: Stack(
             children: [
-              const Positioned.fill(child: CustomPaint(painter: _GridPainter())),
+              const Positioned.fill(
+                  child: CustomPaint(painter: _GridPainter())),
               if (trip.route.length >= 2)
                 Positioned.fill(
                   top: top + 50,
@@ -143,8 +150,8 @@ class _Body extends StatelessWidget {
                   onPressed: () => context.canPop()
                       ? context.pop()
                       : context.go(AppRoutes.home),
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: AppColor.ink),
+                  icon:
+                      const Icon(Icons.arrow_back_rounded, color: AppColor.ink),
                 ),
               ),
               Positioned(
@@ -213,8 +220,7 @@ class _Body extends StatelessWidget {
                   ),
                 ),
                 if (score != null)
-                  GraffitiText(flowGrade(score),
-                      fontSize: 72, angle: -0.14),
+                  GraffitiText(flowGrade(score), fontSize: 72, angle: -0.14),
               ],
             ),
           ),
@@ -226,10 +232,16 @@ class _Body extends StatelessWidget {
             child: _KeyNumbers(cells: [
               ('DISTANZA', trip.distanceKm.toStringAsFixed(1), 'km'),
               ('DURATA', formatTripDuration(trip.durationSeconds), ''),
-              ('VEL. MEDIA', trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—',
-                  'km/h'),
-              ('VEL. MASSIMA', trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—',
-                  'km/h'),
+              (
+                'VEL. MEDIA',
+                trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—',
+                'km/h'
+              ),
+              (
+                'VEL. MASSIMA',
+                trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—',
+                'km/h'
+              ),
             ]),
           ),
         ),

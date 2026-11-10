@@ -10,7 +10,10 @@ class ReportOptionTile extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   const ReportOptionTile(
-      {super.key, required this.icon, required this.label, required this.onTap});
+      {super.key,
+      required this.icon,
+      required this.label,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {

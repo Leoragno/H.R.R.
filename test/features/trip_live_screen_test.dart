@@ -45,11 +45,13 @@ void main() {
 
     final container =
         ProviderScope.containerOf(tester.element(find.byType(TripLiveScreen)));
-    final stub =
-        container.read(tripLiveControllerProvider.notifier) as _StubTripLiveController;
+    final stub = container.read(tripLiveControllerProvider.notifier)
+        as _StubTripLiveController;
 
     stub.debugSetState(
-      container.read(tripLiveControllerProvider).copyWith(batterySaverActive: true),
+      container
+          .read(tripLiveControllerProvider)
+          .copyWith(batterySaverActive: true),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -78,11 +80,13 @@ void main() {
 
     final container =
         ProviderScope.containerOf(tester.element(find.byType(TripLiveScreen)));
-    final stub =
-        container.read(tripLiveControllerProvider.notifier) as _StubTripLiveController;
+    final stub = container.read(tripLiveControllerProvider.notifier)
+        as _StubTripLiveController;
 
     stub.debugSetState(
-      container.read(tripLiveControllerProvider).copyWith(batterySaverActive: true),
+      container
+          .read(tripLiveControllerProvider)
+          .copyWith(batterySaverActive: true),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

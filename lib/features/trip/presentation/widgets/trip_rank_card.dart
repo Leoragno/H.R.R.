@@ -174,8 +174,8 @@ class _TripRankCardState extends State<TripRankCard> {
                       ? Alignment.centerRight
                       : Alignment.centerLeft,
                   child: const DecoratedBox(
-                    decoration:
-                        BoxDecoration(color: AppColor.ink, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                        color: AppColor.ink, shape: BoxShape.circle),
                     child: SizedBox(width: 26, height: 26),
                   ),
                 ),
@@ -367,9 +367,11 @@ class _Page2 extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(r.$1,
-                      style: AppType.text(fontSize: 16, color: AppColor.inkMuted)),
+                      style:
+                          AppType.text(fontSize: 16, color: AppColor.inkMuted)),
                   Text(r.$2,
-                      style: AppType.text(fontWeight: FontWeight.w700, fontSize: 18)),
+                      style: AppType.text(
+                          fontWeight: FontWeight.w700, fontSize: 18)),
                 ],
               ),
             ),
@@ -412,8 +414,7 @@ class _Stat extends StatelessWidget {
                 fontSize: big ? 38 : (small ? 28 : 34),
                 color: AppColor.ink)),
         const SizedBox(height: AppSpace.sm),
-        Text(label,
-            style: AppType.label.copyWith(fontSize: small ? 13 : 14)),
+        Text(label, style: AppType.label.copyWith(fontSize: small ? 13 : 14)),
       ],
     );
   }

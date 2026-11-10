@@ -54,8 +54,8 @@ class RivalryCard extends ConsumerWidget {
                           color: AppColor.ink)),
                   const SizedBox(height: 2),
                   Text('Nessun rivale sopra di te — per ora.',
-                      style: AppType.text(
-                          fontSize: 13, color: AppColor.inkMuted)),
+                      style:
+                          AppType.text(fontSize: 13, color: AppColor.inkMuted)),
                 ],
               ),
             ),
@@ -121,8 +121,7 @@ class RivalryCard extends ConsumerWidget {
                 ? 'Sei alla pari, sorpasso a un passo!'
                 : '$gap XP ti separano da ${rival.displayName}.',
             textAlign: TextAlign.center,
-            style: AppType.text(
-                fontSize: 13, color: AppColor.inkMuted),
+            style: AppType.text(fontSize: 13, color: AppColor.inkMuted),
           ),
           const SizedBox(height: 14),
           NeonCtaButton(

@@ -290,8 +290,9 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
       return;
     }
     try {
-      final name =
-          await ref.read(territoryRepositoryProvider).profileDisplayName(ownerId);
+      final name = await ref
+          .read(territoryRepositoryProvider)
+          .profileDisplayName(ownerId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

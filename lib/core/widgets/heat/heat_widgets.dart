@@ -80,9 +80,8 @@ class HeatPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final side = borderColor == null
-        ? BorderSide.none
-        : BorderSide(color: borderColor!);
+    final side =
+        borderColor == null ? BorderSide.none : BorderSide(color: borderColor!);
     final box = DecoratedBox(
       decoration: ShapeDecoration(
         color: gradient == null ? color : null,
@@ -243,15 +242,15 @@ class HeatGhostButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const shape = SlantBorder.all(12,
-        side: BorderSide(color: AppColor.line));
+    const shape = SlantBorder.all(12, side: BorderSide(color: AppColor.line));
     return Opacity(
       opacity: onPressed == null ? .45 : 1,
       child: HeatPressable(
         onTap: onPressed,
         child: Container(
           height: height,
-          decoration: const ShapeDecoration(shape: shape, color: AppColor.surface),
+          decoration:
+              const ShapeDecoration(shape: shape, color: AppColor.surface),
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
@@ -355,7 +354,8 @@ class HeatChip extends StatelessWidget {
     return HeatPanel(
       onTap: onTap,
       shape: const SlantBorder.all(8),
-      color: selected ? AppColor.accent : AppColor.surface.withValues(alpha: .92),
+      color:
+          selected ? AppColor.accent : AppColor.surface.withValues(alpha: .92),
       borderColor: selected ? null : AppColor.line,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: SizedBox(
@@ -452,10 +452,12 @@ class SectionLabel extends StatelessWidget {
         Expanded(
           child: Text(
             text.toUpperCase(),
-            style: AppType.label.copyWith(fontSize: 15, fontWeight: FontWeight.w800),
+            style: AppType.label
+                .copyWith(fontSize: 15, fontWeight: FontWeight.w800),
           ),
         ),
-        if (trailing != null) Text(trailing!, style: AppType.caption.copyWith(fontSize: 13)),
+        if (trailing != null)
+          Text(trailing!, style: AppType.caption.copyWith(fontSize: 13)),
       ],
     );
   }

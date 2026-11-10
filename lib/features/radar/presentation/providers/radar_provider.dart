@@ -189,8 +189,7 @@ List<RadarEvent> communityVeloxReports(CommunityVeloxReportsRef ref) => ref
     .toList();
 
 @riverpod
-List<RadarEvent> communityPattugliaReports(
-        CommunityPattugliaReportsRef ref) =>
+List<RadarEvent> communityPattugliaReports(CommunityPattugliaReportsRef ref) =>
     ref
         .watch(communityReportsControllerProvider)
         .where((e) => e.category == RadarCategory.pattuglia)

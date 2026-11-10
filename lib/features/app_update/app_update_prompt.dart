@@ -114,7 +114,8 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
     if (!mounted) return;
     switch (event.status) {
       case OtaStatus.DOWNLOADING:
-        setState(() => _progress = int.tryParse(event.value ?? '') ?? _progress);
+        setState(
+            () => _progress = int.tryParse(event.value ?? '') ?? _progress);
       case OtaStatus.INSTALLING:
       case OtaStatus.INSTALLATION_DONE:
         setState(() => _installing = true);

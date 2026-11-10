@@ -68,7 +68,8 @@ class PushNotificationService extends _$PushNotificationService {
           .showFromRemoteMessage(message),
     );
 
-    _openedSub = FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationOpened);
+    _openedSub =
+        FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationOpened);
     unawaited(_checkInitialMessage());
 
     ref.onDispose(() {

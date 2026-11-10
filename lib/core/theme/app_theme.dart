@@ -148,33 +148,34 @@ abstract final class AppRadius {
 abstract final class AppGlow {
   /// Alone morbido per l'elemento attivo. blur alto, opacità bassa, zero spread.
   static List<BoxShadow> soft(Color c, {double opacity = 0.35}) => [
-    BoxShadow(color: c.withValues(alpha: opacity), blurRadius: 24),
-  ];
+        BoxShadow(color: c.withValues(alpha: opacity), blurRadius: 24),
+      ];
 
   /// Solo per il momento di rivelazione del punteggio o della conquista.
   static List<BoxShadow> peak(Color c) => [
-    BoxShadow(color: c.withValues(alpha: 0.50), blurRadius: 40),
-    BoxShadow(color: c.withValues(alpha: 0.20), blurRadius: 90),
-  ];
+        BoxShadow(color: c.withValues(alpha: 0.50), blurRadius: 40),
+        BoxShadow(color: c.withValues(alpha: 0.20), blurRadius: 90),
+      ];
 
   /// Bordo acceso: 1px pieno + alone. Più credibile del bordo spesso colorato.
   static BoxDecoration edge(
     Color c, {
     Color fill = AppColor.surface,
     double radius = AppRadius.card,
-  }) => BoxDecoration(
-    color: fill,
-    borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: c.withValues(alpha: 0.55), width: 1),
-    boxShadow: soft(c, opacity: 0.22),
-  );
+  }) =>
+      BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: c.withValues(alpha: 0.55), width: 1),
+        boxShadow: soft(c, opacity: 0.22),
+      );
 
   /// Card normale: nessun neon. È il 90% dell'interfaccia.
   static BoxDecoration get card => BoxDecoration(
-    color: AppColor.surface,
-    borderRadius: BorderRadius.circular(AppRadius.card),
-    border: Border.all(color: AppColor.line, width: 1),
-  );
+        color: AppColor.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColor.line, width: 1),
+      );
 }
 
 // ---------------------------------------------------------------------------

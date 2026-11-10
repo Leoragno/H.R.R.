@@ -55,8 +55,8 @@ void main() {
     expect(notificationDayLabel(DateTime(2026, 11, 9, 23), now), 'Ieri');
     expect(notificationDayLabel(DateTime(2026, 11, 2, 9), now), '02/11');
     expect(notificationDayLabel(DateTime(2025, 12, 31), now), '31/12/2025');
-    expect(notificationTimeLabel(DateTime(2026, 11, 10, 14, 48), now),
-        '12 MIN');
+    expect(
+        notificationTimeLabel(DateTime(2026, 11, 10, 14, 48), now), '12 MIN');
     expect(notificationTimeLabel(DateTime(2026, 11, 10, 12, 0), now), '3 H');
     expect(notificationTimeLabel(DateTime(2026, 11, 9, 22, 40), now), '22:40');
   });

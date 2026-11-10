@@ -21,19 +21,22 @@ enum DriverArchetype {
     source: 'Fast & Furious',
     tagline: 'Equilibrato in tutto: niente eccessi, niente punti deboli.',
     monogram: 'BO',
-    howToGet: 'vince quando nessun altro stile emerge con chiarezza: guida equilibrata.',
+    howToGet:
+        'vince quando nessun altro stile emerge con chiarezza: guida equilibrata.',
   ),
   theDriver(
     name: 'Il Driver',
     source: 'Drive',
     tagline: 'Freddo e fluido. Ogni manovra sembra già decisa.',
     monogram: 'D',
-    howToGet: 'punteggio di guida sopra 75, media sostenuta (40–70 km/h) e poche frenate per km.',
+    howToGet:
+        'punteggio di guida sopra 75, media sostenuta (40–70 km/h) e poche frenate per km.',
   ),
   hokeColburn(
     name: 'Hoke Colburn',
     source: 'A spasso con Daisy',
-    tagline: 'Andatura tranquilla, zero scossoni. I passeggeri si addormentano.',
+    tagline:
+        'Andatura tranquilla, zero scossoni. I passeggeri si addormentano.',
     monogram: 'HC',
     howToGet: 'punteggio sopra 70, media sotto i 45 km/h e nessuno scossone.',
   ),
@@ -42,21 +45,24 @@ enum DriverArchetype {
     source: 'Fast & Furious',
     tagline: "Partenze brucianti, ma l'auto resta sotto controllo.",
     monogram: 'DT',
-    howToGet: 'accelerazioni decise o uno 0-100 rapido, ma solo con guida pulita (punteggio da 55 in su).',
+    howToGet:
+        'accelerazioni decise o uno 0-100 rapido, ma solo con guida pulita (punteggio da 55 in su).',
   ),
   hanLue(
     name: 'Han Lue',
     source: 'Fast & Furious: Tokyo Drift',
     tagline: 'Le curve sono il tuo terreno: entri deciso ed esci pulito.',
     monogram: 'HL',
-    howToGet: 'almeno 4 curve prese decise e pulite: G laterale e velocità in curva alte, mai picchi da impatto.',
+    howToGet:
+        'almeno 4 curve prese decise e pulite: G laterale e velocità in curva alte, mai picchi da impatto.',
   ),
   frankMartin(
     name: 'Frank Martin',
     source: 'The Transporter',
     tagline: 'Veloce quando serve, pulito sempre.',
     monogram: 'FM',
-    howToGet: 'punteggio sopra 70 con accelerazioni decise: veloce quando serve, pulito sempre.',
+    howToGet:
+        'punteggio sopra 70 con accelerazioni decise: veloce quando serve, pulito sempre.',
   ),
   saettaMcQueen(
     name: 'Saetta McQueen',
@@ -89,7 +95,8 @@ enum DriverArchetype {
   mrBean(
     name: 'Mr. Bean',
     source: 'Mr. Bean',
-    tagline: 'Frenate a sorpresa e guida a scatti. Simpatico, ma il punteggio ne soffre.',
+    tagline:
+        'Frenate a sorpresa e guida a scatti. Simpatico, ma il punteggio ne soffre.',
     monogram: 'MB',
     howToGet: 'punteggio basso e tante frenate per km.',
   );
@@ -279,15 +286,15 @@ Map<DriverArchetype, double>? archetypeAffinities(DrivingStyleInput i) {
           _inv(i.peakGForce, 0.25, 0.45),
     DriverArchetype.saettaMcQueen:
         _ramp(avg, 60, 95) * _inv(stopsPerKm, 0.1, 0.5),
-    DriverArchetype.baby: (0.5 * _ramp(turnsPerKm, 2, 5) +
-            0.5 * _ramp(lanePerKm, 0.5, 2)) *
-        _inv(avg, 55, 75),
+    DriverArchetype.baby:
+        (0.5 * _ramp(turnsPerKm, 2, 5) + 0.5 * _ramp(lanePerKm, 0.5, 2)) *
+            _inv(avg, 55, 75),
     DriverArchetype.maxRockatansky: [
       _ramp(km, 60, 150),
       _ramp(elevPerKm, 15, 40),
     ].reduce((a, b) => a > b ? a : b),
-    DriverArchetype.ugoFantozzi:
-        0.6 * _ramp(stoppedRatio, 0.15, 0.4) + 0.4 * _ramp(stopsPerKm, 0.8, 2.5),
+    DriverArchetype.ugoFantozzi: 0.6 * _ramp(stoppedRatio, 0.15, 0.4) +
+        0.4 * _ramp(stopsPerKm, 0.8, 2.5),
     DriverArchetype.mrBean: score != null
         ? 0.6 * _inv(score.toDouble(), 35, 55) + 0.4 * _ramp(brakesPerKm, 2, 5)
         : _ramp(brakesPerKm, 2.5, 6),

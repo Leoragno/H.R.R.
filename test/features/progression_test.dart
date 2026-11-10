@@ -99,7 +99,8 @@ void main() {
     });
 
     test('ultima guida ieri: la serie è ancora viva', () {
-      expect(streakDays([DateTime(2026, 3, 9), DateTime(2026, 3, 8)], today), 2);
+      expect(
+          streakDays([DateTime(2026, 3, 9), DateTime(2026, 3, 8)], today), 2);
     });
 
     test('buco di due giorni: serie persa', () {

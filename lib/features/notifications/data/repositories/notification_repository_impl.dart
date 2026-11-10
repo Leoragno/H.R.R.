@@ -7,8 +7,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
   NotificationRepositoryImpl(this._remote);
 
   @override
-  Stream<List<AppNotification>> watch(String profileId) =>
-      _remote.watch(profileId).map((rows) => rows.map((r) => r.toEntity()).toList());
+  Stream<List<AppNotification>> watch(String profileId) => _remote
+      .watch(profileId)
+      .map((rows) => rows.map((r) => r.toEntity()).toList());
 
   @override
   Future<void> markRead(String id) => _remote.markRead(id);

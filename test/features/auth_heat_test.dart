@@ -122,15 +122,15 @@ void main() {
 
   testWidgets('il tuo ride e scegli il pilota', (tester) async {
     _phone(tester);
-    await tester.pumpWidget(
-        _app(const RideOnboardingScreen(), _FakeAuthRepo()));
+    await tester
+        .pumpWidget(_app(const RideOnboardingScreen(), _FakeAuthRepo()));
     await tester.pump();
     expect(find.text('PASSO 2 DI 3'), findsOneWidget);
     expect(find.text('prima la marca'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.pumpWidget(
-        _app(const MascotOnboardingScreen(), _FakeAuthRepo()));
+    await tester
+        .pumpWidget(_app(const MascotOnboardingScreen(), _FakeAuthRepo()));
     await tester.pump();
     expect(find.text('CORRI CON NITRO'), findsOneWidget);
     expect(find.text('STILE · PRECISIONE'), findsOneWidget);

@@ -45,8 +45,7 @@ class TripStatCard extends StatelessWidget {
   final String value;
   final String unit;
   final String? hint;
-  const TripStatCard(this.label, this.value, this.unit,
-      {super.key, this.hint});
+  const TripStatCard(this.label, this.value, this.unit, {super.key, this.hint});
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +56,7 @@ class TripStatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: AppType.caption, overflow: TextOverflow.ellipsis),
+          Text(label, style: AppType.caption, overflow: TextOverflow.ellipsis),
           const Spacer(),
           Text.rich(
             TextSpan(
@@ -72,7 +70,8 @@ class TripStatCard extends StatelessWidget {
           ),
           if (hint != null) ...[
             const SizedBox(height: 2),
-            Text(hint!, style: AppType.caption, overflow: TextOverflow.ellipsis),
+            Text(hint!,
+                style: AppType.caption, overflow: TextOverflow.ellipsis),
           ],
         ],
       ),

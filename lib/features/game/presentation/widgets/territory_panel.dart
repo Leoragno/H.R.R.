@@ -118,8 +118,7 @@ class TerritoryPanel extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (state.panelExpanded)
-                const Expanded(child: _Standings()),
+              if (state.panelExpanded) const Expanded(child: _Standings()),
             ],
           ),
         ),

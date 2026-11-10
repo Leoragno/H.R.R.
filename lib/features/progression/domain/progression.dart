@@ -63,8 +63,8 @@ int heatFromTripStarts(Iterable<DateTime> startsOldestFirst,
   final step = volt ? 2 : 1;
   var heat = kHeatMin;
   for (final s in startsOldestFirst) {
-    heat = (isNightTime(s) ? heat + step : heat - step)
-        .clamp(kHeatMin, kHeatMax);
+    heat =
+        (isNightTime(s) ? heat + step : heat - step).clamp(kHeatMin, kHeatMax);
   }
   return heat;
 }
@@ -84,9 +84,8 @@ int streakDays(Iterable<DateTime> tripStarts, DateTime now) {
   final days = tripStarts.map(_day).toSet();
   if (days.isEmpty) return 0;
   final today = _day(now);
-  var cursor = days.contains(today)
-      ? today
-      : today.subtract(const Duration(days: 1));
+  var cursor =
+      days.contains(today) ? today : today.subtract(const Duration(days: 1));
   var count = 0;
   while (days.contains(cursor)) {
     count++;

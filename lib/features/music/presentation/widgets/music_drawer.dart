@@ -112,8 +112,7 @@ class MusicDrawer extends ConsumerWidget {
                   Text(
                     track.artist,
                     textAlign: TextAlign.center,
-                    style: AppType.text(
-                        fontSize: 15, color: AppColor.inkMuted),
+                    style: AppType.text(fontSize: 15, color: AppColor.inkMuted),
                   ),
                   const SizedBox(height: 14),
                   StreamBuilder<Duration>(
@@ -134,8 +133,8 @@ class MusicDrawer extends ConsumerWidget {
                               value: ratio,
                               minHeight: 5,
                               backgroundColor: const Color(0xFF1E1E1E),
-                              valueColor: AlwaysStoppedAnimation(
-                                  AppColor.accent),
+                              valueColor:
+                                  AlwaysStoppedAnimation(AppColor.accent),
                             ),
                           ),
                           const SizedBox(height: 7),
@@ -144,12 +143,10 @@ class MusicDrawer extends ConsumerWidget {
                             children: [
                               Text(_clock(position),
                                   style: AppType.text(
-                                      fontSize: 12,
-                                      color: AppColor.inkMuted)),
+                                      fontSize: 12, color: AppColor.inkMuted)),
                               Text(_clock(duration),
                                   style: AppType.text(
-                                      fontSize: 12,
-                                      color: AppColor.inkMuted)),
+                                      fontSize: 12, color: AppColor.inkMuted)),
                             ],
                           ),
                         ],
@@ -293,8 +290,6 @@ class _QueueLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text('IN CODA',
         style: AppType.text(
-            fontSize: 11,
-            letterSpacing: 2,
-            color: AppColor.inkMuted));
+            fontSize: 11, letterSpacing: 2, color: AppColor.inkMuted));
   }
 }

@@ -96,8 +96,7 @@ void main() {
   });
 
   test('autostrada senza soste -> Saetta McQueen', () {
-    expect(
-        _match(_input(km: 80, seconds: 3000, avg: 100, stops: 0, score: 60)),
+    expect(_match(_input(km: 80, seconds: 3000, avg: 100, stops: 0, score: 60)),
         DriverArchetype.saettaMcQueen);
   });
 
@@ -145,7 +144,8 @@ void main() {
     });
 
     test('pilota principale = più frequente negli ultimi 10', () {
-      final h = buildPilotHistory([sm, sm, d, sm, sm, mb, sm, d, mb, mb, d, d, d]);
+      final h =
+          buildPilotHistory([sm, sm, d, sm, sm, mb, sm, d, mb, mb, d, d, d]);
       expect(h.ready, isTrue);
       expect(h.lastTen.length, 10);
       expect(h.main, sm);
