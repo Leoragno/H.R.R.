@@ -191,6 +191,62 @@ final Map<String, NotificationPresentation> _byType = {
     title: (n) => _clean(n.title, 'Evento'),
     body: (n) => _clean(n.body, ''),
   ),
+  // Sfide 1 vs 1 (0039_challenges_presence.sql).
+  'challenge_received': NotificationPresentation(
+    icon: Icons.sports_mma_rounded,
+    color: AppColor.danger,
+    rival: true,
+    title: (n) => 'Sfida',
+    body: (n) {
+      final who = n.data['from_username'] as String?;
+      final stake = _num(n, 'stake_xp');
+      return who == null
+          ? _clean(n.body, 'qualcuno ti ha sfidato.')
+          : '@$who ti sfida${stake == null ? '' : ' · ${stake.toInt()} XP'}.';
+    },
+    route: (n) => AppRoutes.challenges,
+  ),
+  'challenge_accepted': NotificationPresentation(
+    icon: Icons.sports_mma_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Sfida',
+    body: (n) => _clean(n.body, 'sfida accettata. si parte.'),
+    route: (n) => AppRoutes.challenges,
+  ),
+  'challenge_declined': NotificationPresentation(
+    icon: Icons.sports_mma_rounded,
+    color: AppColor.inkMuted,
+    title: (n) => 'Sfida',
+    body: (n) => _clean(n.body, 'sfida rifiutata.'),
+    route: (n) => AppRoutes.challenges,
+  ),
+  'challenge_won': NotificationPresentation(
+    icon: Icons.emoji_events_rounded,
+    color: AppColor.gold,
+    title: (n) => 'Sfida vinta',
+    body: (n) {
+      final stake = _num(n, 'stake_xp');
+      return stake == null
+          ? _clean(n.body, 'hai vinto la sfida.')
+          : 'hai vinto la sfida. +${stake.toInt()} XP.';
+    },
+    route: (n) => AppRoutes.challenges,
+  ),
+  'challenge_lost': NotificationPresentation(
+    icon: Icons.sports_mma_rounded,
+    color: AppColor.danger,
+    rival: true,
+    title: (n) => 'Sfida persa',
+    body: (n) => _clean(n.body, 'hai perso la sfida. chiedi la rivincita.'),
+    route: (n) => AppRoutes.challenges,
+  ),
+  'challenge_draw': NotificationPresentation(
+    icon: Icons.sports_mma_rounded,
+    color: AppColor.inkMuted,
+    title: (n) => 'Sfida pari',
+    body: (n) => _clean(n.body, 'la sfida è finita in parità.'),
+    route: (n) => AppRoutes.challenges,
+  ),
   // Nuova APK (0036_app_releases.sql): l'avviso "Aggiorna" lo mostra
   // AppUpdatePrompt all'apertura, qui solo la voce nel feed.
   'app_update': NotificationPresentation(

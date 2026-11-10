@@ -23,8 +23,8 @@ import '../../../trip/domain/driver_archetype.dart';
 /// statistiche, compagno, "Che pilota sei", ride, anteprima achievement e
 /// collegamenti. Sola lettura: la modifica dei dati resta in Impostazioni.
 ///
-/// Legame/bonus della mascotte e link Amici/Sfide arrivano con le fasi
-/// economia XP e social: finché non sono reali non vengono mostrati.
+/// Legame/bonus della mascotte arrivano con la fase economia XP: finché
+/// non sono reali non vengono mostrati.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -47,8 +47,8 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColor.base,
       body: ListView(
-        padding: EdgeInsets.only(
-            bottom: 30 + MediaQuery.paddingOf(context).bottom),
+        padding:
+            EdgeInsets.only(bottom: 30 + MediaQuery.paddingOf(context).bottom),
         children: [
           _Hero(
             profile: profile,
@@ -112,12 +112,32 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           for (final (icon, color, label, route) in [
-            (Icons.flag_rounded, AppColor.gold, 'MISSIONI',
-                AppRoutes.missions),
-            (Icons.hexagon_outlined, AppColor.accent, 'I MIEI TERRITORI',
-                AppRoutes.myTerritories),
-            (Icons.settings_rounded, AppColor.inkMuted, 'IMPOSTAZIONI',
-                AppRoutes.settings),
+            (Icons.group_rounded, AppColor.ink, 'AMICI', AppRoutes.friends),
+            (
+              Icons.sports_mma_rounded,
+              AppColor.danger,
+              'SFIDE 1 VS 1',
+              AppRoutes.challenges
+            ),
+            (
+              Icons.auto_stories_rounded,
+              AppColor.ink,
+              'LA TUA SETTIMANA',
+              AppRoutes.week
+            ),
+            (Icons.flag_rounded, AppColor.gold, 'MISSIONI', AppRoutes.missions),
+            (
+              Icons.hexagon_outlined,
+              AppColor.accent,
+              'I MIEI TERRITORI',
+              AppRoutes.myTerritories
+            ),
+            (
+              Icons.settings_rounded,
+              AppColor.inkMuted,
+              'IMPOSTAZIONI',
+              AppRoutes.settings
+            ),
           ])
             HeatEnter(
               index: i++,
@@ -174,10 +194,8 @@ class _Hero extends StatelessWidget {
               fit: BoxFit.contain,
               alignment: Alignment.bottomRight,
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-            )
-                .animate(onPlay: (ctl) => ctl.repeat(reverse: true))
-                .moveY(begin: 0, end: -8, duration: 2250.ms,
-                    curve: Curves.easeInOut),
+            ).animate(onPlay: (ctl) => ctl.repeat(reverse: true)).moveY(
+                begin: 0, end: -8, duration: 2250.ms, curve: Curves.easeInOut),
           ),
           const Positioned(
             left: 0,
@@ -205,14 +223,13 @@ class _Hero extends StatelessWidget {
                   onPressed: () => context.canPop()
                       ? context.pop()
                       : context.go(AppRoutes.home),
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: AppColor.ink),
+                  icon:
+                      const Icon(Icons.arrow_back_rounded, color: AppColor.ink),
                 ),
                 const Spacer(),
                 IconButton(
                   onPressed: () => context.push(AppRoutes.settings),
-                  icon:
-                      const Icon(Icons.settings_rounded, color: AppColor.ink),
+                  icon: const Icon(Icons.settings_rounded, color: AppColor.ink),
                 ),
               ],
             ),
@@ -281,8 +298,8 @@ class _StatTile extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(value,
-                style: AppType.display(
-                    fontWeight: FontWeight.w900, fontSize: 26)),
+                style:
+                    AppType.display(fontWeight: FontWeight.w900, fontSize: 26)),
           ),
           Text(label,
               style: AppType.label.copyWith(fontSize: 12, letterSpacing: 1.4)),
@@ -610,9 +627,8 @@ class _AchievementPreview extends StatelessWidget {
                   return Container(
                     height: 64,
                     decoration: ShapeDecoration(
-                      color: a == null
-                          ? AppColor.deep
-                          : c.withValues(alpha: .12),
+                      color:
+                          a == null ? AppColor.deep : c.withValues(alpha: .12),
                       shape: SlantBorder.all(10,
                           side: BorderSide(
                               color: a == null

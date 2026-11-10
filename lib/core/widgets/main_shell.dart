@@ -5,6 +5,7 @@ import '../../features/app_update/app_update_prompt.dart';
 import '../../features/app_update/web_update_banner.dart';
 import '../../features/music/presentation/widgets/music_drawer.dart';
 import '../../features/rival/presentation/widgets/rival_overlay.dart';
+import '../../features/social/presentation/widgets/presence_touch.dart';
 import '../router/app_router.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
@@ -68,7 +69,9 @@ class MainShell extends StatelessWidget {
       drawer: const MusicDrawer(),
       body: WebUpdateBanner(
         child: AppUpdatePrompt(
-          child: RivalOverlay(child: NotificationToastOverlay(child: child)),
+          child: PresenceTouch(
+            child: RivalOverlay(child: NotificationToastOverlay(child: child)),
+          ),
         ),
       ),
       bottomNavigationBar: _HeatNavBar(
@@ -115,7 +118,8 @@ class _HeatNavBar extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.tab, required this.active, required this.onTap});
+  const _NavItem(
+      {required this.tab, required this.active, required this.onTap});
 
   final ({String route, IconData icon, IconData active, String label}) tab;
   final bool active;
@@ -152,7 +156,8 @@ class _NavItem extends StatelessWidget {
               AnimatedScale(
                 scale: active ? 1.08 : 1,
                 duration: AppMotion.base,
-                child: Icon(active ? tab.active : tab.icon, size: 23, color: fg),
+                child:
+                    Icon(active ? tab.active : tab.icon, size: 23, color: fg),
               ),
               const SizedBox(height: 3),
               Text(
