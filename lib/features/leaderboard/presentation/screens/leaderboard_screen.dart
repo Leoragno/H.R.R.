@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/supabase_provider.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -10,7 +11,10 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/heat_shapes.dart';
 import '../../../../core/widgets/draggable_sheet_scaffold.dart';
 import '../../../../core/widgets/heat/heat_widgets.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../social/domain/social_models.dart';
+import '../../../social/presentation/social_providers.dart';
 import '../../../rival/data/rivalry_tracker.dart';
 import '../../../rival/presentation/providers/rival_controller_provider.dart';
 import '../../domain/entities/leaderboard_entry.dart';
@@ -266,6 +270,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           ],
         ),
       ),
+      const Padding(
+        padding: EdgeInsets.fromLTRB(14, 8, 14, 0),
+        child: _ChallengeEntry(),
+      ),
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
         child: Text(
@@ -280,8 +288,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   /// "ti mancano 240 XP per superare giulia.v." / "sei in testa…".
   String _gapLine(List<LeaderboardEntry> list, String? myId) {
     final i = list.indexWhere((e) => e.profileId == myId);
-    if (i == -1)
+    if (i == -1) {
       return 'non sei ancora in questa classifica. guida per entrarci.';
+    }
     if (i == 0) return 'sei in testa. difendi il primo posto.';
     final me = list[i].valueFor(_metric);
     final above = list[i - 1].valueFor(_metric);
@@ -768,6 +777,45 @@ class _Message extends StatelessWidget {
             style: AppType.text(
                 fontSize: 13, color: AppColor.inkMuted, height: 1.45),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ingresso "sfida un amico 1 vs 1" sotto la classifica → /challenges.
+class _ChallengeEntry extends ConsumerWidget {
+  const _ChallengeEntry();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(challengesProvider).valueOrNull ?? const [];
+    final live = list.where((c) => c.status == ChallengeStatus.active).length;
+    return HeatPanel(
+      padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+      onTap: () => context.push(AppRoutes.challenges),
+      child: Row(
+        children: [
+          const Icon(Icons.sports_kabaddi_rounded,
+              color: AppColor.ink, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('sfida un amico 1 vs 1',
+                    style: AppType.text(
+                        fontSize: 14, fontWeight: FontWeight.w700)),
+                Text(
+                  '${live == 0 ? 'nessuna sfida in corso' : live == 1 ? '1 sfida in corso' : '$live sfide in corso'}'
+                  ' · chi fa meglio vince la posta',
+                  style: AppType.text(fontSize: 12, color: AppColor.inkMuted),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColor.inkMuted, size: 20),
         ],
       ),
     );

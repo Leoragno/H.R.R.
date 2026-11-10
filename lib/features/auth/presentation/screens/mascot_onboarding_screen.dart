@@ -9,9 +9,7 @@ import '../../../rival/domain/entities/mascot.dart';
 import '../providers/auth_provider.dart';
 
 /// Stile e statistiche (0..5: precisione, aggressività, costanza) delle
-/// mascotte, dal design HEAT (hrr-data.js). Solo presentazione: i
-/// bonus/malus di gioco del prototipo non sono ancora implementati, quindi
-/// qui non si promettono.
+/// mascotte, dal design HEAT (hrr-data.js).
 const _profiles = <String, (String, List<int>)>{
   'nitro': ('PRECISIONE', [4, 2, 5]),
   'r3x': ('AGGRESSIVITÀ', [2, 5, 2]),
@@ -21,6 +19,25 @@ const _profiles = <String, (String, List<int>)>{
 };
 
 const _statLabels = ['PRECISIONE', 'AGGRESSIVITÀ', 'COSTANZA'];
+
+/// Bonus / malus reali, applicati lato server (0041_xp_economy.sql). Il
+/// bonus cresce del 5% per livello di legame; il malus no.
+const mascotPerks = <String, (String, String)>{
+  'nitro': ('+25% XP su FLOW e guida pulita', '−10% REP ricevuta'),
+  'r3x': (
+    '+10 XP per ogni esagono preso',
+    'i tuoi territori decadono 1 giorno prima'
+  ),
+  'volt': ('di notte HEAT +2 a guida e +10% XP', 'di giorno HEAT −2'),
+  'spark': (
+    '+30 XP per spot pubblicato (max 5 al giorno)',
+    '−10% XP dalla distanza'
+  ),
+  'dust': (
+    'bonus serie di giorni ×2',
+    'ogni giorno saltato costa 40 punti legame'
+  ),
+};
 
 /// Onboarding "scegli il pilota" (HEAT, handoff §5 · PASSO 3 DI 3):
 /// carosello delle cinque mascotte con hero, nome, stile, tre barre e la
@@ -248,6 +265,18 @@ class _MascotOnboardingScreenState
                     ],
                   ),
                 ),
+                if (mascotPerks[m.id] case (final bonus, final malus))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _PerkLine(up: true, text: bonus),
+                        const SizedBox(height: 4),
+                        _PerkLine(up: false, text: malus),
+                      ],
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
                   child: Column(
@@ -277,6 +306,29 @@ class _MascotOnboardingScreenState
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PerkLine extends StatelessWidget {
+  const _PerkLine({required this.up, required this.text});
+  final bool up;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = up ? AppColor.ink : AppColor.inkMuted;
+    return Row(
+      children: [
+        Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+            size: 16, color: up ? AppColor.ink : AppColor.danger),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(text,
+              style: AppType.text(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: c)),
+        ),
+      ],
     );
   }
 }

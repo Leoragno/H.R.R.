@@ -17,6 +17,8 @@ import '../../../rival/data/rival_dialogue.dart';
 import '../../../rival/domain/entities/rival_popup.dart';
 import '../../../rival/presentation/providers/active_mascot_provider.dart';
 import '../../../missions/presentation/providers/economy_providers.dart';
+import '../../../social/presentation/social_providers.dart' show weekStart;
+import '../../../trip/domain/driver_archetype.dart';
 import '../../../trip/domain/entities/trip.dart';
 import '../../../trip/presentation/providers/trip_live_provider.dart';
 import '../../../trip/presentation/providers/trip_provider.dart';
@@ -153,6 +155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: 10),
                   const HeatEnter(index: 1, child: _RivalCard()),
                   const SizedBox(height: 10),
+                  const _WeekBanner(),
                   const HeatEnter(index: 2, child: _MissionsCard()),
                   const SizedBox(height: 18),
                   const _RecentTrips(),
@@ -553,13 +556,28 @@ class _RivalCard extends ConsumerWidget {
             decoration: ShapeDecoration(
               shape: SlantBorder.all(8, side: BorderSide(color: c, width: 1.5)),
             ),
-            child: ClipPath(
-              clipper: const ShapeBorderClipper(shape: SlantBorder.all(8)),
-              child: Image.asset(
-                'assets/faces/${mascot.id}.png',
-                width: 62,
-                height: 62,
-                fit: BoxFit.cover,
+            // Skin neon (pass / legame LV5): alone nel colore mascotte
+            // intorno al ritratto.
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                shape: const SlantBorder.all(8),
+                shadows: ref.watch(cosmeticsProvider).neonSkin
+                    ? [
+                        BoxShadow(
+                            color: c.withValues(alpha: .8), blurRadius: 14),
+                        BoxShadow(
+                            color: c.withValues(alpha: .5), blurRadius: 4),
+                      ]
+                    : null,
+              ),
+              child: ClipPath(
+                clipper: const ShapeBorderClipper(shape: SlantBorder.all(8)),
+                child: Image.asset(
+                  'assets/faces/${mascot.id}.png',
+                  width: 62,
+                  height: 62,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
@@ -585,6 +603,69 @@ class _RivalCard extends ConsumerWidget {
           const Icon(Icons.chevron_right_rounded,
               color: AppColor.inkMuted, size: 24),
         ],
+      ),
+    );
+  }
+}
+
+/// "LA TUA SETTIMANA È PRONTA": km e pilota della settimana in corso,
+/// tocco = storia /week. Solo se c'è almeno una guida da lunedì.
+class _WeekBanner extends ConsumerWidget {
+  const _WeekBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trips = ref.watch(recentTripsProvider).valueOrNull ?? const [];
+    final from = weekStart(DateTime.now());
+    final week = [
+      for (final t in trips)
+        if (!t.startedAt.isBefore(from)) t,
+    ];
+    if (week.isEmpty) return const SizedBox.shrink();
+    final km = week.fold(0.0, (s, t) => s + t.distanceKm);
+    final pilots = archetypesOf(week);
+    final tally = <String, int>{};
+    for (final a in pilots) {
+      tally[a.name] = (tally[a.name] ?? 0) + 1;
+    }
+    final top = tally.entries.isEmpty
+        ? null
+        : tally.entries.reduce((a, b) => b.value > a.value ? b : a).key;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: HeatEnter(
+        index: 2,
+        child: HeatPanel(
+          shape: const SlantBorder.all(10),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          onTap: () => context.push(AppRoutes.week),
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome_rounded,
+                  color: AppColor.ink, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('LA TUA SETTIMANA È PRONTA',
+                        style: AppType.display(fontSize: 17, letterSpacing: 1)),
+                    Text(
+                      [
+                        '${km.toStringAsFixed(km < 10 ? 1 : 0)} km',
+                        if (top != null) 'pilota $top',
+                      ].join(' · '),
+                      style:
+                          AppType.text(fontSize: 12, color: AppColor.inkMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColor.inkMuted, size: 22),
+            ],
+          ),
+        ),
       ),
     );
   }
