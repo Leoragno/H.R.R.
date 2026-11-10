@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/heat_shapes.dart';
 
-/// Tachimetro digitale del design Guida: anello di tacche che si accendono
-/// in ciano man mano che ci si avvicina a [maxSpeed], con il numero grande
-/// al centro — non un tachimetro analogico con lancetta. Un solo accento
-/// acceso (regola 1 di DESIGN.md): niente arcobaleno di colori per fascia
-/// di velocità, le tacche spente restano grigie.
+/// Tachimetro HEAT (handoff, "Guida in corso"): arco di 270° da 0 a
+/// [maxSpeed], riempito in accento con glow, tacche ogni 10 km/h (grandi
+/// ogni 40, con etichetta), numero grande al centro e fascia di zona sotto.
+/// È l'unico elemento con glow della vista tachimetro.
 class SpeedometerGauge extends StatelessWidget {
   final double speed;
   final double maxSpeed;
@@ -17,47 +17,96 @@ class SpeedometerGauge extends StatelessWidget {
   const SpeedometerGauge({
     super.key,
     required this.speed,
-    this.maxSpeed = 220,
+    this.maxSpeed = 200,
   });
+
+  static (String, Color) zoneFor(double kmh) {
+    if (kmh > 130) return ('OLTRE IL LIMITE', AppColor.danger);
+    if (kmh > 90) return ('EXTRAURBANO', AppColor.gold);
+    if (kmh > 0.5) return ('URBANO', AppColor.info);
+    return ('IN ATTESA GPS', AppColor.inkMuted);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final a = AppColor.accent;
+    final (zone, zoneColor) = zoneFor(speed);
     return AspectRatio(
-      aspectRatio: 1,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            painter: _GaugePainter(
-              speed: speed.clamp(0, maxSpeed),
-              maxSpeed: maxSpeed,
+      aspectRatio: 300 / 262,
+      child: LayoutBuilder(builder: (context, c) {
+        final scale = c.maxWidth / 300;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              width: c.maxWidth,
+              height: c.maxWidth,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: speed.clamp(0, maxSpeed)),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOut,
+                builder: (_, v, __) => CustomPaint(
+                  painter: _GaugePainter(
+                      speed: v, maxSpeed: maxSpeed, accent: a),
+                ),
+              ),
             ),
-            child: const SizedBox.expand(),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                speed.round().toString(),
-                style: AppType.text(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 88,
-                  color: AppColor.ink,
-                  letterSpacing: -3,
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 66 * scale,
+              child: Column(
+                children: [
+                  Text(
+                    speed.round().toString(),
+                    style: AppType.score.copyWith(
+                      fontSize: 104 * scale,
+                      height: 1,
+                      letterSpacing: -3,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      shadows: [
+                        Shadow(color: a.withValues(alpha: .5), blurRadius: 24),
+                      ],
+                    ),
+                  ),
+                  Text('KM/H',
+                      style: AppType.label.copyWith(
+                          fontSize: 16 * scale,
+                          letterSpacing: 3,
+                          color: AppColor.info)),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 4,
+              child: Center(
+                child: AnimatedContainer(
+                  duration: AppMotion.fast,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                  decoration: ShapeDecoration(
+                    color: zoneColor,
+                    shape: const SlantBorder.all(6),
+                  ),
+                  child: Text(
+                    zone,
+                    style: AppType.display(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      letterSpacing: 1.4,
+                      color: AppColor.onAccent,
+                    ),
+                  ),
                 ),
               ),
-              Text(
-                'km/h',
-                style: AppType.text(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 22,
-                  color: AppColor.cyan,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        );
+      }),
     );
   }
 }
@@ -65,52 +114,68 @@ class SpeedometerGauge extends StatelessWidget {
 class _GaugePainter extends CustomPainter {
   final double speed;
   final double maxSpeed;
+  final Color accent;
 
-  const _GaugePainter({required this.speed, required this.maxSpeed});
+  _GaugePainter(
+      {required this.speed, required this.maxSpeed, required this.accent});
 
-  static const _tickCount = 60;
+  static const _start = 135 * math.pi / 180;
   static const _sweep = 270 * math.pi / 180;
-  static const _start = (90 + (360 - 270) / 2) * math.pi / 180;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
+    final s = size.width / 300;
+    final center = Offset(150 * s, 150 * s);
+    final rect = Rect.fromCircle(center: center, radius: 120 * s);
+    final frac = (speed / maxSpeed).clamp(0.0, 1.0);
 
-    final bgPaint = Paint()
-      ..shader = RadialGradient(
-        colors: const [Color(0xFF16224A), Color(0xFF080C18), Color(0xFF04060C)],
-        stops: const [0, 0.62, 1],
-      ).createShader(Rect.fromCircle(center: center, radius: radius * 0.94));
-    canvas.drawCircle(center, radius * 0.94, bgPaint);
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 18 * s
+      ..color = AppColor.surfaceHigh;
+    canvas.drawArc(rect, _start, _sweep, false, track);
 
-    final progress = maxSpeed <= 0 ? 0.0 : (speed / maxSpeed).clamp(0, 1);
-    final litTicks = (progress * _tickCount).round();
+    if (frac > 0) {
+      final glow = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 18 * s
+        ..color = accent.withValues(alpha: .6)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+      final fill = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 18 * s
+        ..color = accent;
+      canvas.drawArc(rect, _start, _sweep * frac, false, glow);
+      canvas.drawArc(rect, _start, _sweep * frac, false, fill);
+    }
 
-    for (var i = 0; i < _tickCount; i++) {
-      final t = i / (_tickCount - 1);
-      final angle = _start + _sweep * t;
-      final lit = i <= litTicks;
-      final color = lit ? AppColor.cyan : const Color(0xFF232B45);
-
-      final outer = Offset(
-        center.dx + radius * 0.98 * math.cos(angle),
-        center.dy + radius * 0.98 * math.sin(angle),
-      );
-      final inner = Offset(
-        center.dx + radius * 0.86 * math.cos(angle),
-        center.dy + radius * 0.86 * math.sin(angle),
-      );
-
-      final tickPaint = Paint()
-        ..color = color
-        ..strokeWidth = lit ? 4 : 3
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(inner, outer, tickPaint);
+    final labelStyle = AppType.display(
+      fontWeight: FontWeight.w700,
+      fontSize: 13 * s,
+      italic: false,
+      color: AppColor.inkFaint,
+    );
+    for (var v = 0; v <= maxSpeed; v += 10) {
+      final ang = _start + _sweep * (v / maxSpeed);
+      final big = v % 40 == 0;
+      final dir = Offset(math.cos(ang), math.sin(ang));
+      final tick = Paint()
+        ..strokeWidth = (big ? 2.5 : 1.2) * s
+        ..color = v <= speed ? AppColor.ink : AppColor.lineMuted;
+      canvas.drawLine(
+          center + dir * (104 * s), center + dir * ((big ? 92 : 98) * s), tick);
+      if (big) {
+        final tp = TextPainter(
+          text: TextSpan(text: '$v', style: labelStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas,
+            center + dir * (78 * s) - Offset(tp.width / 2, tp.height / 2));
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _GaugePainter oldDelegate) =>
-      oldDelegate.speed != speed || oldDelegate.maxSpeed != maxSpeed;
+  bool shouldRepaint(_GaugePainter old) =>
+      old.speed != speed || old.accent != accent || old.maxSpeed != maxSpeed;
 }

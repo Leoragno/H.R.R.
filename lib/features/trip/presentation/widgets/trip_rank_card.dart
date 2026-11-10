@@ -102,7 +102,7 @@ class _TripRankCardState extends State<TripRankCard> {
                     style: AppType.text(
                       fontWeight: FontWeight.w800,
                       fontSize: 34,
-                      color: AppColor.cyan,
+                      color: AppColor.accent,
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -167,7 +167,7 @@ class _TripRankCardState extends State<TripRankCard> {
                   height: 34,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: _transparent ? AppColor.cyan : AppColor.line,
+                    color: _transparent ? AppColor.accent : AppColor.line,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   alignment: _transparent
@@ -450,13 +450,13 @@ class _SparkPainter extends CustomPainter {
         ..lineTo(0, size.height)
         ..close();
       canvas.drawPath(
-          area, Paint()..color = AppColor.cyan.withValues(alpha: 0.22));
+          area, Paint()..color = AppColor.accent.withValues(alpha: 0.22));
     }
 
     canvas.drawPath(
       path,
       Paint()
-        ..color = AppColor.cyan
+        ..color = AppColor.accent
         ..style = PaintingStyle.stroke
         ..strokeWidth = filled ? 2.4 : 3
         ..strokeCap = StrokeCap.round

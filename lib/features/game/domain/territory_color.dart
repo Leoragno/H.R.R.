@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 /// Palette stabile per i territori rivali sulla mappa e nella classifica:
 /// serve solo a distinguerli visivamente fra loro, non rappresenta
 /// un'identità reale. Niente ciano: quell'accento è riservato a "mio"
-/// (vedi [AppColor.cyan]), mai a un rivale. Riusa la palette identità
+/// (vedi [AppColor.accent]), mai a un rivale. Riusa la palette identità
 /// delle mascotte.
 const kRivalPalette = [
   AppMascot.nitro,
@@ -30,6 +30,6 @@ Color territoryIdentityColor({
   required String ownerId,
   required String? myProfileId,
 }) {
-  if (ownerId == myProfileId) return AppColor.cyan;
+  if (ownerId == myProfileId) return AppColor.accent;
   return rivalColorFor(ownerId);
 }

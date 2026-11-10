@@ -1,183 +1,203 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/app_notification.dart';
 
-/// Icona/colore/copy "simpatica" per un tipo di notifica — il `title`/
-/// `body` grezzi in DB sono neutri (scritti per essere generici lato
-/// server), qui li vestiamo con un tono più giocoso senza toccare le
-/// migration. Nuovi `type` non ancora mappati usano [_fallback], mai
-/// un'eccezione per un tipo sconosciuto (i trigger server-side possono
-/// introdurne di nuovi prima che il client li conosca).
+/// Come si presenta un tipo di notifica (HEAT): icona, colore semantico,
+/// etichetta in grassetto ([title]), frase ([body]) e dove porta il tocco
+/// ([route]). Il title/body salvati in DB sono scritti dai trigger server
+/// (con emoji e numeri grezzi): qui si ricompone un testo asciutto, nel
+/// tono minuscolo del design, usando `data` quando serve.
 ///
-/// Ogni tipo ha più varianti di title/body: [_pick] sceglie in modo
-/// stabile (stesso [AppNotification.id] -> stessa variante, niente
-/// flicker tra rebuild) ma diverso da notifica a notifica, così due
-/// "Missione completata" di fila non si leggono identiche.
+/// Colori: rosso per i rivali (territorio rubato, sorpasso), oro per
+/// premi e voti, inchiostro per il resto. Mai l'accento: in lista
+/// sarebbe ripetuto su ogni riga.
+///
+/// Tipi nuovi non ancora mappati usano [_fallback], mai un'eccezione: i
+/// trigger server possono introdurne prima che il client li conosca.
 class NotificationPresentation {
   final IconData icon;
   final Color color;
   final String Function(AppNotification n) title;
   final String Function(AppNotification n) body;
 
+  /// Rotta da aprire al tocco; null = nessuna destinazione.
+  final String? Function(AppNotification n) route;
+
+  /// Riga "rivale" (sfondo rosso tenue da non letta).
+  final bool rival;
+
   const NotificationPresentation({
     required this.icon,
     required this.color,
     required this.title,
     required this.body,
+    this.route = _noRoute,
+    this.rival = false,
   });
 }
 
-T _pick<T>(AppNotification n, String salt, List<T> options) =>
-    options[(n.id + salt).hashCode.abs() % options.length];
+String? _noRoute(AppNotification n) => null;
+
+String _clean(String? s, String fallback) {
+  final t = (s ?? '').trim();
+  return t.isEmpty ? fallback : t;
+}
+
+num? _num(AppNotification n, String key) => n.data[key] as num?;
+
+String? _spotRoute(AppNotification n) {
+  final id = n.data['spot_id'] as String?;
+  return id == null ? null : AppRoutes.spotDetail.replaceFirst(':spotId', id);
+}
+
+String? _tripRoute(AppNotification n) {
+  final id = n.data['trip_id'] as String?;
+  return id == null ? null : AppRoutes.tripDetail.replaceFirst(':tripId', id);
+}
 
 final Map<String, NotificationPresentation> _byType = {
   'mission_complete': NotificationPresentation(
-    icon: Icons.emoji_events_rounded,
-    color: AppColor.cyan,
-    title: (n) => _pick(n, 'title', const [
-      'Missione completata! 🎯',
-      'Obiettivo raggiunto! ✅',
-      'Missione nel sacco! 🔥',
-    ]),
-    body: (n) => _pick(n, 'body', [
-      '"${n.body ?? "Una missione"}" portata a casa. Vai a riscuotere il premio!',
-      'Hai chiuso "${n.body ?? "una missione"}" alla grande. Il premio ti aspetta.',
-      '"${n.body ?? "Una missione"}" è storia. Passa a ritirare il bottino!',
-    ]),
+    icon: Icons.flag_rounded,
+    color: AppColor.gold,
+    title: (n) => 'Missione',
+    body: (n) =>
+        '"${_clean(n.body, 'una missione')}" completata. riscuoti il premio.',
+    route: (n) => AppRoutes.missions,
   ),
   'mission_almost_done': NotificationPresentation(
-    icon: Icons.local_fire_department_rounded,
-    color: AppColor.amber,
-    title: (n) => _pick(n, 'title', const [
-      'Ci sei quasi! 🔥',
-      'Manca un soffio! 💨',
-      'Dritto al traguardo! 🏁',
-    ]),
-    body: (n) =>
-        'Manca pochissimo per completare "${n.body ?? "la missione"}".',
+    icon: Icons.timer_rounded,
+    color: AppColor.gold,
+    title: (n) => 'Missione',
+    body: (n) => 'ci sei quasi: "${_clean(n.body, 'la missione')}".',
+    route: (n) => AppRoutes.missions,
   ),
   'mission_claimed': NotificationPresentation(
     icon: Icons.card_giftcard_rounded,
-    color: AppColor.magenta,
-    title: (n) => _pick(n, 'title', const [
-      'Premio riscosso! 🎁',
-      'Bottino incassato! 💰',
-      'Premio in tasca! 🎉',
-    ]),
-    body: (n) => '"${n.body ?? "Il premio"}" è ufficialmente nel tuo bottino.',
+    color: AppColor.gold,
+    title: (n) => 'Missione',
+    body: (n) => 'premio di "${_clean(n.body, 'una missione')}" riscosso.',
+    route: (n) => AppRoutes.missions,
   ),
   'achievement_unlocked': NotificationPresentation(
-    icon: Icons.military_tech_rounded,
-    color: const Color(0xFFFFC93C),
-    title: (n) => _pick(n, 'title', const [
-      'Achievement sbloccato! 🏆',
-      'Nuovo trofeo! 🏅',
-      'Leggenda in costruzione! ⭐',
-    ]),
-    body: (n) => _pick(n, 'body', [
-      '${n.body ?? "Un traguardo"} — sei una leggenda della strada.',
-      '${n.body ?? "Un traguardo"}. Il tuo garage si arricchisce di gloria.',
-      '${n.body ?? "Un traguardo"} conquistato. Continua così!',
-    ]),
-  ),
-  'like': NotificationPresentation(
-    icon: Icons.favorite_rounded,
-    color: AppColor.magenta,
-    title: (n) => _pick(n, 'title', const [
-      'Piaci alla folla! ❤️',
-      'Successo! 😍',
-    ]),
-    body: (n) => n.body ?? 'A qualcuno piace il tuo spot.',
+    icon: Icons.workspace_premium_rounded,
+    color: AppColor.gold,
+    title: (n) => 'Achievement',
+    body: (n) => '${_clean(n.body, 'nuovo traguardo')} · sbloccato.',
+    route: (n) => AppRoutes.achievements,
   ),
   'comment': NotificationPresentation(
     icon: Icons.chat_bubble_rounded,
-    color: AppMascot.nitro,
-    title: (n) => _pick(n, 'title', const [
-      'Nuovo commento! 💬',
-      'Si commenta! 🗣️',
-      'Hai fatto scalpore! 📢',
-    ]),
-    body: (n) => _pick(n, 'body', [
-      n.body ?? 'Qualcuno ha detto la sua sul tuo spot.',
-      '${n.body ?? "Qualcuno ha commentato"} — rispondi prima che si offenda! 😄',
-    ]),
-  ),
-  'event': NotificationPresentation(
-    icon: Icons.event_rounded,
-    color: AppMascot.volt,
-    title: (n) => _pick(n, 'title', const [
-      'Si muove qualcosa! 📅',
-      'Occhio al calendario! 🗓️',
-    ]),
-    body: (n) => n.body ?? 'C\'è un evento che potrebbe interessarti.',
+    color: AppColor.ink,
+    title: (n) => 'Commento',
+    body: (n) => _clean(n.body, 'qualcuno ha commentato il tuo spot.'),
+    route: _spotRoute,
   ),
   'rating': NotificationPresentation(
     icon: Icons.star_rounded,
-    color: AppColor.amber,
-    title: (n) => _pick(n, 'title', const [
-      'Nuovo voto! ⭐',
-      'Sei stato votato! 🌟',
-      'Le stelle parlano! ✨',
-    ]),
-    body: (n) => n.body ?? 'Qualcuno ha votato il tuo spot.',
+    color: AppColor.gold,
+    title: (n) => 'Voto',
+    body: (n) {
+      final r = _num(n, 'rating');
+      return r == null
+          ? _clean(n.body, 'qualcuno ha votato il tuo spot.')
+          : 'il tuo spot ha ricevuto ${r.round()}/5.';
+    },
+    route: _spotRoute,
+  ),
+  'like': NotificationPresentation(
+    icon: Icons.favorite_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Spot',
+    body: (n) => _clean(n.body, 'a qualcuno piace il tuo spot.'),
+    route: _spotRoute,
   ),
   'territory_stolen': NotificationPresentation(
-    icon: Icons.flag_rounded,
+    icon: Icons.hexagon_rounded,
     color: AppColor.danger,
-    title: (n) => _pick(n, 'title', const [
-      'Territorio conquistato! 🏴',
-      'Ti hanno invaso! 🚩',
-      'Confini sotto attacco! ⚔️',
-    ]),
-    body: (n) => n.body ?? 'Qualcuno ti ha rubato un esagono.',
-  ),
-  // Nuova APK pubblicata (0036_app_releases.sql): l'avviso "Aggiorna" lo
-  // mostra AppUpdatePrompt all'apertura, qui solo la voce nel feed.
-  'app_update': NotificationPresentation(
-    icon: Icons.system_update_rounded,
-    color: AppColor.cyan,
-    title: (n) => n.title,
-    body: (n) => n.body ?? 'Apri l\'app e tocca Aggiorna.',
-  ),
-  'level_up': NotificationPresentation(
-    icon: Icons.trending_up_rounded,
-    color: AppColor.success,
-    title: (n) => _pick(n, 'title', const [
-      'Livello superiore! 🚀',
-      'Sei salito di livello! 📈',
-      'Sempre più forte! 💪',
-    ]),
-    body: (n) => n.body ?? 'Hai guadagnato un nuovo livello.',
-  ),
-  'speed_record': NotificationPresentation(
-    icon: Icons.speed_rounded,
-    color: AppColor.cyan,
-    title: (n) => _pick(n, 'title', const [
-      'Nuovo record di velocità! 🏎️',
-      'Velocità mai vista! 💨',
-      'Hai spinto al massimo! ⚡',
-    ]),
-    body: (n) => n.body ?? 'Hai battuto il tuo record personale di velocità.',
+    rival: true,
+    title: (n) => 'Territorio',
+    body: (n) => _clean(n.body, 'qualcuno ti ha rubato un esagono.')
+        .replaceAll('pentagoni', 'esagoni')
+        .replaceAll('pentagono', 'esagono'),
+    route: (n) => AppRoutes.game,
   ),
   'leaderboard_overtaken': NotificationPresentation(
     icon: Icons.trending_down_rounded,
     color: AppColor.danger,
-    title: (n) => _pick(n, 'title', const [
-      'Sorpasso subito! 📉',
-      'Ti hanno superato! 😤',
-    ]),
-    body: (n) => n.body ?? 'Qualcuno ti ha superato in classifica.',
+    rival: true,
+    title: (n) => 'Classifica',
+    body: (n) => _clean(n.body, 'qualcuno ti ha superato in classifica.'),
+    route: (n) => AppRoutes.leaderboard,
+  ),
+  'level_up': NotificationPresentation(
+    icon: Icons.trending_up_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Livello',
+    body: (n) {
+      final l = _num(n, 'level');
+      return l == null
+          ? _clean(n.body, 'sei salito di livello.')
+          : 'sei salito al livello ${l.toInt()}.';
+    },
+    route: (n) => AppRoutes.profile,
+  ),
+  'speed_record': NotificationPresentation(
+    icon: Icons.speed_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Record',
+    body: (n) {
+      final v = _num(n, 'max_speed_kmh');
+      return v == null
+          ? _clean(n.body, 'nuovo record personale di velocità.')
+          : 'nuovo record di velocità · ${v.round()} km/h.';
+    },
+    route: _tripRoute,
   ),
   'distance_record': NotificationPresentation(
-    icon: Icons.map_rounded,
-    color: AppColor.magenta,
-    title: (n) => _pick(n, 'title', const [
-      'Nuovo record di distanza! 🛣️',
-      'Chilometri da leggenda! 🗺️',
-      'Hai macinato strada! 🚗',
-    ]),
-    body: (n) => n.body ?? 'Hai battuto il tuo record personale di distanza.',
+    icon: Icons.route_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Record',
+    body: (n) {
+      final v = _num(n, 'distance_km');
+      return v == null
+          ? _clean(n.body, 'nuovo record personale di distanza.')
+          : 'guida più lunga di sempre · ${v.toStringAsFixed(1).replaceAll('.', ',')} km.';
+    },
+    route: _tripRoute,
+  ),
+  'friend_request': NotificationPresentation(
+    icon: Icons.person_add_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Amici',
+    body: (n) => _clean(n.body, 'hai una nuova richiesta di amicizia.'),
+  ),
+  'crew_member_joined': NotificationPresentation(
+    icon: Icons.groups_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Crew',
+    body: (n) => _clean(n.body, 'un nuovo membro nella tua crew.'),
+  ),
+  'crew_disbanded': NotificationPresentation(
+    icon: Icons.group_off_rounded,
+    color: AppColor.inkMuted,
+    title: (n) => 'Crew',
+    body: (n) => _clean(n.body, 'la tua crew è stata sciolta.'),
+  ),
+  'event': NotificationPresentation(
+    icon: Icons.event_rounded,
+    color: AppColor.ink,
+    title: (n) => _clean(n.title, 'Evento'),
+    body: (n) => _clean(n.body, ''),
+  ),
+  // Nuova APK (0036_app_releases.sql): l'avviso "Aggiorna" lo mostra
+  // AppUpdatePrompt all'apertura, qui solo la voce nel feed.
+  'app_update': NotificationPresentation(
+    icon: Icons.system_update_rounded,
+    color: AppColor.ink,
+    title: (n) => 'Aggiornamento',
+    body: (n) => _clean(n.body, 'nuova versione disponibile.'),
   ),
 };
 

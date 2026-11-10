@@ -53,9 +53,9 @@ class SpotCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     placeholder: (c, u) => Container(
                         color: AppColor.surfaceHigh,
-                        child: const Center(
+                        child: Center(
                             child: CircularProgressIndicator(
-                                color: AppColor.cyan, strokeWidth: 2))),
+                                color: AppColor.accent, strokeWidth: 2))),
                     errorWidget: (c, u, e) => Container(
                         color: AppColor.surfaceHigh,
                         child: const Icon(Icons.broken_image_rounded,
@@ -89,8 +89,7 @@ class SpotCard extends StatelessWidget {
                   bottom: 12,
                   child: Text(
                     title.isEmpty ? 'Auto sconosciuta' : title,
-                    style:
-                        AppType.display(fontSize: 22, color: Colors.white),
+                    style: AppType.display(fontSize: 22, color: Colors.white),
                   ),
                 ),
               ],
@@ -105,13 +104,12 @@ class SpotCard extends StatelessWidget {
                       if (spot.detectedYear != null)
                         Text('${spot.detectedYear}',
                             style: AppType.text(
-                                color: AppColor.inkMuted,
-                                fontSize: 13)),
+                                color: AppColor.inkMuted, fontSize: 13)),
                       const Spacer(),
                       if (spot.authorUsername != null)
                         Text('@${spot.authorUsername}',
                             style: AppType.text(
-                                color: AppColor.cyan, fontSize: 13)),
+                                color: AppColor.accent, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 10),

@@ -15,15 +15,14 @@ import 'package:permission_handler/permission_handler.dart' as ph;
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/draggable_sheet_scaffold.dart';
-import '../../../../core/widgets/neon_cta_button.dart';
-import '../../../../core/widgets/recenter_button.dart';
+import '../../../../core/theme/heat_shapes.dart';
+import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../radar/domain/entities/radar_bounds.dart';
 import '../../../radar/domain/entities/radar_event.dart';
 import '../../../radar/presentation/providers/radar_provider.dart';
 import '../../../radar/presentation/providers/radar_proximity_provider.dart';
 import '../../../radar/presentation/widgets/radar_icons.dart';
-import '../../../radar/presentation/widgets/report_option_tile.dart';
+import '../../../rival/presentation/providers/active_mascot_provider.dart';
 import '../providers/live_map_provider.dart';
 import '../providers/trip_live_provider.dart';
 import '../providers/voice_channel_provider.dart';
@@ -32,9 +31,23 @@ import '../widgets/speedometer_gauge.dart';
 
 enum _LiveView { map, speedometer }
 
-/// HUD del viaggio live, con toggle mappa/tachimetro (Guida.dc.html righe
-/// 152-339, isMapView/isSpeedView). La logica di tracking resta invariata
-/// in TripLiveController.
+String _hex(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+String _formatDuration(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60);
+  final s = d.inSeconds.remainder(60);
+  String two(int n) => n.toString().padLeft(2, '0');
+  return h > 0 ? '$h:${two(m)}:${two(s)}' : '$m:${two(s)}';
+}
+
+/// Guida in corso (handoff HEAT, schermata 7): tachimetro ⇄ mappa, barra
+/// "Auto amiche" con push-to-talk, avvisi velox/pattuglia, CTA TERMINA
+/// VIAGGIO. La logica di tracking resta in TripLiveController.
+///
+/// Sicurezza (DESIGN.md): numeri grandi e leggibili a colpo d'occhio,
+/// nessuna interazione che richieda di tenere premuto, il PTT è a tocco.
 class TripLiveScreen extends ConsumerStatefulWidget {
   const TripLiveScreen({super.key});
 
@@ -47,13 +60,8 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
   RadarEvent? _activeAlert;
   Timer? _alertHideTimer;
 
-  // Stato della tendina "Auto amiche": espansa mostra solo la scelta del
-  // canale (si chiude da sola alla selezione), collassata mostra la barra
-  // con il microfono push-to-talk. Gli altri driver sono sempre visibili
-  // sulla mappa (vedi _MapView), indipendentemente da questo stato — stesso
-  // comportamento di home_map_background.dart. Il canale voce vero e proprio
-  // vive in VoiceChannelController (voice_channel_provider.dart), agganciato
-  // direttamente da _AutoAmicheCollapsedBar.
+  // Pannello canali "Auto amiche" aperto sopra la CTA (con scrim). Il
+  // canale voce vive in VoiceChannelController, agganciato dalla barra.
   bool _amicheExpanded = false;
 
   @override
@@ -75,10 +83,9 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
     super.dispose();
   }
 
-  // RadarProximityController emette un "impulso" (non uno stato persistente,
-  // vedi il provider) ogni volta che si è vicini a un nuovo evento non
-  // ancora in cooldown: qui decidiamo per quanto resta visibile l'avviso,
-  // indipendentemente da quante volte il provider ricalcola nel frattempo.
+  // RadarProximityController emette un "impulso" ogni volta che si è
+  // vicini a un nuovo evento non in cooldown: qui decidiamo per quanto
+  // resta visibile l'avviso.
   void _onProximityAlert(RadarEvent event) {
     _alertHideTimer?.cancel();
     setState(() => _activeAlert = event);
@@ -108,7 +115,7 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1522),
+        backgroundColor: AppColor.surfaceHigh,
         title: const Text('Annullare il viaggio?'),
         content: const Text(
             'Il viaggio verrà scartato, nessun XP/REP verrà assegnato.'),
@@ -130,15 +137,14 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
     }
   }
 
-  /// Il risparmio energetico può sospendere il GPS in background e
-  /// interrompere la registrazione — vedi TripLiveController._checkBatterySaver.
-  /// Mostrato una sola volta per transizione a true (vedi ref.listen in
-  /// build), non ripetuto ad ogni rebuild finché resta attivo.
+  /// Il risparmio energetico può sospendere il GPS in background — vedi
+  /// TripLiveController._checkBatterySaver. Mostrato una volta per
+  /// transizione a true.
   Future<void> _showBatterySaverWarning() async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1522),
+        backgroundColor: AppColor.surfaceHigh,
         title: const Text('Risparmio energetico attivo'),
         content: const Text(
           'Con il risparmio energetico attivo il sistema può sospendere il '
@@ -156,28 +162,20 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
               Navigator.pop(ctx);
               ph.openAppSettings();
             },
-            child: const Text('Apri impostazioni',
-                style: TextStyle(color: AppColor.cyan)),
+            child: Text('Apri impostazioni',
+                style: TextStyle(color: AppColor.accent)),
           ),
         ],
       ),
     );
   }
 
-  String _formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60);
-    final s = d.inSeconds.remainder(60);
-    if (h > 0) {
-      return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-    }
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(tripLiveControllerProvider);
     final tracking = state.status == TripLiveStatus.tracking;
+    final finishing = state.status == TripLiveStatus.finishing;
+    final a = AppColor.accent;
 
     ref.listen<AsyncValue<RadarEvent?>>(radarProximityControllerProvider,
         (previous, next) {
@@ -191,175 +189,195 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
       }
     });
 
+    final bottom = MediaQuery.paddingOf(context).bottom;
+
     return Scaffold(
       backgroundColor: AppColor.void_,
       body: Stack(
         children: [
+          // Alone d'accento dietro al tachimetro.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -.36),
+                    radius: .9,
+                    colors: [a.withValues(alpha: .15), a.withValues(alpha: 0)],
+                    stops: const [0, .7],
+                  ),
+                ),
+              ),
+            ),
+          ),
           SafeArea(
+            bottom: false,
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
                   child: Row(
                     children: [
-                      _RoundIconButton(
+                      _SlantIconButton(
                         icon: Icons.close_rounded,
-                        onTap: _discard,
+                        onTap: finishing ? null : _discard,
                       ),
                       const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: AppColor.danger.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColor.danger),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.fiber_manual_record,
-                                size: 10, color: AppColor.danger),
-                            const SizedBox(width: 6),
-                            Text(
-                              tracking ? 'LIVE' : 'AVVIO...',
-                              style: AppType.text(
-                                color: AppColor.danger,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
+                      _LiveBadge(
+                        label: finishing
+                            ? 'SALVO'
+                            : tracking
+                                ? 'LIVE'
+                                : 'AVVIO…',
                       ),
                       const Spacer(),
-                      _RoundIconButton(
+                      _SlantIconButton(
                         icon: _view == _LiveView.map
                             ? Icons.speed_rounded
                             : Icons.map_rounded,
-                        onTap: () => setState(() {
-                          _view = _view == _LiveView.map
-                              ? _LiveView.speedometer
-                              : _LiveView.map;
-                        }),
+                        onTap: finishing
+                            ? null
+                            : () => setState(() {
+                                  _view = _view == _LiveView.map
+                                      ? _LiveView.speedometer
+                                      : _LiveView.map;
+                                }),
                       ),
                     ],
                   ),
                 ),
-                // Solo Web/PWA (iPhone/Safari inclusi): senza schermo acceso il
-                // browser sospende la geolocalizzazione, vedi TrackingWakelock.
-                // Su app native il tracking sopravvive a schermo spento.
-                if (kIsWeb && state.status == TripLiveStatus.tracking)
+                // Solo Web/PWA: senza schermo acceso il browser sospende la
+                // geolocalizzazione, vedi TrackingWakelock.
+                if (kIsWeb && tracking)
                   const Padding(
-                    padding: EdgeInsets.fromLTRB(18, 10, 18, 0),
+                    padding: EdgeInsets.fromLTRB(14, 10, 14, 0),
                     child: _KeepScreenOnNotice(),
                   ),
                 if (state.status == TripLiveStatus.error)
-                  Expanded(
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.gps_off_rounded,
-                                size: 48,
-                                color: AppColor.danger.withValues(alpha: 0.7)),
-                            const SizedBox(height: 12),
-                            Text(
-                              state.errorMessage ?? 'Errore GPS',
-                              style: AppType.text(
-                                  color: AppColor.inkMuted),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 20),
-                            NeonCtaButton(
-                              label: 'Riprova',
-                              minHeight: 52,
-                              onPressed: () => ref
-                                  .read(tripLiveControllerProvider.notifier)
-                                  .startTrip(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                else if (state.status == TripLiveStatus.finishing)
-                  // Smontata subito la mappa (col suo platform view
-                  // MapLibre) invece di lasciarla montata fino al pop della
-                  // route: altrimenti il pushReplacement in _finish() la
-                  // smonta di colpo a metà della sua transizione, col
-                  // flash nero visto durante il salvataggio.
+                  Expanded(child: _ErrorView(message: state.errorMessage))
+                else if (finishing)
+                  // Smontata subito la mappa (platform view MapLibre) invece
+                  // di lasciarla fino al pushReplacement, che la smontava a
+                  // metà transizione col flash nero.
                   const Expanded(child: _FinishingView())
                 else
                   Expanded(
                     child: _view == _LiveView.speedometer
-                        ? _SpeedView(
-                            state: state, formatDuration: _formatDuration)
+                        ? _SpeedView(state: state)
                         : _MapView(state: state),
                   ),
-                // Barra "Auto amiche" collassata: inline, sopra la CTA — mai
-                // in overlay qui, altrimenti la copre (vedi _AmicheCard).
-                // Visibile in entrambe le viste (non solo Mappa): è l'unico
-                // punto da cui si vede chi altro sta guidando ora e si
-                // accede al PTT, non deve dipendere dal toggle mappa/
-                // tachimetro.
-                if (state.status == TripLiveStatus.tracking &&
-                    !_amicheExpanded)
+                if (tracking)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                    child: _AutoAmicheCollapsedBar(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                    child: _AutoAmicheBar(
                       speedKmh: state.currentSpeedKmh,
-                      onTap: () => setState(() => _amicheExpanded = true),
+                      onOpenChannels: () =>
+                          setState(() => _amicheExpanded = true),
                     ),
                   ),
-                if (state.status != TripLiveStatus.error)
+                if (state.status != TripLiveStatus.error && !finishing)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                    child: Visibility(
-                      // Nascosta (non solo coperta) quando il pannello Auto
-                      // amiche è espanso: un solo elemento con glow per
-                      // schermata, il PTT diventa il protagonista — vedi
-                      // regola 1 di DESIGN.md. Vale in entrambe le viste.
-                      visible: !_amicheExpanded,
-                      maintainState: true,
-                      maintainAnimation: true,
-                      maintainSize: true,
-                      child: NeonCtaButton(
-                        label: 'Termina viaggio',
-                        icon: Icons.flag_rounded,
-                        minHeight: 60,
-                        onPressed: tracking ? _finish : null,
-                      ),
+                    padding: EdgeInsets.fromLTRB(14, 0, 14, 18 + bottom),
+                    child: HeatButton(
+                      label: 'TERMINA VIAGGIO',
+                      icon: Icons.flag_rounded,
+                      height: 62,
+                      fontSize: 25,
+                      // Il glow della schermata è del tachimetro.
+                      glow: false,
+                      onPressed: tracking ? _finish : null,
                     ),
                   ),
               ],
             ),
           ),
-          if (_activeAlert != null) _RadarAlertBanner(event: _activeAlert!),
-          // Pannello "Auto amiche" espanso: solo qui in overlay assoluto,
-          // apposta sopra la CTA "Termina viaggio" (stesso trattamento del
-          // bottom sheet nei mock) — la barra collassata sopra resta invece
-          // sempre inline, non deve mai coprire nulla. Visibile in entrambe
-          // le viste, stesso motivo della barra collassata sopra.
-          if (state.status == TripLiveStatus.tracking && _amicheExpanded)
+          if (_activeAlert != null)
             Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                  child: _AmicheCard(
-                    child: _ChannelPicker(
-                      onClose: () => setState(() => _amicheExpanded = false),
-                    ),
-                  ),
-                ),
+              left: 14,
+              right: 14,
+              top: MediaQuery.paddingOf(context).top + 66,
+              child: _RadarAlertBanner(event: _activeAlert!),
+            ),
+          if (tracking && _amicheExpanded) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _amicheExpanded = false),
+                child: const ColoredBox(color: Color(0x8C000000)),
               ),
-            ).animate().fadeIn(duration: 180.ms).slideY(begin: 0.12, end: 0),
+            ).animate().fadeIn(duration: 180.ms),
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 30 + bottom,
+              child: _ChannelPicker(
+                onClose: () => setState(() => _amicheExpanded = false),
+              ),
+            ).animate().fadeIn(duration: 220.ms).slideY(begin: .12, end: 0),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Bottone quadrato a parallelogramma della barra superiore.
+class _SlantIconButton extends StatelessWidget {
+  const _SlantIconButton({required this.icon, required this.onTap, this.color});
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: onTap == null ? .45 : 1,
+      child: HeatPressable(
+        onTap: onTap,
+        child: Container(
+          width: 50,
+          height: 50,
+          decoration: const ShapeDecoration(
+            color: AppColor.surface,
+            shape: SlantBorder.all(10,
+                side: BorderSide(color: AppColor.line)),
+          ),
+          child: Icon(icon, color: color ?? AppColor.ink, size: 24),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveBadge extends StatelessWidget {
+  const _LiveBadge({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: ShapeDecoration(
+        color: AppColor.danger.withValues(alpha: .14),
+        shape: const SlantBorder.all(8,
+            side: BorderSide(color: AppColor.danger)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Transform.rotate(
+            angle: math.pi / 4,
+            child: Container(width: 8, height: 8, color: AppColor.danger),
+          )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .fade(begin: 1, end: .25, duration: 600.ms),
+          const SizedBox(width: 8),
+          Text(label,
+              style: AppType.display(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 17,
+                  letterSpacing: 2,
+                  color: AppColor.danger)),
         ],
       ),
     );
@@ -367,29 +385,27 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
 }
 
 /// Promemoria per chi guida da browser: il GPS si ferma se lo schermo si
-/// spegne. Grigio apposta (niente accento/glow): l'elemento acceso della
-/// schermata resta la CTA "Termina viaggio", vedi regola 1 di DESIGN.md.
+/// spegne. Grigio, nessun accento.
 class _KeepScreenOnNotice extends StatelessWidget {
   const _KeepScreenOnNotice();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColor.surface,
-        borderRadius: BorderRadius.circular(AppRadius.control),
+        color: AppColor.deep,
         border: Border.all(color: AppColor.line),
       ),
       child: Row(
         children: [
           const Icon(Icons.smartphone_rounded,
-              size: 16, color: AppColor.inkMuted),
-          const SizedBox(width: 8),
+              size: 18, color: AppColor.inkFaint),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Mantieni lo schermo acceso per continuare il tracciamento GPS',
-              style: AppType.text(fontSize: 12, color: AppColor.inkMuted),
+              'mantieni lo schermo acceso per continuare il tracciamento GPS',
+              style: AppType.caption.copyWith(height: 1.35),
             ),
           ),
         ],
@@ -398,9 +414,44 @@ class _KeepScreenOnNotice extends StatelessWidget {
   }
 }
 
-/// Avviso di prossimità Velox/Pattuglia durante DRIVE — [RadarEvent]
-/// arrivato da [radarProximityControllerProvider], che riusa il GPS già
-/// live del viaggio in corso (nessun nuovo stream di posizione).
+class _ErrorView extends ConsumerWidget {
+  const _ErrorView({required this.message});
+  final String? message;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.gps_off_rounded,
+                size: 48, color: AppColor.danger.withValues(alpha: .8)),
+            const SizedBox(height: 12),
+            Text(
+              message ?? 'Errore GPS',
+              style: AppType.body.copyWith(color: AppColor.inkMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            HeatButton(
+              label: 'RIPROVA',
+              height: 52,
+              fontSize: 20,
+              icon: Icons.refresh_rounded,
+              onPressed: () =>
+                  ref.read(tripLiveControllerProvider.notifier).startTrip(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Avviso di prossimità Velox/Pattuglia: banda piena a parallelogramma,
+/// gialla per i dati ufficiali, ciano per le segnalazioni della community.
 class _RadarAlertBanner extends StatelessWidget {
   final RadarEvent event;
   const _RadarAlertBanner({required this.event});
@@ -409,75 +460,76 @@ class _RadarAlertBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final isVelox = event.category == RadarCategory.velox;
     final isCommunity = event.source == RadarSource.community;
-    final color = isCommunity ? AppColor.cyan : const Color(0xFFFF8A1F);
+    final bg = isCommunity ? AppColor.info : AppColor.gold;
     final label = switch ((isVelox, isCommunity)) {
-      (true, true) => 'Velox segnalato dalla community nelle vicinanze',
-      (true, false) => 'Autovelox nelle vicinanze',
-      (false, true) => 'Pattuglia segnalata dalla community nelle vicinanze',
-      (false, false) => 'Pattuglia nelle vicinanze',
+      (true, true) => 'velox segnalato dalla community nelle vicinanze',
+      (true, false) => 'autovelox nelle vicinanze',
+      (false, true) => 'pattuglia segnalata dalla community nelle vicinanze',
+      (false, false) => 'pattuglia nelle vicinanze',
     };
 
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: Container(
-          margin: const EdgeInsets.only(top: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xF00A0E1A),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color, width: 1.4),
-            boxShadow: [
-              BoxShadow(
-                  color: color.withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6)),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: ShapeDecoration(color: bg, shape: const SlantBorder.all(12)),
+      child: Row(
+        children: [
+          Icon(
+            isVelox ? Icons.videocam_rounded : Icons.local_police_rounded,
+            color: AppColor.onAccent,
+            size: 26,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isVelox ? Icons.videocam_rounded : Icons.local_police_rounded,
-                color: color,
-                size: 26,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label.toUpperCase(),
+              style: AppType.display(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                height: 1.1,
+                color: AppColor.onAccent,
               ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  label,
-                  style: AppType.text(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColor.ink),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
-    ).animate().fadeIn(duration: 200.ms).slideY(begin: -0.2, end: 0);
+    ).animate().fadeIn(duration: 200.ms).scaleXY(begin: .94, end: 1);
   }
 }
 
-/// Mostrata mentre TripLiveController.finishTrip() salva il viaggio
-/// (chiamata RPC + claim territori) — sostituisce subito la mappa/
-/// tachimetro invece di lasciarli montati fino alla navigazione, così lo
-/// smontaggio del platform view MapLibre avviene qui, non nel mezzo del
-/// pushReplacement verso il riepilogo (vedi TripLiveScreen._finish).
-class _FinishingView extends StatelessWidget {
+/// Mostrata mentre finishTrip() salva il viaggio: emote della mascotte e
+/// barra di caricamento inclinata.
+class _FinishingView extends ConsumerWidget {
   const _FinishingView();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mascot = ref.watch(activeMascotProvider);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppColor.cyan),
+          SizedBox(
+            width: 130,
+            height: 130,
+            child: Image.asset(
+              'assets/emotes/${mascot.id}_emote_b.png',
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
           const SizedBox(height: 16),
-          Text('Salvataggio del viaggio...',
-              style: AppType.text(color: AppColor.inkMuted)),
+          SizedBox(
+            width: 160,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 1200),
+              curve: Curves.easeOut,
+              builder: (_, v, __) => SkewBar(value: v, height: 4),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('salvataggio del viaggio…',
+              style: AppType.body.copyWith(color: AppColor.inkMuted)),
         ],
       ),
     );
@@ -486,63 +538,89 @@ class _FinishingView extends StatelessWidget {
 
 class _SpeedView extends StatelessWidget {
   final TripLiveState state;
-  final String Function(Duration) formatDuration;
-  const _SpeedView({required this.state, required this.formatDuration});
+  const _SpeedView({required this.state});
 
   @override
   Widget build(BuildContext context) {
+    final cells = [
+      ('DISTANZA', state.distanceKm.toStringAsFixed(1), 'km'),
+      ('TEMPO', _formatDuration(state.elapsed), ''),
+      ('VEL. MEDIA', state.avgSpeedKmh.toStringAsFixed(0), 'km/h'),
+      ('VEL. MASSIMA', state.maxSpeedKmh.toStringAsFixed(0), 'km/h'),
+    ];
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 8),
+      padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 340),
-              child: SpeedometerGauge(speed: state.currentSpeedKmh),
-            ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: SpeedometerGauge(speed: state.currentSpeedKmh),
           ).animate().fadeIn(),
-          const SizedBox(height: 18),
-          // Righe di 2 invece di GridView.count(childAspectRatio: ...): un
-          // rapporto fisso va in overflow non appena il testo è più alto
-          // del previsto (scala font di sistema, locale con etichette più
-          // lunghe) — qui ogni cella prende l'altezza che le serve, mai un
-          // taglio fisso.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _StatCell(
-                    label: 'Distanza',
-                    value: state.distanceKm.toStringAsFixed(1),
-                    unit: 'km'),
-              ),
-              const SizedBox(width: 22),
-              Expanded(
-                child: _StatCell(
-                    label: 'Tempo',
-                    value: formatDuration(state.elapsed),
-                    unit: ''),
-              ),
-            ],
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _StatCell(
-                    label: 'Vel. media',
-                    value: state.avgSpeedKmh.toStringAsFixed(0),
-                    unit: 'km/h'),
-              ),
-              const SizedBox(width: 22),
-              Expanded(
-                child: _StatCell(
-                    label: 'Vel. massima',
-                    value: state.maxSpeedKmh.toStringAsFixed(0),
-                    unit: 'km/h'),
-              ),
-            ],
+          const SizedBox(height: 14),
+          // Due righe di due: ogni cella prende l'altezza che le serve (mai
+          // un childAspectRatio fisso, che va in overflow con font grandi).
+          for (var r = 0; r < 2; r++) ...[
+            if (r > 0) const SizedBox(height: 5),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var c = 0; c < 2; c++) ...[
+                  if (c > 0) const SizedBox(width: 5),
+                  Expanded(
+                    child: _StatCell(
+                      label: cells[r * 2 + c].$1,
+                      value: cells[r * 2 + c].$2,
+                      unit: cells[r * 2 + c].$3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCell extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  const _StatCell(
+      {required this.label, required this.value, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const ShapeDecoration(
+        color: AppColor.surface,
+        shape: ChamferBorder(cut: 10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: AppType.label.copyWith(fontSize: 12, letterSpacing: 1.6)),
+          Text.rich(
+            TextSpan(
+              text: value,
+              children: [
+                if (unit.isNotEmpty)
+                  TextSpan(
+                    text: ' $unit',
+                    style: AppType.display(
+                        fontSize: 14, italic: false, color: AppColor.inkMuted),
+                  ),
+              ],
+            ),
+            maxLines: 1,
+            style: AppType.display(
+              fontWeight: FontWeight.w900,
+              fontSize: 30,
+              height: 1.05,
+            ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
           ),
         ],
       ),
@@ -666,7 +744,7 @@ class _MapViewState extends ConsumerState<_MapView> {
       _routeLine = await controller.addLine(
         LineOptions(
           geometry: geometry,
-          lineColor: '#35E0FF',
+          lineColor: _hex(AppColor.accent),
           lineWidth: 4,
           lineOpacity: 0.9,
         ),
@@ -690,7 +768,7 @@ class _MapViewState extends ConsumerState<_MapView> {
       final options = CircleOptions(
         geometry: LatLng(last.lat, last.lng),
         circleRadius: 8,
-        circleColor: '#35E0FF',
+        circleColor: _hex(AppColor.accent),
         circleStrokeColor: '#FFFFFF',
         circleStrokeWidth: 2.5,
         circleOpacity: 0.95,
@@ -819,32 +897,23 @@ class _MapViewState extends ConsumerState<_MapView> {
     if (!ref.read(radarModeControllerProvider)) return;
     if (!mounted) return;
 
-    final category = await DraggableSheetScaffold.show<RadarCategory>(
-      context,
-      title: 'Segnala qui',
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ReportOptionTile(
-            icon: Icons.videocam_rounded,
-            label: 'Velox',
-            onTap: () => Navigator.of(ctx).pop(RadarCategory.velox),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          ReportOptionTile(
-            icon: Icons.shield_rounded,
-            label: 'Pattuglia',
-            onTap: () => Navigator.of(ctx).pop(RadarCategory.pattuglia),
-          ),
-        ],
-      ),
-    );
+    final category = await _showReportSheet(context);
     if (category == null) return;
     await ref.read(radarActionsControllerProvider.notifier).submitReport(
           category: category,
           lat: coords.latitude,
           lon: coords.longitude,
         );
+  }
+
+  /// Bottone "segnala qui": stessa segnalazione del long-press, sulla
+  /// posizione live corrente.
+  Future<void> _reportHere() async {
+    final points = widget.state.routePoints;
+    if (points.isEmpty) return;
+    final last = points.last;
+    await _onMapLongPress(
+        const math.Point(0, 0), LatLng(last.lat, last.lng));
   }
 
   Future<void> _onStyleLoaded() async {
@@ -967,8 +1036,8 @@ class _MapViewState extends ConsumerState<_MapView> {
     if (center == null) {
       // Nessuna posizione risolta ancora: meglio uno spinner che aprire la
       // mappa su un centro sbagliato/arbitrario.
-      return const Center(
-        child: CircularProgressIndicator(color: AppColor.cyan),
+      return Center(
+        child: CircularProgressIndicator(color: AppColor.accent),
       );
     }
 
@@ -990,146 +1059,231 @@ class _MapViewState extends ConsumerState<_MapView> {
           ),
         ),
         Positioned(
-          right: 18,
-          top: 18,
-          child: RecenterButton(onTap: _recenterCamera),
+          left: 12,
+          top: 12,
+          child: _MapStatsChip(
+            km: widget.state.distanceKm,
+            elapsed: widget.state.elapsed,
+          ),
+        ),
+        Positioned(
+          right: 12,
+          top: 12,
+          child: Column(
+            children: [
+              _SlantIconButton(
+                  icon: Icons.my_location_rounded, onTap: _recenterCamera),
+              if (ref.watch(radarModeControllerProvider)) ...[
+                const SizedBox(height: 6),
+                _SlantIconButton(
+                  icon: Icons.campaign_rounded,
+                  color: AppColor.gold,
+                  onTap: _reportHere,
+                ),
+              ],
+            ],
+          ),
         ),
       ],
     );
   }
 }
 
-/// Decorazione condivisa della card "Auto amiche" — usata sia dalla barra
-/// collassata (inline nel flusso, sopra la CTA "Termina viaggio") sia dal
-/// pannello espanso (overlay assoluto che copre la CTA, vedi TripLiveScreen.
-/// build). Prima erano nella stessa Positioned bottom:0 e la barra
-/// collassata finiva sempre sopra la CTA, coprendola: ora solo l'overlay
-/// espanso lo fa, di proposito.
-class _AmicheCard extends StatelessWidget {
-  final Widget child;
-  const _AmicheCard({required this.child});
+/// Km e tempo in alto a sinistra sulla mappa.
+class _MapStatsChip extends StatelessWidget {
+  const _MapStatsChip({required this.km, required this.elapsed});
+  final double km;
+  final Duration elapsed;
 
   @override
   Widget build(BuildContext context) {
+    Widget cell(String v, String l) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(v,
+                style: AppType.display(
+                    fontWeight: FontWeight.w900, fontSize: 22, height: 1)),
+            Text(l,
+                style: AppType.caption
+                    .copyWith(fontSize: 10, letterSpacing: 1)),
+          ],
+        );
     return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xEB0D1222), Color(0xF5060810)],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0x2E7896FF)),
+      padding: const EdgeInsets.fromLTRB(12, 6, 18, 6),
+      decoration: const ShapeDecoration(
+        color: Color(0xE60B0912),
+        shape: SlantBorder(left: 0, right: 10),
       ),
-      child: child,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          cell(km.toStringAsFixed(1), 'KM'),
+          const SizedBox(width: 14),
+          cell(_formatDuration(elapsed), 'TEMPO'),
+        ],
+      ),
     );
   }
 }
 
-/// Barra collassata "Auto amiche" — sempre inline nel flusso (mai in
-/// overlay) mentre si è in vista mappa, così non copre mai la CTA sotto.
-/// A destra il microfono è il push-to-talk (un tocco per parlare, un
-/// secondo per inviare: chi guida non può tenere premuto); il resto della
-/// barra apre la scelta del canale.
-class _AutoAmicheCollapsedBar extends ConsumerWidget {
-  final double speedKmh;
+
+/// Foglio "SEGNALA QUI" (velox / pattuglia), stesso aspetto del prototipo:
+/// pannello scuro con bordo superiore oro.
+Future<RadarCategory?> _showReportSheet(BuildContext context) {
+  return showModalBottomSheet<RadarCategory>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    barrierColor: const Color(0x8C000000),
+    builder: (ctx) => SafeArea(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(14, 0, 14, 30),
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          color: AppColor.surface,
+          border: Border(
+            top: BorderSide(color: AppColor.gold, width: 2),
+            left: BorderSide(color: AppColor.line),
+            right: BorderSide(color: AppColor.line),
+            bottom: BorderSide(color: AppColor.line),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('SEGNALA QUI',
+                style: AppType.display(
+                    fontWeight: FontWeight.w900, fontSize: 24)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _ReportOption(
+                    icon: Icons.videocam_rounded,
+                    color: AppColor.gold,
+                    label: 'VELOX',
+                    onTap: () => Navigator.of(ctx).pop(RadarCategory.velox),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _ReportOption(
+                    icon: Icons.shield_rounded,
+                    color: AppColor.info,
+                    label: 'PATTUGLIA',
+                    onTap: () =>
+                        Navigator.of(ctx).pop(RadarCategory.pattuglia),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _ReportOption extends StatelessWidget {
+  const _ReportOption({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final String label;
   final VoidCallback onTap;
-  const _AutoAmicheCollapsedBar({required this.speedKmh, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return HeatPressable(
+      onTap: onTap,
+      child: Container(
+        height: 60,
+        color: AppColor.surfaceHigh,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 10),
+            Text(label,
+                style: AppType.display(fontSize: 18, italic: false)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Barra "Auto amiche": velocità a sinistra, stato del canale al centro
+/// (tocco = scelta canale), microfono push-to-talk a destra (un tocco per
+/// parlare, un secondo per inviare: chi guida non può tenere premuto).
+class _AutoAmicheBar extends ConsumerWidget {
+  final double speedKmh;
+  final VoidCallback onOpenChannels;
+  const _AutoAmicheBar({required this.speedKmh, required this.onOpenChannels});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onlineCount = ref.watch(liveMapControllerProvider).length;
     // Tiene vivo il canale voce (provider autoDispose) anche a pannello
-    // chiuso: un "push" ricevuto mentre il gruppo è collassato deve
-    // comunque riprodursi, non solo quando _ChannelPicker è montato.
+    // chiuso: un "push" ricevuto deve comunque riprodursi.
     final voice = ref.watch(voiceChannelControllerProvider);
     final notifier = ref.read(voiceChannelControllerProvider.notifier);
 
-    return _AmicheCard(
-      child: _CollapsedBar(
-        speedKmh: speedKmh,
-        onlineCount: onlineCount,
-        voice: voice,
-        // Il canale non si cambia a metà registrazione (vedi
-        // VoiceChannelController.selectChannel).
-        onOpenChannels: voice.recording ? null : onTap,
-        onToggleTalk: () {
-          if (voice.sending) return;
-          // Chi guida non guarda lo schermo: la vibrazione conferma che la
-          // registrazione è partita / il messaggio è stato inviato.
-          HapticFeedback.mediumImpact();
-          notifier.toggleTalking();
-        },
-      ),
-    );
-  }
-}
-
-class _CollapsedBar extends StatelessWidget {
-  final double speedKmh;
-  final int onlineCount;
-  final VoiceChannelState voice;
-  final VoidCallback? onOpenChannels;
-  final VoidCallback onToggleTalk;
-  const _CollapsedBar({
-    required this.speedKmh,
-    required this.onlineCount,
-    required this.voice,
-    required this.onOpenChannels,
-    required this.onToggleTalk,
-  });
-
-  String get _status {
-    if (voice.recording) return 'In onda · tocca per inviare';
-    if (voice.sending) return 'Invio...';
-    final speaking = voice.speaking;
-    if (speaking != null) {
-      return '${speaking.username.isEmpty ? "Qualcuno" : speaking.username} parla';
+    final String status;
+    if (voice.recording) {
+      status = 'in onda · tocca per inviare';
+    } else if (voice.sending) {
+      status = 'invio…';
+    } else if (voice.speaking != null) {
+      final name = voice.speaking!.username;
+      status = '${name.isEmpty ? 'qualcuno' : name} parla';
+    } else {
+      status = 'canale ${voice.channel} · $onlineCount online';
     }
-    return 'Canale ${voice.channel} · $onlineCount online';
-  }
-
-  @override
-  Widget build(BuildContext context) {
     final highlight = voice.recording || voice.speaking != null;
-    return Padding(
-      padding: const EdgeInsets.all(18),
+    // Il canale non si cambia a metà registrazione.
+    final canOpen = !voice.recording;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      decoration: const ShapeDecoration(
+        color: AppColor.surface,
+        shape: ChamferBorder(cut: 14, side: BorderSide(color: AppColor.line)),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text('VELOCITÀ',
-                  style: AppType.text(
-                      fontSize: 12,
-                      letterSpacing: 1.4,
-                      color: AppColor.inkMuted)),
-              const SizedBox(height: 6),
+                  style:
+                      AppType.label.copyWith(fontSize: 11, letterSpacing: 1.6)),
               Text.rich(
                 TextSpan(
                   text: speedKmh.toStringAsFixed(0),
-                  style: AppType.text(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 38,
-                      color: AppColor.ink),
                   children: [
                     TextSpan(
                       text: ' km/h',
-                      style: AppType.text(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: AppColor.cyan),
+                      style: AppType.display(
+                          fontSize: 13, italic: false, color: AppColor.info),
                     ),
                   ],
                 ),
+                style: AppType.display(
+                    fontWeight: FontWeight.w900, fontSize: 32, height: 1),
               ),
             ],
           ),
           const SizedBox(width: 12),
           Expanded(
             child: GestureDetector(
-              onTap: onOpenChannels,
+              onTap: canOpen ? onOpenChannels : null,
               behavior: HitTestBehavior.opaque,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -1139,25 +1293,25 @@ class _CollapsedBar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('AUTO AMICHE',
-                          style: AppType.text(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppColor.ink)),
-                      if (onOpenChannels != null)
+                          style: AppType.display(
+                              fontSize: 15,
+                              italic: false,
+                              letterSpacing: 1.4)),
+                      if (canOpen)
                         const Icon(Icons.keyboard_arrow_up_rounded,
                             color: AppColor.inkMuted, size: 18),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
-                    _status,
+                    status,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
-                    style: AppType.text(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: highlight ? AppColor.cyan : AppColor.inkMuted),
+                    style: AppType.caption.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: highlight ? AppColor.info : AppColor.inkMuted,
+                    ),
                   ),
                 ],
               ),
@@ -1167,7 +1321,13 @@ class _CollapsedBar extends StatelessWidget {
           _MicButton(
             recording: voice.recording,
             busy: voice.sending,
-            onTap: onToggleTalk,
+            onTap: () {
+              if (voice.sending) return;
+              // Chi guida non guarda lo schermo: la vibrazione conferma
+              // l'avvio della registrazione / l'invio.
+              HapticFeedback.mediumImpact();
+              notifier.toggleTalking();
+            },
           ),
         ],
       ),
@@ -1175,10 +1335,8 @@ class _CollapsedBar extends StatelessWidget {
   }
 }
 
-/// Push-to-talk a tocco singolo: primo tocco registra, secondo tocco ferma
-/// e invia il clip (vedi VoiceChannelController.toggleTalking). Mai un glow
-/// qui: sulla schermata l'elemento acceso è già la CTA "Termina viaggio"
-/// (regola 1 di DESIGN.md) — lo stato attivo si legge dal riempimento.
+/// Push-to-talk a tocco singolo (vedi VoiceChannelController.toggleTalking).
+/// Nessun glow: lo stato attivo si legge dal riempimento.
 class _MicButton extends StatelessWidget {
   final bool recording;
   final bool busy;
@@ -1192,10 +1350,10 @@ class _MicButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconColor = recording
-        ? AppColor.void_
+        ? AppColor.onAccent
         : busy
             ? AppColor.inkFaint
-            : AppColor.cyan;
+            : AppColor.ink;
     return Semantics(
       button: true,
       label: recording ? 'Invia messaggio vocale' : 'Parla',
@@ -1208,9 +1366,9 @@ class _MicButton extends StatelessWidget {
           height: 56,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: recording ? AppColor.cyan : AppColor.surfaceHigh,
-            border:
-                Border.all(color: recording ? AppColor.cyan : AppColor.line),
+            color: recording ? AppColor.danger : AppColor.surfaceHigh,
+            border: Border.all(
+                color: recording ? AppColor.danger : AppColor.lineMuted),
           ),
           child: Icon(
             recording ? Icons.mic_rounded : Icons.mic_none_rounded,
@@ -1223,9 +1381,8 @@ class _MicButton extends StatelessWidget {
   }
 }
 
-/// Tendina "Auto amiche": serve solo a scegliere il canale. Un tocco su un
-/// numero lo seleziona e chiude subito il pannello — la lista degli utenti
-/// online non serve a chi guida.
+/// Pannello "Auto amiche": serve solo a scegliere il canale. Un tocco su un
+/// numero lo seleziona e chiude subito il pannello.
 class _ChannelPicker extends ConsumerWidget {
   final VoidCallback onClose;
   const _ChannelPicker({required this.onClose});
@@ -1235,60 +1392,59 @@ class _ChannelPicker extends ConsumerWidget {
     final current =
         ref.watch(voiceChannelControllerProvider.select((s) => s.channel));
     final notifier = ref.read(voiceChannelControllerProvider.notifier);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      decoration: const BoxDecoration(
+        color: AppColor.surface,
+        border: Border(
+          top: BorderSide(color: AppColor.info, width: 2),
+          left: BorderSide(color: AppColor.line),
+          right: BorderSide(color: AppColor.line),
+          bottom: BorderSide(color: AppColor.line),
+        ),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
             onTap: onClose,
             behavior: HitTestBehavior.opaque,
-            child: Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 14),
-                decoration: BoxDecoration(
-                  color: AppColor.line,
-                  borderRadius: BorderRadius.circular(2),
+            child: SizedBox(
+              height: 16,
+              width: double.infinity,
+              child: Center(
+                child: Transform(
+                  transform: Matrix4.skewX(-.5),
+                  child: Container(width: 40, height: 4, color: AppColor.line),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 6),
           Row(
             children: [
               Text('AUTO AMICHE',
-                  style: AppType.text(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      color: AppColor.ink)),
+                  style: AppType.display(
+                      fontWeight: FontWeight.w900, fontSize: 22)),
               const SizedBox(width: 6),
               Text('· scegli il canale',
-                  style: AppType.text(fontSize: 13, color: AppColor.inkMuted)),
-              const Spacer(),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                    color: AppColor.inkMuted),
-                onPressed: onClose,
-              ),
+                  style: AppType.caption.copyWith(fontSize: 13)),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
               const perRow = 4;
-              const gap = 10.0;
-              final chipWidth =
-                  (constraints.maxWidth - gap * (perRow - 1)) / perRow;
+              const gap = 6.0;
+              final w = (constraints.maxWidth - gap * (perRow - 1)) / perRow;
               return Wrap(
                 spacing: gap,
                 runSpacing: gap,
                 children: [
                   for (var n = 1; n <= kVoiceChannelCount; n++)
                     SizedBox(
-                      width: chipWidth,
+                      width: w,
                       child: _ChannelChip(
                         number: n,
                         selected: n == current,
@@ -1320,93 +1476,25 @@ class _ChannelChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = selected ? AppColor.info : AppColor.ink;
     return Semantics(
       button: true,
       selected: selected,
       label: 'Canale $number',
-      child: GestureDetector(
+      child: HeatPressable(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
         child: Container(
           height: 52,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColor.surface,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: selected ? AppColor.cyan : AppColor.line),
+          decoration: ShapeDecoration(
+            color: AppColor.deep,
+            shape: SlantBorder.all(8,
+                side: BorderSide(
+                    color: selected ? AppColor.info : AppColor.line)),
           ),
           child: Text('$number',
-              style: AppType.text(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                  color: selected ? AppColor.cyan : AppColor.ink)),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCell extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
-  const _StatCell(
-      {required this.label, required this.value, required this.unit});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFF1D2740))),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: AppType.text(
-                  fontSize: 14, color: AppColor.inkMuted)),
-          const SizedBox(height: 2),
-          Text.rich(
-            TextSpan(
-              text: value,
-              style: AppType.text(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 26,
-                  color: AppColor.ink),
-              children: [
-                if (unit.isNotEmpty)
-                  TextSpan(
-                    text: ' $unit',
-                    style: AppType.text(
-                        fontSize: 15, color: AppColor.cyan),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoundIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _RoundIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xEB0D1222),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 48,
-          height: 48,
-          child: Icon(icon, color: AppColor.cyan, size: 22),
+              style: AppType.display(
+                  fontWeight: FontWeight.w900, fontSize: 22, color: c)),
         ),
       ),
     );

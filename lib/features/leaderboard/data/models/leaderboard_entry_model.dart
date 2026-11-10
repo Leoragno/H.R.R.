@@ -11,6 +11,11 @@ class LeaderboardEntryModel {
   final int periodRep;
   final double totalKm;
   final double topSpeedKmh;
+  final double avgSpeedKmh;
+  final double longestTripKm;
+  final double? bestZeroToHundred;
+  final String? mascotId;
+  final String? country;
 
   const LeaderboardEntryModel({
     required this.rank,
@@ -23,6 +28,11 @@ class LeaderboardEntryModel {
     required this.periodRep,
     required this.totalKm,
     required this.topSpeedKmh,
+    this.avgSpeedKmh = 0,
+    this.longestTripKm = 0,
+    this.bestZeroToHundred,
+    this.mascotId,
+    this.country,
   });
 
   factory LeaderboardEntryModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +47,12 @@ class LeaderboardEntryModel {
       periodRep: (json['period_rep'] as num?)?.toInt() ?? 0,
       totalKm: (json['total_km'] as num?)?.toDouble() ?? 0,
       topSpeedKmh: (json['top_speed_kmh'] as num?)?.toDouble() ?? 0,
+      // Colonne aggiunte in 0038: assenti se la migrazione non è applicata.
+      avgSpeedKmh: (json['avg_speed_kmh'] as num?)?.toDouble() ?? 0,
+      longestTripKm: (json['longest_trip_km'] as num?)?.toDouble() ?? 0,
+      bestZeroToHundred: (json['best_zero_to_hundred'] as num?)?.toDouble(),
+      mascotId: json['mascot_id'] as String?,
+      country: json['country'] as String?,
     );
   }
 
@@ -51,5 +67,10 @@ class LeaderboardEntryModel {
         periodRep: periodRep,
         totalKm: totalKm,
         topSpeedKmh: topSpeedKmh,
+        avgSpeedKmh: avgSpeedKmh,
+        longestTripKm: longestTripKm,
+        bestZeroToHundred: bestZeroToHundred,
+        mascotId: mascotId,
+        country: country,
       );
 }

@@ -24,7 +24,7 @@ class HrrWordmark extends StatelessWidget {
   Widget build(BuildContext context) {
     final wordmark = ShaderMask(
       shaderCallback: (bounds) =>
-          const LinearGradient(colors: [AppColor.cyan, AppColor.magenta])
+          LinearGradient(colors: [AppColor.accent, AppColor.magenta])
               .createShader(bounds),
       child: Text(
         'HRR',

@@ -95,6 +95,7 @@ class CarSpottingController extends _$CarSpottingController {
 
       ref.invalidate(spotsFeedProvider);
       ref.invalidate(topRatedSpotsProvider);
+      ref.invalidate(mySpotsProvider);
 
       return result;
     } finally {
@@ -158,6 +159,9 @@ class CarSpottingController extends _$CarSpottingController {
       });
 
       ref.invalidate(spotCommentsProvider(spotId));
+      // Il conteggio commenti nelle card del feed.
+      ref.invalidate(spotsFeedProvider);
+      ref.invalidate(mySpotsProvider);
       return result;
     } finally {
       keepAliveLink.close();
@@ -180,6 +184,7 @@ class CarSpottingController extends _$CarSpottingController {
 
       ref.invalidate(spotsFeedProvider);
       ref.invalidate(topRatedSpotsProvider);
+      ref.invalidate(mySpotsProvider);
       ref.invalidate(spotByIdProvider(spotId));
     } finally {
       keepAliveLink.close();

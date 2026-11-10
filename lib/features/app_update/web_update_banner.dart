@@ -120,7 +120,7 @@ class _WebUpdateBannerState extends State<WebUpdateBanner>
                       TextButton(
                         onPressed: _reloading ? null : _reload,
                         child: Text(_reloading ? 'Aggiorno…' : 'Aggiorna',
-                            style: const TextStyle(color: AppColor.cyan)),
+                            style: TextStyle(color: AppColor.accent)),
                       ),
                       IconButton(
                         tooltip: 'Più tardi',

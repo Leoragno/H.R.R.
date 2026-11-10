@@ -7,21 +7,24 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/neon_cta_button.dart';
-import '../../../../core/widgets/notification_bell_button.dart';
-import '../../../../core/widgets/profile_avatar_button.dart';
+import '../../../../core/theme/heat_shapes.dart';
+import '../../../../core/widgets/heat/heat_widgets.dart';
+import '../../../notifications/presentation/providers/notifications_provider.dart';
+import '../../../progression/domain/progression.dart';
+import '../../../progression/presentation/progression_providers.dart';
 import '../../../radar/presentation/providers/radar_provider.dart';
+import '../../../rival/data/rival_dialogue.dart';
+import '../../../rival/domain/entities/rival_popup.dart';
+import '../../../rival/presentation/providers/active_mascot_provider.dart';
 import '../../../trip/domain/entities/trip.dart';
 import '../../../trip/presentation/providers/trip_live_provider.dart';
 import '../../../trip/presentation/providers/trip_provider.dart';
-import '../../../trip/presentation/widgets/route_preview_painter.dart';
 import '../widgets/home_map_background.dart';
 
-/// Home / tab "Guida": sfondo decorativo + sheet trascinabile con storico
-/// viaggi e CTA per iniziare una nuova corsa. Vedi Guida.dc.html righe
-/// 152-282 (stato non-live: mappa + bottom sheet). Prende il posto del
-/// vecchio HUD pilota (rimosso per ora su richiesta) — era prima il
-/// contenuto del tab "Mappa", spostato qui e rinominato.
+/// Home / tab "Guida" — HEAT. Protagonista: AVVIA GUIDA (unico elemento
+/// pieno d'accento con glow). Sopra: mappa reale come sfondo, barra con
+/// radio · livello · notifiche, NOTTE/GIORNO, RADAR e il pannello HEAT.
+/// Sotto: sfida della mascotte, missioni di oggi, ultime guide.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -32,10 +35,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   MapLibreMapController? _mapController;
 
-  // La sheet trascinabile può collassare fino a questa frazione
-  // dell'altezza schermo (vedi minChildSize sotto): il FAB "centra" resta
-  // sempre appena sopra, qualunque sia la sua posizione attuale.
-  static const _sheetMinChildSize = 0.14;
+  static const _mapHeight = 450.0;
 
   Future<void> _recenter() async {
     final controller = _mapController;
@@ -50,18 +50,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         15,
       ));
     } catch (_) {
-      // Permesso negato o GPS non disponibile: nessun errore bloccante da
-      // mostrare, l'utente può comunque continuare a esplorare la mappa a
-      // mano.
+      // Permesso negato o GPS non disponibile: niente di bloccante.
     }
   }
 
   @override
   Widget build(BuildContext context) {
     // Guida rimasta 'active' lato server perché il processo è stato ucciso
-    // a metà tracking (kill di sistema, riavvio, force-stop): la
-    // proponiamo qui una sola volta, invece di lasciarla bloccata per
-    // sempre fuori dalla cronologia (che mostra solo status='completed').
+    // a metà tracking: la proponiamo qui una sola volta.
     ref.listen<AsyncValue<PersistedTripState?>>(pendingTripRecoveryProvider,
         (previous, next) {
       final saved = next.valueOrNull;
@@ -71,46 +67,247 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
     });
 
-    return Scaffold(
-      backgroundColor: AppColor.void_,
-      body: Stack(
+    final top = MediaQuery.paddingOf(context).top;
+    final night = isNightTime(DateTime.now());
+
+    // Niente Scaffold proprio: così `Scaffold.of` trova quello della shell
+    // (drawer della radio).
+    return ColoredBox(
+      color: AppColor.base,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Stack(
+          children: [
+            // Mappa decorativa: scorre col contenuto, nessun gesto (lo
+            // scroll della pagina ha la precedenza).
+            SizedBox(
+              height: _mapHeight + top,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  IgnorePointer(
+                    child: HomeMapBackground(
+                      onMapCreated: (c) => setState(() => _mapController = c),
+                    ),
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x8C0B0912),
+                          Color(0x000B0912),
+                          Color(0x000B0912),
+                          Color(0xF20B0912),
+                        ],
+                        stops: [0, .2, .62, 1],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 14,
+              top: top + 238,
+              child: _HeatPanel(night: night),
+            ),
+            Positioned(
+              right: 14,
+              top: top + 308,
+              child: _SquareButton(
+                icon: Icons.my_location_rounded,
+                onTap: _recenter,
+                semantics: 'centra la mappa',
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(14, top + 8, 14, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _TopBar(),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _ModeChip(night: night),
+                      const _RadarChip(),
+                    ],
+                  ),
+                  const SizedBox(height: 248 + 104),
+                  HeatEnter(
+                    child: HeatButton(
+                      label: 'AVVIA GUIDA',
+                      subtitle: 'registrazione con telemetria e FLOW',
+                      height: 80,
+                      fontSize: 38,
+                      alignStart: true,
+                      gradientEnd: night ? AppColor.night : AppColor.day,
+                      onPressed: () => context.push(AppRoutes.tripLive),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const HeatEnter(index: 1, child: _RivalCard()),
+                  const SizedBox(height: 10),
+                  const HeatEnter(index: 2, child: _MissionsCard()),
+                  const SizedBox(height: 18),
+                  const _RecentTrips(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BARRA IN ALTO
+// ---------------------------------------------------------------------------
+
+class _TopBar extends ConsumerWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progress = ref.watch(levelProgressProvider);
+    final mascot = ref.watch(activeMascotProvider);
+    final unread = ref.watch(unreadNotificationsCountProvider);
+    final translucent = AppColor.surface.withValues(alpha: .92);
+
+    return SizedBox(
+      height: 52,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Positioned.fill(
-            child: HomeMapBackground(
-              onMapCreated: (c) => setState(() => _mapController = c),
+          HeatPanel(
+            shape: const SlantBorder(left: 0, right: 10),
+            color: translucent,
+            padding: EdgeInsets.zero,
+            onTap: () => Scaffold.maybeOf(context)?.openDrawer(),
+            child: SizedBox(
+              width: 50,
+              child: Icon(Icons.radio_rounded, color: AppColor.accent, size: 22),
             ),
           ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColor.void_.withValues(alpha: 0.55),
-                    AppColor.void_.withValues(alpha: 0),
-                    AppColor.void_.withValues(alpha: 0),
-                    AppColor.void_.withValues(alpha: 0.6),
-                  ],
-                  stops: const [0, 0.22, 0.55, 1],
-                ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: HeatPanel(
+              color: translucent,
+              padding: const EdgeInsets.fromLTRB(12, 5, 16, 5),
+              onTap: () => context.push(AppRoutes.profile),
+              child: Row(
+                children: [
+                  ClipPath(
+                    clipper: const ShapeBorderClipper(shape: SlantBorder.all(6)),
+                    child: Image.asset(
+                      'assets/faces/${mascot.id}.png',
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              'LV ${progress?.level ?? '–'} ',
+                              style: AppType.display(
+                                fontSize: 21,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
+                            ),
+                            Text(
+                              progress?.title ?? '',
+                              style: AppType.display(
+                                fontSize: 13,
+                                color: AppColor.accent,
+                                letterSpacing: 1,
+                                italic: false,
+                              ),
+                            ),
+                            const Spacer(),
+                            Flexible(
+                              flex: 3,
+                              child: Text(
+                                progress == null
+                                    ? ''
+                                    : '${_fmt(progress.xpInLevel)} / '
+                                        '${_fmt(progress.xpNeeded)} XP',
+                                maxLines: 1,
+                                overflow: TextOverflow.fade,
+                                softWrap: false,
+                                style: AppType.display(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColor.inkMuted,
+                                  italic: false,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        SkewBar(value: progress?.fraction ?? 0),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          Positioned(
-            right: AppSpace.md,
-            bottom: MediaQuery.sizeOf(context).height * _sheetMinChildSize +
-                AppSpace.md,
-            child: _RecenterButton(onTap: _recenter),
-          ),
-          DraggableScrollableSheet(
-            initialChildSize: 0.34,
-            minChildSize: _sheetMinChildSize,
-            maxChildSize: 0.92,
-            snap: true,
-            snapSizes: const [_sheetMinChildSize, 0.34, 0.92],
-            builder: (context, scrollController) =>
-                _GuidaSheet(scrollController: scrollController),
+          const SizedBox(width: 6),
+          Semantics(
+            button: true,
+            label: unread > 0 ? 'notifiche, $unread non lette' : 'notifiche',
+            child: HeatPanel(
+              shape: const SlantBorder(left: 10, right: 0),
+              color: translucent,
+              padding: EdgeInsets.zero,
+              onTap: () => context.push(AppRoutes.notifications),
+              child: SizedBox(
+                width: 52,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.notifications_outlined,
+                        color: AppColor.ink, size: 22),
+                    if (unread > 0)
+                      Positioned(
+                        top: 7,
+                        right: 6,
+                        child: Container(
+                          constraints:
+                              const BoxConstraints(minWidth: 17, minHeight: 17),
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          color: AppColor.accent,
+                          alignment: Alignment.center,
+                          child: Text(
+                            unread > 9 ? '9+' : '$unread',
+                            style: AppType.display(
+                              fontSize: 13,
+                              color: AppColor.onAccent,
+                              italic: false,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -118,26 +315,475 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-class _RecenterButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _RecenterButton({required this.onTap});
+String _fmt(int n) {
+  final s = n.toString();
+  final b = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) b.write('.');
+    b.write(s[i]);
+  }
+  return b.toString();
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({required this.night});
+
+  final bool night;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColor.surfaceHigh.withValues(alpha: 0.85),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: const Padding(
-          padding: EdgeInsets.all(AppSpace.md),
-          child: Icon(Icons.my_location_rounded, color: AppColor.ink, size: 26),
+    return HeatChip(
+      label: night ? 'NOTTE' : 'GIORNO',
+      leading: Icon(
+        night ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+        size: 18,
+        color: night ? AppColor.night : AppColor.day,
+      ),
+      onTap: () => ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(night
+              ? 'notte: dalle 22 alle 6 le guide alzano l\'HEAT e moltiplicano gli XP.'
+              : 'giorno: niente HEAT. dalle 22 ogni guida lo fa salire.'),
+        )),
+    );
+  }
+}
+
+class _RadarChip extends ConsumerWidget {
+  const _RadarChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(radarModeControllerProvider);
+    return HeatChip(
+      label: on ? 'RADAR ON' : 'RADAR OFF',
+      leading: Transform.rotate(
+        angle: .785,
+        child: Container(
+          width: 7,
+          height: 7,
+          color: on ? AppColor.accent : AppColor.inkFaint,
+        ),
+      ),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: AppColor.surface,
+        barrierColor: const Color(0x99000000),
+        shape: const RoundedRectangleBorder(),
+        builder: (_) => const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 20, 18, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionLabel('RADAR VELOX / PATTUGLIA'),
+                SizedBox(height: 12),
+                _RadarModeSection(),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
+
+class _SquareButton extends StatelessWidget {
+  const _SquareButton({
+    required this.icon,
+    required this.onTap,
+    required this.semantics,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String semantics;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semantics,
+      child: HeatPanel(
+        color: AppColor.surfaceHigh,
+        padding: EdgeInsets.zero,
+        onTap: onTap,
+        child: SizedBox(
+          width: 50,
+          height: 50,
+          child: Icon(icon, color: AppColor.ink, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HEAT
+// ---------------------------------------------------------------------------
+
+class _HeatPanel extends ConsumerWidget {
+  const _HeatPanel({required this.night});
+
+  final bool night;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final heat = ref.watch(heatProvider);
+    final streak = ref.watch(streakProvider);
+    final lit = night ? AppColor.accent : AppColor.day;
+    final mult = heatMultiplier(heat);
+
+    return HeatPanel(
+      shape: const SlantBorder(left: 0, right: 12),
+      color: const Color(0xC70B0912),
+      borderColor: null,
+      padding: const EdgeInsets.fromLTRB(12, 10, 20, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                'HEAT $heat',
+                style: AppType.display(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                night
+                    ? '×${mult.toStringAsFixed(2).replaceAll('.', ',')} XP'
+                    : 'solo di notte',
+                style: AppType.display(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColor.inkMuted,
+                  italic: false,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 1; i <= kHeatMax; i++)
+                Icon(
+                  i <= heat
+                      ? Icons.local_fire_department_rounded
+                      : Icons.local_fire_department_outlined,
+                  size: 22,
+                  color: i <= heat ? lit : AppColor.line,
+                ),
+            ],
+          ),
+          if (streak > 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.calendar_month_rounded,
+                    size: 16, color: AppColor.gold),
+                const SizedBox(width: 4),
+                Text(
+                  'SERIE $streak ${streak == 1 ? 'GIORNO' : 'GIORNI'} · '
+                  '+${streakBonusXp(streak + 1)} XP DOMANI',
+                  style: AppType.display(
+                    fontSize: 13,
+                    letterSpacing: 1,
+                    color: AppColor.gold,
+                    italic: false,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CARD
+// ---------------------------------------------------------------------------
+
+class _RivalCard extends ConsumerWidget {
+  const _RivalCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mascot = ref.watch(activeMascotProvider);
+    final trips = ref.watch(recentTripsProvider).valueOrNull ?? const [];
+    final now = DateTime.now();
+    final drovenToday = trips.any((t) =>
+        t.startedAt.year == now.year &&
+        t.startedAt.month == now.month &&
+        t.startedAt.day == now.day);
+    final pool = phrasesFor(
+      mascot.id,
+      drovenToday ? RivalMood.greeting : RivalMood.inactivityTaunt,
+    );
+    // Stessa frase per tutto il giorno: niente sfarfallio ai rebuild.
+    final line = pool[now.day % pool.length];
+    final c = mascot.accentColor;
+
+    return HeatPanel(
+      shape: const ChamferBorder(cut: 14, bottomLeft: true),
+      gradient: LinearGradient(
+        colors: [c.withValues(alpha: .35), AppColor.surface],
+        stops: const [0, .6],
+      ),
+      padding: const EdgeInsets.fromLTRB(10, 8, 16, 8),
+      onTap: () => context.go(AppRoutes.game),
+      child: Row(
+        children: [
+          DecoratedBox(
+            decoration: ShapeDecoration(
+              shape: SlantBorder.all(8, side: BorderSide(color: c, width: 1.5)),
+            ),
+            child: ClipPath(
+              clipper: const ShapeBorderClipper(shape: SlantBorder.all(8)),
+              child: Image.asset(
+                'assets/faces/${mascot.id}.png',
+                width: 62,
+                height: 62,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SFIDA DA ${mascot.name}',
+                  style: AppType.display(
+                    fontSize: 14,
+                    letterSpacing: 1.8,
+                    color: c,
+                    italic: false,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text('"$line"', style: AppType.body.copyWith(height: 1.35)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColor.inkMuted, size: 24),
+        ],
+      ),
+    );
+  }
+}
+
+class _MissionsCard extends ConsumerWidget {
+  const _MissionsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final m = ref.watch(todayMissionsProvider);
+    final total = m?.total ?? 0;
+    return HeatPanel(
+      padding: const EdgeInsets.fromLTRB(14, 12, 18, 12),
+      onTap: () => context.push(AppRoutes.missions),
+      child: Row(
+        children: [
+          const Icon(Icons.flag_outlined, color: AppColor.gold, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'MISSIONI DI OGGI',
+                        style: AppType.display(
+                          fontSize: 15,
+                          letterSpacing: 1.6,
+                          italic: false,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      m == null ? '–' : '${m.done}/$total',
+                      style: AppType.display(
+                        fontSize: 15,
+                        color: AppColor.inkMuted,
+                        italic: false,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                SkewBar(
+                  value: total == 0 ? 0 : m!.done / total,
+                  segments: total == 0 ? 4 : total,
+                  color: AppColor.gold,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColor.inkMuted, size: 22),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ULTIME GUIDE
+// ---------------------------------------------------------------------------
+
+class _RecentTrips extends ConsumerWidget {
+  const _RecentTrips();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tripsAsync = ref.watch(recentTripsProvider);
+    final count = tripsAsync.valueOrNull?.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionLabel(
+          'ULTIME GUIDE',
+          trailing: count == null ? null : '$count guide',
+        ),
+        const SizedBox(height: 6),
+        tripsAsync.when(
+          loading: () => Padding(
+            padding: const EdgeInsets.all(AppSpace.lg),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColor.accent),
+            ),
+          ),
+          error: (e, _) => const _InfoRow(
+            'impossibile caricare lo storico. riprova tra poco.',
+          ),
+          data: (trips) {
+            if (trips.isEmpty) {
+              return const _InfoRow(
+                'nessuna guida registrata. premi AVVIA GUIDA per il primo FLOW.',
+              );
+            }
+            return Column(
+              children: [
+                for (var i = 0; i < trips.length && i < 6; i++) ...[
+                  if (i > 0) const SizedBox(height: 5),
+                  HeatEnter(index: i, child: _TripRow(trip: trips[i])),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      color: AppColor.surface,
+      child: Text(text, style: AppType.body.copyWith(color: AppColor.inkMuted)),
+    );
+  }
+}
+
+class _TripRow extends StatelessWidget {
+  const _TripRow({required this.trip});
+
+  final Trip trip;
+
+  static const _days = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
+  @override
+  Widget build(BuildContext context) {
+    final s = trip.startedAt;
+    final night = isNightTime(s);
+    final hm =
+        '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}';
+    final date = '${_days[s.weekday - 1]} ${s.day} · $hm';
+    final minutes = (trip.durationSeconds / 60).round();
+    final km = trip.distanceKm.toStringAsFixed(1).replaceAll('.', ',');
+
+    return HeatPanel(
+      borderColor: null,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      onTap: () =>
+          context.push(AppRoutes.tripDetail.replaceFirst(':tripId', trip.id)),
+      child: Row(
+        children: [
+          Icon(
+            night ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+            size: 20,
+            color: AppColor.inkFaint,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(date,
+                    style: AppType.text(
+                        fontSize: 14, fontWeight: FontWeight.w700)),
+                Text('$km km · $minutes min', style: AppType.caption),
+              ],
+            ),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                trip.drivingScore?.toString() ?? '–',
+                style: AppType.display(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 3),
+              Text(
+                'FLOW',
+                style: AppType.display(
+                  fontSize: 12,
+                  letterSpacing: 1,
+                  color: AppColor.inkMuted,
+                  italic: false,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GUIDA INTERROTTA
+// ---------------------------------------------------------------------------
 
 void _showTripRecoveryDialog(
     BuildContext context, WidgetRef ref, PersistedTripState saved) {
@@ -180,163 +826,12 @@ void _showTripRecoveryDialog(
                 .resumeTrip(saved);
             if (context.mounted) context.push(AppRoutes.tripLive);
           },
-          child: const Text('Riprendi',
-              style: TextStyle(color: AppColor.cyan)),
+          child: Text('Riprendi',
+              style: TextStyle(color: AppColor.accent)),
         ),
       ],
     ),
   );
-}
-
-class _GuidaSheet extends ConsumerWidget {
-  final ScrollController scrollController;
-  const _GuidaSheet({required this.scrollController});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tripsAsync = ref.watch(recentTripsProvider);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColor.surfaceHigh.withValues(alpha: 0.92),
-            AppColor.void_.withValues(alpha: 0.96),
-          ],
-        ),
-        border: const Border(
-          top: BorderSide(color: AppColor.line, width: 1),
-          left: BorderSide(color: AppColor.line, width: 1),
-          right: BorderSide(color: AppColor.line, width: 1),
-        ),
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
-      ),
-      child: CustomScrollView(
-        controller: scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                const SizedBox(height: AppSpace.sm),
-                Container(
-                  width: 96,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: AppColor.line,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Guide',
-                        style: AppType.text(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 30,
-                          color: AppColor.ink,
-                        ),
-                      ),
-                      const Row(
-                        children: [
-                          NotificationBellButton(size: 40),
-                          SizedBox(width: 10),
-                          ProfileAvatarButton(),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.md),
-                  child: NeonCtaButton(
-                    label: 'Drive',
-                    icon: Icons.play_arrow_rounded,
-                    minHeight: 58,
-                    onPressed: () => context.push(AppRoutes.tripLive),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      AppSpace.lg, 0, AppSpace.lg, AppSpace.sm),
-                  child: _RadarModeSection(),
-                ),
-              ],
-            ),
-          ),
-          tripsAsync.when(
-            loading: () => const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: CircularProgressIndicator(color: AppColor.cyan),
-              ),
-            ),
-            error: (e, _) => SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: Text('Impossibile caricare lo storico',
-                    style:
-                        AppType.text(color: AppColor.inkMuted)),
-              ),
-            ),
-            data: (trips) {
-              if (trips.isEmpty) {
-                return const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _EmptyTrips(),
-                );
-              }
-              return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.lg),
-                sliver: SliverList.separated(
-                  itemCount: trips.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(height: 1, color: AppColor.line),
-                  itemBuilder: (context, i) =>
-                      _TripRow(trip: trips[i], showDivider: i > 0),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyTrips extends StatelessWidget {
-  const _EmptyTrips();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const Icon(Icons.directions_car_rounded,
-              color: AppColor.inkMuted, size: 30),
-          const SizedBox(width: AppSpace.md),
-          Expanded(
-            child: Text(
-              'Ancora nessuna guida registrata. Premi Drive per iniziare.',
-              style: AppType.text(
-                  color: AppColor.inkMuted, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Interruttore della modalità Velox/Pattuglia + le sue 4 card di
@@ -357,7 +852,7 @@ class _RadarModeSection extends ConsumerWidget {
             Icon(Icons.radar_rounded,
                 size: 20,
                 color: enabled
-                    ? AppColor.cyan
+                    ? AppColor.accent
                     : AppColor.inkMuted),
             const SizedBox(width: 10),
             Expanded(
@@ -369,7 +864,7 @@ class _RadarModeSection extends ConsumerWidget {
             ),
             Switch.adaptive(
               value: enabled,
-              activeThumbColor: AppColor.cyan,
+              activeThumbColor: AppColor.accent,
               onChanged: (_) =>
                   ref.read(radarModeControllerProvider.notifier).toggle(),
             ),
@@ -450,7 +945,7 @@ class _RadarCardsGrid extends ConsumerWidget {
               Expanded(
                 child: _RadarCard(
                   icon: Icons.videocam_rounded,
-                  color: AppColor.cyan,
+                  color: AppColor.accent,
                   title: 'Velox Community',
                   subtitle:
                       'Segnalazioni recenti: ${veloxCommunity.length} in zona.',
@@ -462,7 +957,7 @@ class _RadarCardsGrid extends ConsumerWidget {
               Expanded(
                 child: _RadarCard(
                   icon: Icons.shield_rounded,
-                  color: AppColor.cyan,
+                  color: AppColor.accent,
                   title: 'Pattuglia Community',
                   subtitle:
                       'Segnalazioni recenti: ${pattugliaCommunity.length} in zona.',
@@ -549,107 +1044,3 @@ class _RadarCard extends StatelessWidget {
   }
 }
 
-class _TripRow extends StatelessWidget {
-  final Trip trip;
-  final bool showDivider;
-  const _TripRow({required this.trip, required this.showDivider});
-
-  @override
-  Widget build(BuildContext context) {
-    final start = trip.startedAt;
-    final end = trip.endedAt;
-    final date = '${start.day.toString().padLeft(2, '0')}/'
-        '${start.month.toString().padLeft(2, '0')}/${start.year}';
-    final timeRange = end == null ? _hm(start) : '${_hm(start)} – ${_hm(end)}';
-    final duration = trip.durationSeconds ~/ 60;
-
-    return InkWell(
-      onTap: () =>
-          context.push(AppRoutes.tripDetail.replaceFirst(':tripId', trip.id)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 90,
-              height: 46,
-              child: trip.route.length >= 2
-                  ? RoutePreview(points: trip.route)
-                  : CustomPaint(painter: _SparkPainter(trip.id.hashCode)),
-            ),
-            const SizedBox(width: AppSpace.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(date,
-                      style: AppType.text(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
-                          color: AppColor.ink)),
-                  const SizedBox(height: 2),
-                  Text(timeRange,
-                      style: AppType.text(
-                          fontSize: 15, color: AppColor.inkMuted)),
-                  Text(
-                      '${trip.distanceKm.toStringAsFixed(1)} km · $duration min',
-                      style: AppType.text(
-                          fontSize: 15, color: AppColor.inkMuted)),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—',
-                  style: AppType.metric.copyWith(fontSize: 28),
-                ),
-                Text('KM/H', style: AppType.label),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _hm(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-}
-
-/// Sparkline decorativa e deterministica, usata solo come fallback per i
-/// viaggi antecedenti al salvataggio del percorso reale (route vuota).
-class _SparkPainter extends CustomPainter {
-  final int seed;
-  const _SparkPainter(this.seed);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rnd = seed & 0x7fffffff;
-    final points = <Offset>[];
-    for (var i = 0; i < 8; i++) {
-      final x = size.width * i / 7;
-      final noise = ((rnd >> (i * 3)) % 100) / 100;
-      final y = size.height * (0.2 + 0.6 * noise);
-      points.add(Offset(x, y));
-    }
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (final p in points.skip(1)) {
-      path.lineTo(p.dx, p.dy);
-    }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = AppColor.inkMuted
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.6
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SparkPainter oldDelegate) =>
-      oldDelegate.seed != seed;
-}

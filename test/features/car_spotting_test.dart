@@ -76,6 +76,9 @@ class _FakeCarSpottingRepository implements CarSpottingRepository {
   @override
   Future<List<Spot>> topRated({int limit = 20}) async => const [];
   @override
+  Future<List<Spot>> byAuthor(String authorId, {int limit = 50}) async =>
+      const [];
+  @override
   Future<Spot> spotById(String spotId) async => _spot(id: spotId);
   @override
   Future<SpotRating?> myRating(String spotId) async => null;
@@ -105,53 +108,68 @@ class _FakeCarSpottingRepository implements CarSpottingRepository {
   }
 
   @override
-  Future<void> deleteSpot({required String spotId, required String photoUrl}) async {}
+  Future<void> deleteSpot(
+      {required String spotId, required String photoUrl}) async {}
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('CarSpottingFeedScreen si costruisce e mostra il feed',
-      (tester) async {
+  Future<void> pumpFeed(WidgetTester tester, List<Override> overrides) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          spotsFeedProvider.overrideWith((ref) async => [_spot()]),
-          // Il feed ora mostra anche XP/livello nell'header: evitiamo che
-          // tocchino il vero authRepositoryProvider (richiederebbe
-          // Supabase.initialize, mai chiamato nei test widget).
+          // Evita il vero authRepositoryProvider (Supabase non inizializzato).
           authStateProvider.overrideWith((ref) => Stream.value(null)),
-          myProfileProvider.overrideWith((ref) => Stream.value(null)),
+          ...overrides,
         ],
-        child: const MaterialApp(home: CarSpottingFeedScreen()),
+        // Animazioni ridotte: il riflesso della CTA SPOTTA gira all'infinito.
+        child: MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: const CarSpottingFeedScreen(),
+        ),
       ),
     );
-    // Non pumpAndSettle: lo spinner di caricamento di CachedNetworkImage
-    // anima all'infinito (l'immagine remota fallisce sempre nei test),
-    // quindi non "si stabilizza" mai — bastano due pump per risolvere il
-    // FutureProvider e renderizzare la card.
+    // Non pumpAndSettle: lo spinner di CachedNetworkImage anima
+    // all'infinito (l'immagine remota fallisce sempre nei test).
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+  }
 
-    expect(find.text('CAR SPOTTING'), findsOneWidget);
-    expect(find.text('BMW M3 E46'), findsOneWidget);
+  testWidgets('feed HEAT: card con targa, voto e contatori', (tester) async {
+    await pumpFeed(tester, [
+      spotsFeedProvider.overrideWith((ref) async => [_spot()]),
+    ]);
+
+    expect(find.text('SPOTTING'), findsOneWidget);
+    expect(find.text('M3 E46'), findsOneWidget);
+    expect(find.text('BMW'), findsOneWidget);
+    expect(find.text('4,8'), findsOneWidget);
+    expect(find.text('@leo'), findsOneWidget);
+    expect(find.text('12'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('CarSpottingFeedScreen mostra l\'empty state a feed vuoto',
+  testWidgets('tab TOP AUTO mostra il rank, empty state a feed vuoto',
       (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          spotsFeedProvider.overrideWith((ref) async => const []),
-          authStateProvider.overrideWith((ref) => Stream.value(null)),
-          myProfileProvider.overrideWith((ref) => Stream.value(null)),
-        ],
-        child: const MaterialApp(home: CarSpottingFeedScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpFeed(tester, [
+      spotsFeedProvider.overrideWith((ref) async => const []),
+      topRatedSpotsProvider.overrideWith((ref) async => [_spot()]),
+    ]);
+    expect(find.textContaining('nessuno spot ancora'), findsOneWidget);
 
-    expect(find.textContaining('Nessuna auto avvistata'), findsOneWidget);
+    await tester.tap(find.text('TOP AUTO'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('#1'), findsOneWidget);
+    expect(find.text('M3 E46'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   test(

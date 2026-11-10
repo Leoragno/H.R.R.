@@ -83,16 +83,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(tester.takeException(), isNull);
-    expect(find.text('DRIVE COMPLETED'), findsOneWidget);
+    expect(find.textContaining(RegExp('GUIDA COMPLETATA|VIAGGIO REGISTRATO')),
+        findsOneWidget);
 
     // ListView non costruisce i figli fuori viewport: scorriamo passo per
     // passo per verificare anche le sezioni più in basso.
     final listFinder = find.byType(Scrollable).first;
     for (final label in [
-      'Statistiche del trip',
-      'Speed Over Time',
-      'Elevation Over Time',
-      'Elimina trip',
+      // 12.4 km / 18 min senza telemetria particolare -> profilo equilibrato.
+      // Le statistiche dettagliate stanno ora in DETTAGLI (TripDetail).
+      'FLOW',
+      'OGGI HAI GUIDATO COME',
+      'DETTAGLI',
+      'Elimina viaggio',
     ]) {
       // Passo piccolo: con 300 px, in fondo alla lista il drag sforava
       // oltre "Elevation Over Time" (subito sotto a Speed Over Time)
@@ -101,6 +104,10 @@ void main() {
       await tester.scrollUntilVisible(find.text(label), 100,
           scrollable: listFinder);
       expect(find.text(label), findsOneWidget);
+      if (label == 'OGGI HAI GUIDATO COME') {
+        // Il nome compare sia nella card sia fra le affinità.
+        expect(find.text("Brian O'Conner"), findsWidgets);
+      }
     }
   });
 
@@ -124,13 +131,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(tester.takeException(), isNull);
-    expect(find.text('DRIVE COMPLETED'), findsOneWidget);
+    expect(find.textContaining(RegExp('GUIDA COMPLETATA|VIAGGIO REGISTRATO')),
+        findsOneWidget);
 
     final listFinder = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(find.text('Elimina trip'), 400,
+    await tester.scrollUntilVisible(find.text('Elimina viaggio'), 400,
         scrollable: listFinder);
     // Nessun campione -> niente sezione elevazione.
     expect(find.text('Elevation Over Time'), findsNothing);
-    expect(find.text('Elimina trip'), findsOneWidget);
+    expect(find.text('Elimina viaggio'), findsOneWidget);
   });
 }

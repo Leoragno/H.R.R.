@@ -25,7 +25,7 @@ class ReportOptionTile extends StatelessWidget {
               horizontal: AppSpace.md, vertical: AppSpace.md),
           child: Row(
             children: [
-              Icon(icon, color: AppColor.cyan),
+              Icon(icon, color: AppColor.accent),
               const SizedBox(width: AppSpace.sm),
               Text(label,
                   style: AppType.text(

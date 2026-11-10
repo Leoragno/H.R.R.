@@ -1,241 +1,375 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../domain/entities/territory_cell.dart';
+import '../../domain/territory_decay.dart';
 import '../providers/territory_location_provider.dart';
 import '../providers/territory_provider.dart';
 
-// Devono restare allineate a territory_decay_days() in 0026_territory_
-// decay_counterattack.sql e alla soglia di sbiadimento usata sulla mappa
-// (game_map_background.dart).
-const _kDecayDays = 14;
-const _kFadeWarningDays = 3;
-
-double _daysLeft(TerritoryCell cell) =>
-    _kDecayDays - DateTime.now().difference(cell.claimedAt).inHours / 24;
-
-sealed class _ListItem {
-  const _ListItem();
-}
-
-class _CountryHeader extends _ListItem {
-  final String country;
-  const _CountryHeader(this.country);
-}
-
-class _RegionHeader extends _ListItem {
-  final String region;
-  const _RegionHeader(this.region);
-}
-
-class _TownHeader extends _ListItem {
-  final String town;
-  final int count;
-  const _TownHeader(this.town, this.count);
-}
-
-class _CellRow extends _ListItem {
-  final TerritoryCell cell;
-  const _CellRow(this.cell);
-}
-
-/// "I miei territori" (brief, punto 1): tutti i pentagoni posseduti,
-/// raggruppati per stato/regione/paese (dal reverse geocoding del centro
-/// di ogni cella, vedi territory_location_provider.dart) e, dentro ogni
-/// gruppo, ordinati per scadenza più vicina prima — stesso criterio con
-/// cui la RPC `my_territories` restituiva già la lista piatta.
+/// I MIEI TERRITORI (HEAT, handoff §11): le celle possedute raggruppate per
+/// zona (città dal reverse geocoding, vedi territory_location_provider),
+/// con barra di decadimento e giorni rimasti della cella più a rischio.
+/// Tocca una zona per vederne le singole celle.
+///
+/// Niente accento qui: le zone al sicuro restano in inchiostro, quelle a
+/// rischio usano i colori semantici (oro / rosso) così saltano all'occhio.
 class MyTerritoriesScreen extends ConsumerWidget {
   const MyTerritoriesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final territoriesAsync = ref.watch(myTerritoriesProvider);
-    final locationsAsync = ref.watch(territoryCellLocationsProvider);
+    final locations = ref.watch(territoryCellLocationsProvider).valueOrNull;
 
     return Scaffold(
       backgroundColor: AppColor.base,
-      appBar: AppBar(title: const Text('I miei territori')),
-      body: territoriesAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator(color: AppColor.cyan)),
-        error: (e, _) => Center(
-          child: Text('Errore nel caricamento dei territori',
-              style: AppType.text(color: AppColor.danger)),
-        ),
-        data: (cells) {
-          if (cells.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpace.lg),
-                child: Text(
-                  'Nessun territorio conquistato ancora. Guida per '
-                  'rivendicare i primi esagoni!',
-                  textAlign: TextAlign.center,
-                  style: AppType.text(color: AppColor.inkMuted),
+      body: HeatBackground(
+        glow: false,
+        child: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 30),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go(AppRoutes.game),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: AppColor.ink),
+                  ),
                 ),
               ),
-            );
-          }
-
-          final expiring =
-              cells.where((c) => _daysLeft(c) <= _kFadeWarningDays).toList();
-          final locations = locationsAsync.valueOrNull;
-          final items = locations == null
-              ? [for (final cell in cells) _CellRow(cell)]
-              : _groupedItems(cells, locations);
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpace.md),
-            itemCount: items.length +
-                (expiring.isEmpty ? 0 : 1) +
-                (locations == null ? 1 : 0),
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpace.sm),
-            itemBuilder: (context, i) {
-              var index = i;
-              if (expiring.isNotEmpty) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
-                    child: Text(
-                      '${expiring.length} IN SCADENZA',
-                      style: AppType.label.copyWith(color: AppColor.amber),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const ScreenTitle('I miei\nterritori', fontSize: 48),
+                    const SizedBox(height: 10),
+                    Text(
+                      'ogni zona decade se non ci passi. tocca una zona per '
+                      'vedere le sue celle.',
+                      style: AppType.text(
+                          fontSize: 14, color: AppColor.inkMuted, height: 1.45),
                     ),
-                  );
-                }
-                index--;
-              }
-              if (locations == null) {
-                if (index == 0) {
-                  return Text(
-                    'Raggruppamento per zona in corso…',
-                    style: AppType.caption,
-                  );
-                }
-                index--;
-              }
-              return _buildItem(items[index]);
-            },
-          );
-        },
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...territoriesAsync.when(
+                loading: () => const [
+                  SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: AppColor.inkMuted),
+                      ),
+                    ),
+                  ),
+                ],
+                error: (e, _) => const [
+                  _Message('territori non disponibili. riprova più tardi.'),
+                ],
+                data: (cells) {
+                  if (cells.isEmpty) {
+                    return const [
+                      _Message('nessun territorio conquistato ancora.\n'
+                          'guida per rivendicare i primi esagoni.'),
+                    ];
+                  }
+                  final zones = _zones(cells, locations);
+                  return [
+                    if (locations == null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+                        child: Text('raggruppo per zona…',
+                            style: AppType.caption),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Column(
+                        children: [
+                          for (final (i, z) in zones.indexed) ...[
+                            if (i > 0) const SizedBox(height: 6),
+                            HeatEnter(
+                              index: i.clamp(0, 12),
+                              child: _ZoneTile(zone: z),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ];
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  List<_ListItem> _groupedItems(
-      List<TerritoryCell> cells, Map<String, TerritoryLocation> locations) {
-    // stato -> regione -> paese -> celle (ordinate per scadenza più vicina).
-    final tree = <String, Map<String, Map<String, List<TerritoryCell>>>>{};
-    for (final cell in cells) {
-      final loc = locations[cell.coord.key] ?? TerritoryLocation.unknown;
-      tree
-          .putIfAbsent(loc.country, () => {})
-          .putIfAbsent(loc.region, () => {})
-          .putIfAbsent(loc.town, () => [])
-          .add(cell);
+  /// Zone ordinate dalla più a rischio; dentro, celle per scadenza.
+  static List<_Zone> _zones(
+    List<TerritoryCell> cells,
+    Map<String, TerritoryLocation>? locations,
+  ) {
+    final now = DateTime.now();
+    final byZone = <String, List<TerritoryCell>>{};
+    final regionOf = <String, String>{};
+    for (final c in cells) {
+      final loc = locations?[c.coord.key];
+      final name = loc == null ? 'zona sconosciuta' : loc.town;
+      byZone.putIfAbsent(name, () => []).add(c);
+      if (loc != null) regionOf[name] = loc.region;
     }
-
-    final items = <_ListItem>[];
-    for (final country in tree.keys.toList()..sort()) {
-      items.add(_CountryHeader(country));
-      final regions = tree[country]!;
-      for (final region in regions.keys.toList()..sort()) {
-        items.add(_RegionHeader(region));
-        final towns = regions[region]!;
-        for (final town in towns.keys.toList()..sort()) {
-          final townCells = towns[town]!
-            ..sort((a, b) => _daysLeft(a).compareTo(_daysLeft(b)));
-          items.add(_TownHeader(town, townCells.length));
-          items.addAll(townCells.map(_CellRow.new));
-        }
-      }
-    }
-    return items;
+    final zones = [
+      for (final e in byZone.entries)
+        _Zone(
+          name: e.key,
+          region: regionOf[e.key],
+          cells: e.value
+            ..sort((a, b) =>
+                territoryDaysLeft(a, now).compareTo(territoryDaysLeft(b, now))),
+          minDays: territoryDaysLeft(
+              e.value.reduce((a, b) =>
+                  territoryDaysLeft(a, now) < territoryDaysLeft(b, now)
+                      ? a
+                      : b),
+              now),
+        ),
+    ]..sort((a, b) => a.minDays.compareTo(b.minDays));
+    return zones;
   }
-
-  Widget _buildItem(_ListItem item) => switch (item) {
-        _CountryHeader(:final country) => Padding(
-            padding: const EdgeInsets.only(top: AppSpace.sm, bottom: 2),
-            child: Row(
-              children: [
-                const Icon(Icons.public_rounded,
-                    size: 16, color: AppColor.ink),
-                const SizedBox(width: AppSpace.xs),
-                Text(country.toUpperCase(),
-                    style: AppType.title.copyWith(fontSize: 16)),
-              ],
-            ),
-          ),
-        _RegionHeader(:final region) => Padding(
-            padding: const EdgeInsets.only(left: AppSpace.md, bottom: 2),
-            child: Text(region, style: AppType.label),
-          ),
-        _TownHeader(:final town, :final count) => Padding(
-            padding: const EdgeInsets.only(left: AppSpace.lg, bottom: 2),
-            child: Text('$town · $count',
-                style: AppType.caption.copyWith(color: AppColor.inkMuted)),
-          ),
-        _CellRow(:final cell) => Padding(
-            padding: const EdgeInsets.only(left: AppSpace.lg),
-            child: _TerritoryRow(cell: cell),
-          ),
-      };
 }
 
-class _TerritoryRow extends StatelessWidget {
-  final TerritoryCell cell;
-  const _TerritoryRow({required this.cell});
+class _Zone {
+  const _Zone({
+    required this.name,
+    required this.region,
+    required this.cells,
+    required this.minDays,
+  });
+
+  final String name;
+  final String? region;
+  final List<TerritoryCell> cells;
+  final double minDays;
+}
+
+Color _daysColor(double days) => days < 1
+    ? AppColor.danger
+    : days <= kTerritoryWarningDays
+        ? AppColor.gold
+        : AppColor.ink;
+
+String _status(double days) => days < 1
+    ? 'in scadenza · passaci oggi'
+    : days <= kTerritoryWarningDays
+        ? 'a rischio · ripassaci presto'
+        : 'al sicuro';
+
+class _ZoneTile extends StatefulWidget {
+  const _ZoneTile({required this.zone});
+
+  final _Zone zone;
+
+  @override
+  State<_ZoneTile> createState() => _ZoneTileState();
+}
+
+class _ZoneTileState extends State<_ZoneTile> {
+  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
-    final daysLeft = _daysLeft(cell);
-    final expiring = daysLeft <= _kFadeWarningDays;
-    final accent = expiring ? AppColor.amber : AppColor.cyan;
-    final daysLabel = daysLeft <= 0
-        ? 'in scadenza'
-        : daysLeft < 1
-            ? 'meno di 1 giorno'
-            : '${daysLeft.floor()} giorni';
+    final z = widget.zone;
+    final c = _daysColor(z.minDays);
+    // 7 segmenti sui 14 giorni di vita: uno ogni 2 giorni.
+    final filled = (z.minDays / 2).ceil().clamp(0, 7);
+    final sub = [
+      _status(z.minDays),
+      if (z.region != null && z.region!.isNotEmpty) z.region!,
+    ].join(' · ');
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpace.md),
-      decoration: expiring
-          ? AppGlow.edge(accent)
-          : AppGlow.card,
-      child: Row(
-        children: [
-          Icon(Icons.hexagon_rounded, color: accent, size: 28),
-          const SizedBox(width: AppSpace.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return HeatPressable(
+      onTap: () => setState(() => _open = !_open),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColor.surface,
+          border: Border(left: BorderSide(color: c, width: 3)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text('Esagono ${cell.coord.q},${cell.coord.r}',
-                    style: AppType.body),
-                const SizedBox(height: 2),
-                Text(
-                  'Conquistato ${_formatDate(cell.claimedAt)}'
-                  '${cell.driveScore != null ? ' · punteggio ${cell.driveScore}' : ''}',
-                  style: AppType.caption,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              z.name.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.display(
+                                  fontSize: 22, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                          Text(
+                            '${z.cells.length} esagoni',
+                            style: AppType.display(
+                              fontSize: 15,
+                              italic: false,
+                              color: AppColor.inkMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      SkewBar(
+                        value: filled / 7,
+                        segments: 7,
+                        gap: 2,
+                        color: c,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(sub,
+                          style: AppType.text(
+                              fontSize: 12, color: AppColor.inkMuted)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 74,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        territoryDaysLabel(z.minDays),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: AppType.display(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: c,
+                        ),
+                      ),
+                      Text(
+                        'RIMASTI',
+                        style: AppType.text(
+                          fontSize: 10,
+                          letterSpacing: 1.4,
+                          color: AppColor.inkFaint,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
+            AnimatedSize(
+              duration: AppMotion.base,
+              curve: AppMotion.curve,
+              alignment: Alignment.topCenter,
+              child: !_open
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Column(
+                        children: [
+                          for (final cell in z.cells) _CellLine(cell: cell),
+                        ],
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CellLine extends StatelessWidget {
+  const _CellLine({required this.cell});
+
+  final TerritoryCell cell;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = territoryDaysLeft(cell);
+    final d = cell.claimedAt;
+    final date =
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColor.surfaceHigh)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hexagon_rounded, size: 16, color: _daysColor(days)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '#${cell.coord.q},${cell.coord.r} · presa il $date'
+              '${cell.driveScore != null ? ' · FLOW ${cell.driveScore}' : ''}',
+              style: AppType.text(fontSize: 12.5, color: AppColor.inkMuted),
+            ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(daysLabel,
-                  style: AppType.text(
-                      fontWeight: FontWeight.w700, color: accent)),
-              Text('rimasti', style: AppType.caption),
-            ],
+          Text(
+            territoryDaysLabel(days),
+            style: AppType.display(
+              fontSize: 14,
+              italic: false,
+              color: _daysColor(days),
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  String _formatDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+class _Message extends StatelessWidget {
+  const _Message(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 40, 32, 32),
+      child: Column(
+        children: [
+          const Icon(Icons.hexagon_outlined, size: 44, color: AppColor.inkFaint),
+          const SizedBox(height: 14),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: AppType.text(
+                fontSize: 13, color: AppColor.inkMuted, height: 1.45),
+          ),
+        ],
+      ),
+    );
+  }
 }

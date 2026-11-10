@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/pilots/presentation/screens/pilots_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -25,6 +26,7 @@ import '../../features/car_spotting/presentation/screens/leaderboard_screen.dart
 import '../../features/car_spotting/presentation/screens/spot_detail_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/achievements/presentation/screens/achievements_screen.dart';
+import '../../features/missions/presentation/screens/missions_screen.dart';
 import '../../features/events/presentation/screens/events_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
@@ -56,9 +58,11 @@ class AppRoutes {
   static const carSpottingLeaderboard = '/car-spotting-leaderboard';
   static const profile = '/profile';
   static const achievements = '/achievements';
+  static const missions = '/missions';
   static const events = '/events';
   static const settings = '/settings';
   static const notifications = '/notifications';
+  static const pilots = '/pilots';
 }
 
 /// Fa da ponte fra i provider Riverpod osservati per il redirect
@@ -163,12 +167,17 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
           path: AppRoutes.achievements,
           builder: (c, s) => const AchievementsScreen()),
+      GoRoute(
+          path: AppRoutes.missions,
+          builder: (c, s) => const MissionsScreen()),
       GoRoute(path: AppRoutes.events, builder: (c, s) => const EventsScreen()),
       GoRoute(
           path: AppRoutes.settings, builder: (c, s) => const SettingsScreen()),
       GoRoute(
           path: AppRoutes.notifications,
           builder: (c, s) => const NotificationsScreen()),
+      GoRoute(
+          path: AppRoutes.pilots, builder: (c, s) => const PilotsScreen()),
 
       // Bottom-nav shell (7 primary tabs)
       ShellRoute(

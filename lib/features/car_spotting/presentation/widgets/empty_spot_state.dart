@@ -26,8 +26,7 @@ class EmptySpotState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style:
-                  const TextStyle(color: AppColor.inkMuted, fontSize: 13),
+              style: const TextStyle(color: AppColor.inkMuted, fontSize: 13),
             ),
           ],
         ),

@@ -5,75 +5,85 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/accent_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/heat_shapes.dart';
 import '../../../../core/widgets/draggable_sheet_scaffold.dart';
+import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/data/car_catalog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../radar/presentation/providers/radar_provider.dart';
 import '../../../rival/domain/entities/mascot.dart';
 import '../../../rival/presentation/widgets/mascot_avatar.dart';
 
 const _countries = [
-  ('IT', '🇮🇹 Italia'),
-  ('DE', '🇩🇪 Germania'),
-  ('US', '🇺🇸 Stati Uniti'),
-  ('BR', '🇧🇷 Brasile'),
-  ('FR', '🇫🇷 Francia'),
-  ('ES', '🇪🇸 Spagna'),
-  ('GB', '🇬🇧 Regno Unito'),
+  ('IT', 'Italia'),
+  ('DE', 'Germania'),
+  ('US', 'Stati Uniti'),
+  ('BR', 'Brasile'),
+  ('FR', 'Francia'),
+  ('ES', 'Spagna'),
+  ('GB', 'Regno Unito'),
 ];
 
-const _accentColors = [
-  ('Corallo', '#ff2d55', Color(0xFFFF2D55)),
-  ('Turchese', '#35e0ff', Color(0xFF35E0FF)),
-  ('Giallo', '#ffc93c', Color(0xFFFFC93C)),
-  ('Viola', '#c23dff', Color(0xFFC23DFF)),
-  ('Blu', '#2f6bff', Color(0xFF2F6BFF)),
-];
+String _hex(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
-/// Impostazioni: profilo, veicolo, paese, colore accento, account.
-/// Costruita da zero (prima era un placeholder) secondo Guida.dc.html
-/// righe 671-718. Il colore accento viene solo salvato per ora — non
-/// ricolora ancora l'intera UI (fuori scope, richiederebbe ricablare
-/// ogni schermata a un accento dinamico).
-class SettingsScreen extends ConsumerWidget {
+/// IMPOSTAZIONI (HEAT, handoff §23): PROFILO (foto, username in linea,
+/// veicolo, paese, colore accento, mascotte), GUIDA (notte automatica,
+/// radar velox), ACCOUNT (connesso, esci).
+///
+/// Il colore accento è quello vero dell'app: [accentProvider] lo applica
+/// subito (la radice si ricostruisce) e lo salva in locale; si copia anche
+/// in `profiles.accent_color`. I colori bloccati arrivano con il pass di
+/// guida (fase economia XP).
+///
+/// Non ancora qui (manca la funzione nell'app): registrazione automatica,
+/// rivedi novità, piano.
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
-  Future<void> _editUsername(BuildContext context, WidgetRef ref, String userId,
-      String current) async {
-    final ctrl = TextEditingController(text: current);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1522),
-        title: Text('Username',
-            style: AppType.text(
-                fontWeight: FontWeight.w800, color: AppColor.ink)),
-        content: TextField(
-          controller: ctrl,
-          style: const TextStyle(color: AppColor.ink),
-          decoration: const InputDecoration(hintText: 'Minimo 3 caratteri'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annulla')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: const Text('Salva')),
-        ],
-      ),
-    );
-    if (result != null && result.length >= 3 && result != current) {
-      await ref
-          .read(authControllerProvider.notifier)
-          .updateProfileSettings(userId: userId, username: result);
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _editingUser = false;
+  final _userCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _userCtrl.dispose();
+    super.dispose();
+  }
+
+  void _snack(String text) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _saveUsername(AppUser profile) async {
+    final v = _userCtrl.text.trim();
+    if (v.length < 3) {
+      _snack('lo username deve avere almeno 3 caratteri.');
+      return;
+    }
+    setState(() => _editingUser = false);
+    if (v == profile.username) return;
+    await ref
+        .read(authControllerProvider.notifier)
+        .updateProfileSettings(userId: profile.id, username: v);
+    if (!mounted) return;
+    if (ref.read(authControllerProvider).hasError) {
+      _snack('username non salvato. forse è già preso.');
     }
   }
 
-  Future<void> _editVehicle(BuildContext context, WidgetRef ref, String userId,
-      AppUser profile) async {
+  Future<void> _editVehicle(AppUser profile) async {
     final brand = await DraggableSheetScaffold.show<String>(
       context,
       title: 'Marca',
@@ -85,7 +95,7 @@ class SettingsScreen extends ConsumerWidget {
         onSelect: (_) {},
       ),
     );
-    if (brand == null || !context.mounted) return;
+    if (brand == null || !mounted) return;
     final model = await DraggableSheetScaffold.show<String>(
       context,
       title: 'Modello',
@@ -100,19 +110,18 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (model == null) return;
     await ref.read(authControllerProvider.notifier).updateVehicle(
-          userId: userId,
+          userId: profile.id,
           brand: brand,
           model: model,
         );
   }
 
-  Future<void> _editCountry(
-      BuildContext context, WidgetRef ref, String userId) async {
+  Future<void> _editCountry(AppUser profile) async {
     final selected = await DraggableSheetScaffold.show<String>(
       context,
       title: 'Paese',
       builder: (ctx) => SheetOptionPicker<String>(
-        selected: null,
+        selected: profile.country,
         options: [
           for (final c in _countries) SheetOption(value: c.$1, label: c.$2),
         ],
@@ -122,38 +131,16 @@ class SettingsScreen extends ConsumerWidget {
     if (selected != null) {
       await ref
           .read(authControllerProvider.notifier)
-          .updateProfileSettings(userId: userId, country: selected);
+          .updateProfileSettings(userId: profile.id, country: selected);
     }
   }
 
-  Future<void> _editAccentColor(
-      BuildContext context, WidgetRef ref, String userId) async {
-    final selected = await DraggableSheetScaffold.show<String>(
-      context,
-      title: 'Colore accento',
-      builder: (ctx) => SheetOptionPicker<String>(
-        selected: null,
-        options: [
-          for (final c in _accentColors)
-            SheetOption(value: c.$2, label: c.$1, swatch: c.$3),
-        ],
-        onSelect: (_) {},
-      ),
-    );
-    if (selected != null) {
-      await ref
-          .read(authControllerProvider.notifier)
-          .updateProfileSettings(userId: userId, accentColor: selected);
-    }
-  }
-
-  Future<void> _editMascot(BuildContext context, WidgetRef ref, String userId,
-      String? currentMascotId) async {
+  Future<void> _editMascot(AppUser profile) async {
     final selected = await DraggableSheetScaffold.show<String>(
       context,
       title: 'Mascotte',
       builder: (ctx) => SheetOptionPicker<String>(
-        selected: currentMascotId,
+        selected: profile.mascotId,
         options: [
           for (final m in kMascotCatalog)
             SheetOption(
@@ -168,36 +155,46 @@ class SettingsScreen extends ConsumerWidget {
     if (selected != null) {
       await ref
           .read(authControllerProvider.notifier)
-          .updateProfileSettings(userId: userId, mascotId: selected);
+          .updateProfileSettings(userId: profile.id, mascotId: selected);
     }
   }
 
-  Future<void> _changeAvatar(
-      BuildContext context, WidgetRef ref, String userId) async {
+  Future<void> _pickAccent(AppUser profile, HeatAccent a) async {
+    if (a.locked) {
+      _snack('${a.label.toLowerCase()} si sblocca con il pass di guida.');
+      return;
+    }
+    if (a == ref.read(accentProvider)) return;
+    final auth = ref.read(authControllerProvider.notifier);
+    // Prima il profilo: dopo select() l'intera app si ricostruisce.
+    await auth.updateProfileSettings(
+        userId: profile.id, accentColor: _hex(a.color));
+    await ref.read(accentProvider.notifier).select(a);
+  }
+
+  Future<void> _changeAvatar(AppUser profile) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: const Color(0xFF0E1522),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: AppColor.surfaceHigh,
+      shape: const RoundedRectangleBorder(),
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded,
-                  color: AppColor.ink),
-              title: Text('Scatta una foto',
-                  style: AppType.text(color: AppColor.ink)),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded,
-                  color: AppColor.ink),
-              title: Text('Scegli dalla galleria',
-                  style: AppType.text(color: AppColor.ink)),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
+            for (final (icon, label, src) in [
+              (Icons.photo_camera_rounded, 'scatta una foto', ImageSource.camera),
+              (
+                Icons.photo_library_rounded,
+                'scegli dalla galleria',
+                ImageSource.gallery
+              ),
+            ])
+              ListTile(
+                leading: Icon(icon, color: AppColor.inkMuted),
+                title: Text(label,
+                    style: AppType.text(fontSize: 15, color: AppColor.ink)),
+                onTap: () => Navigator.pop(ctx, src),
+              ),
           ],
         ),
       ),
@@ -213,384 +210,432 @@ class SettingsScreen extends ConsumerWidget {
     if (picked == null) return;
 
     final Uint8List bytes = await picked.readAsBytes();
-    final extension = picked.path.contains('.')
-        ? '.${picked.path.split('.').last}'
-        : '.jpg';
-    if (!context.mounted) return;
+    final extension =
+        picked.path.contains('.') ? '.${picked.path.split('.').last}' : '.jpg';
+    if (!mounted) return;
 
     await ref.read(authControllerProvider.notifier).updateAvatar(
-          userId: userId,
+          userId: profile.id,
           photoBytes: bytes,
           photoExtension: extension,
         );
-
-    if (!context.mounted) return;
-    final result = ref.read(authControllerProvider);
-    if (result.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Impossibile aggiornare la foto profilo: '
-              '${result.error}'),
-          backgroundColor: const Color(0xFFB91C1C),
-        ),
-      );
+    if (!mounted) return;
+    if (ref.read(authControllerProvider).hasError) {
+      _snack('foto non aggiornata. riprova.');
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final profile = ref.watch(myProfileProvider).valueOrNull;
-    final isLoading = ref.watch(authControllerProvider).isLoading;
+    final busy = ref.watch(authControllerProvider).isLoading;
+    final accent = ref.watch(accentProvider);
+    final radarOn = ref.watch(radarModeControllerProvider);
 
     return Scaffold(
-      backgroundColor: AppColor.void_,
-      body: SafeArea(
-        child: profile == null
-            ? const Center(
-                child: CircularProgressIndicator(color: AppColor.cyan))
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-                children: [
-                  Row(
-                    children: [
-                      _RoundIconButton(
-                        icon: Icons.arrow_back_rounded,
-                        onTap: () => context.pop(),
-                      ),
-                    ],
+      backgroundColor: AppColor.base,
+      body: HeatBackground(
+        glow: false,
+        child: SafeArea(
+          bottom: false,
+          child: profile == null
+              ? const Center(
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: AppColor.inkMuted),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Impostazioni',
-                    style: AppType.text(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 42,
-                      color: AppColor.ink,
+                )
+              : ListView(
+                  padding: const EdgeInsets.only(bottom: 30),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          onPressed: () => context.canPop()
+                              ? context.pop()
+                              : context.go(AppRoutes.profile),
+                          icon: const Icon(Icons.arrow_back_rounded,
+                              color: AppColor.ink),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 26),
-                  _ProfileCard(
-                    profile: profile,
-                    isUploadingAvatar: isLoading,
-                    onTapAvatar: isLoading
-                        ? null
-                        : () => _changeAvatar(context, ref, profile.id),
-                  ),
-                  const SizedBox(height: 22),
-                  _GroupCard(
-                    children: [
-                      _SettingsRow(
-                        iconBg: const Color(0xFF1E5BD6),
-                        icon: Icons.person_rounded,
-                        label: 'Username',
-                        value: '@${profile.username}',
-                        onTap: isLoading
-                            ? null
-                            : () => _editUsername(
-                                context, ref, profile.id, profile.username),
-                      ),
-                      _SettingsRow(
-                        iconBg: const Color(0xFF6B21A8),
-                        iconColor: const Color(0xFFE879F9),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18),
+                      child: ScreenTitle('Impostazioni', fontSize: 44),
+                    ),
+                    const _Group('Profilo'),
+                    _ProfileTile(
+                      profile: profile,
+                      busy: busy,
+                      onTap: busy ? null : () => _changeAvatar(profile),
+                    ),
+                    const SizedBox(height: 2),
+                    _Rows(children: [
+                      _usernameRow(profile, busy),
+                      _Row(
                         icon: Icons.directions_car_rounded,
                         label: 'Veicoli',
                         value: profile.vehicleBrand == null
-                            ? 'Nessuno'
-                            : '${profile.vehicleBrand} ${profile.vehicleModel ?? ''}'
-                                .trim(),
-                        onTap: isLoading
-                            ? null
-                            : () =>
-                                _editVehicle(context, ref, profile.id, profile),
+                            ? 'nessuno'
+                            : (profile.vehicleModel ?? profile.vehicleBrand!),
+                        onTap: busy ? null : () => _editVehicle(profile),
                       ),
-                      _SettingsRow(
-                        iconBg: const Color(0xFF7C4A10),
-                        iconColor: const Color(0xFFF59E0B),
-                        icon: Icons.public_rounded,
+                      _Row(
+                        icon: Icons.flag_rounded,
                         label: 'Paese',
                         value: _countries
-                            .firstWhere(
-                              (c) => c.$1 == profile.country,
-                              orElse: () => ('', 'Non impostato'),
-                            )
+                            .firstWhere((c) => c.$1 == profile.country,
+                                orElse: () => ('', 'non impostato'))
                             .$2,
-                        onTap: isLoading
-                            ? null
-                            : () => _editCountry(context, ref, profile.id),
+                        onTap: busy ? null : () => _editCountry(profile),
                       ),
-                      _SettingsRow(
-                        iconBg: const Color(0xFF6B2A24),
-                        iconColor: const Color(0xFFF87171),
+                      _Row(
                         icon: Icons.palette_rounded,
-                        label: 'Colore',
-                        value: _accentColors
-                            .firstWhere(
-                              (c) => c.$2 == profile.accentColor,
-                              orElse: () => _accentColors.first,
-                            )
-                            .$1,
-                        swatch: _accentColors
-                            .firstWhere(
-                              (c) => c.$2 == profile.accentColor,
-                              orElse: () => _accentColors.first,
-                            )
-                            .$3,
-                        onTap: isLoading
-                            ? null
-                            : () => _editAccentColor(context, ref, profile.id),
+                        label: 'Colore accento',
+                        trailing: _AccentSwatches(
+                          selected: accent,
+                          onPick: busy ? null : (a) => _pickAccent(profile, a),
+                        ),
                       ),
-                      _SettingsRow(
-                        iconBg: const Color(0xFF123B2E),
-                        iconColor: const Color(0xFF4ADE80),
-                        icon: Icons.face_retouching_natural_rounded,
-                        label: 'Mascotte',
-                        value: kMascotCatalog
-                            .firstWhere((m) => m.id == profile.mascotId,
-                                orElse: () => kMascotCatalog.first)
-                            .name,
-                        swatch: kMascotCatalog
-                            .firstWhere((m) => m.id == profile.mascotId,
-                                orElse: () => kMascotCatalog.first)
-                            .accentColor,
-                        onTap: isLoading
-                            ? null
-                            : () => _editMascot(
-                                context, ref, profile.id, profile.mascotId),
+                      _mascotRow(profile, busy),
+                    ]),
+                    const _Group('Guida'),
+                    _Rows(children: [
+                      const _Row(
+                        icon: Icons.dark_mode_rounded,
+                        label: 'Modalità notte',
+                        sub: 'automatica dalle 22 alle 6 · HEAT e XP in più',
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _GroupCard(
-                    children: [
-                      _SettingsRow(
-                        iconBg: const Color(0xFF14431F),
-                        iconColor: const Color(0xFF4ADE80),
+                      _Row(
+                        icon: Icons.radar_rounded,
+                        label: 'Rilevamento velox e pattuglie',
+                        sub: 'dati OSM, Waze e community',
+                        trailing: _SkewToggle(on: radarOn),
+                        onTap: () => ref
+                            .read(radarModeControllerProvider.notifier)
+                            .toggle(),
+                      ),
+                    ]),
+                    const _Group('Account'),
+                    _Rows(children: [
+                      const _Row(
                         icon: Icons.verified_user_rounded,
-                        label: 'Account',
-                        value: 'Connesso',
-                        showChevron: false,
+                        iconColor: AppColor.success,
+                        label: 'Connesso',
                       ),
-                      _SettingsRow(
-                        iconBg: const Color(0xFF5A1E1E),
-                        iconColor: const Color(0xFFF87171),
+                      _Row(
                         icon: Icons.logout_rounded,
+                        iconColor: AppColor.danger,
                         label: 'Esci',
-                        value: '',
-                        onTap: isLoading
+                        labelColor: AppColor.danger,
+                        onTap: busy
                             ? null
                             : () => ref
                                 .read(authControllerProvider.notifier)
                                 .signOut(),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ]),
+                  ],
+                ),
+        ),
       ),
     );
   }
-}
 
-class _ProfileCard extends StatelessWidget {
-  final AppUser profile;
-  final bool isUploadingAvatar;
-  final VoidCallback? onTapAvatar;
-  const _ProfileCard({
-    required this.profile,
-    this.isUploadingAvatar = false,
-    this.onTapAvatar,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = _accentColors
-        .firstWhere(
-          (c) => c.$2 == profile.accentColor,
-          orElse: () => _accentColors.first,
-        )
-        .$3;
+  Widget _usernameRow(AppUser profile, bool busy) {
+    if (!_editingUser) {
+      return _Row(
+        icon: Icons.person_rounded,
+        label: 'Username',
+        value: profile.username,
+        valueIcon: Icons.edit_rounded,
+        onTap: busy
+            ? null
+            : () => setState(() {
+                  _userCtrl.text = profile.username;
+                  _editingUser = true;
+                }),
+      );
+    }
+    // In modifica il campo prende il posto dell'etichetta: così entra
+    // anche sui telefoni stretti.
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xDB141B30), Color(0xEB0A0E18)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x1AA0C8FF)),
-      ),
+      height: 54,
+      padding: const EdgeInsets.only(left: 16, right: 9),
+      color: AppColor.surface,
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onTapAvatar,
-            child: Stack(
-              children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: profile.avatarUrl != null
-                      ? ClipOval(
-                          child: Image.network(profile.avatarUrl!,
-                              fit: BoxFit.cover))
-                      : Icon(Icons.person_rounded, color: accent, size: 44),
-                ),
-                if (isUploadingAvatar)
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: const BoxDecoration(
-                      color: Color(0x99000000),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.4, color: AppColor.cyan),
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: const Color(0xFF1C1C1C), width: 3),
-                    ),
-                    child: const Icon(Icons.photo_camera_rounded,
-                        size: 14, color: Colors.black),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 18),
+          const Icon(Icons.person_rounded, size: 20, color: AppColor.inkMuted),
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('@${profile.username}',
-                    style: AppType.text(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 22,
-                        color: AppColor.ink)),
-                const SizedBox(height: 4),
-                Text('Tocca la foto per cambiarla',
-                    style: AppType.text(
-                        fontSize: 15, color: AppColor.inkMuted)),
-              ],
+            child: SizedBox(
+              height: 36,
+              child: TextField(
+                controller: _userCtrl,
+                autofocus: true,
+                maxLength: 24,
+                onSubmitted: (_) => _saveUsername(profile),
+                style: AppType.text(fontSize: 14, color: AppColor.ink),
+                cursorColor: AppColor.ink,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  isDense: true,
+                  filled: true,
+                  fillColor: AppColor.base,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(color: AppColor.line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(color: AppColor.ink),
+                  ),
+                ),
+              ),
             ),
           ),
+          _TextAction('salva', AppColor.ink, () => _saveUsername(profile)),
+          _TextAction('annulla', AppColor.inkMuted,
+              () => setState(() => _editingUser = false)),
         ],
       ),
     );
   }
-}
 
-class _GroupCard extends StatelessWidget {
-  final List<Widget> children;
-  const _GroupCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xDB141B30), Color(0xEB0A0E18)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x1AA0C8FF)),
-      ),
-      child: Column(children: children),
+  Widget _mascotRow(AppUser profile, bool busy) {
+    final m = kMascotCatalog.firstWhere((m) => m.id == profile.mascotId,
+        orElse: () => kMascotCatalog.first);
+    return _Row(
+      icon: Icons.sports_motorsports_rounded,
+      label: 'Mascotte',
+      value: m.name,
+      valueColor: m.accentColor,
+      onTap: busy ? null : () => _editMascot(profile),
     );
   }
 }
 
-class _SettingsRow extends StatelessWidget {
-  final Color iconBg;
-  final Color iconColor;
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? swatch;
-  final bool showChevron;
-  final VoidCallback? onTap;
+class _Group extends StatelessWidget {
+  const _Group(this.text);
+  final String text;
 
-  const _SettingsRow({
-    required this.iconBg,
-    this.iconColor = Colors.white,
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 8),
+        child: SectionLabel(text),
+      );
+}
+
+class _Rows extends StatelessWidget {
+  const _Rows({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, c) in children.indexed) ...[
+              if (i > 0) const SizedBox(height: 2),
+              c,
+            ],
+          ],
+        ),
+      );
+}
+
+class _Row extends StatelessWidget {
+  const _Row({
     required this.icon,
     required this.label,
-    required this.value,
-    this.swatch,
-    this.showChevron = true,
+    this.iconColor = AppColor.inkMuted,
+    this.labelColor = AppColor.ink,
+    this.sub,
+    this.value,
+    this.valueColor,
+    this.valueIcon,
+    this.trailing,
     this.onTap,
   });
 
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final Color labelColor;
+  final String? sub;
+  final String? value;
+  final Color? valueColor;
+  final IconData? valueIcon;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+    final row = Container(
+      constraints: BoxConstraints(minHeight: sub == null ? 54 : 60),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: AppColor.surface,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: iconColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.text(fontSize: 15, color: labelColor)),
+                if (sub != null)
+                  Text(sub!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.text(
+                          fontSize: 12, color: AppColor.inkMuted)),
+              ],
+            ),
+          ),
+          if (value != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                value!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.text(
+                  fontSize: 14,
+                  fontWeight:
+                      valueColor != null ? FontWeight.w700 : FontWeight.w400,
+                  color: valueColor ?? AppColor.inkMuted,
+                ),
+              ),
+            ),
+          ],
+          if (valueIcon != null) ...[
+            const SizedBox(width: 4),
+            Icon(valueIcon, size: 18, color: AppColor.inkMuted),
+          ] else if (onTap != null && trailing == null) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColor.inkFaint),
+          ],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        ],
+      ),
+    );
+    return onTap == null ? row : HeatPressable(onTap: onTap, child: row);
+  }
+}
+
+class _TextAction extends StatelessWidget {
+  const _TextAction(this.label, this.color, this.onTap);
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+          child: Text(label,
+              style: AppType.text(
+                  fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+        ),
+      );
+}
+
+class _ProfileTile extends StatelessWidget {
+  const _ProfileTile({
+    required this.profile,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final AppUser profile;
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final mascot = kMascotCatalog.firstWhere((m) => m.id == profile.mascotId,
+        orElse: () => kMascotCatalog.first);
+    final url = profile.avatarUrl;
+    final face = url != null
+        ? Image.network(url,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                Image.asset('assets/faces/${mascot.id}.png', fit: BoxFit.cover))
+        : Image.asset('assets/faces/${mascot.id}.png',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.person_rounded, color: AppColor.inkFaint));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: HeatPanel(
+        onTap: onTap,
+        shape: const SlantBorder.all(0),
+        color: AppColor.surface,
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12),
+            ClipPath(
+              clipper: const ShapeBorderClipper(
+                  shape: SlantBorder(left: 10, right: 10)),
+              child: Container(
+                width: 64,
+                height: 64,
+                color: mascot.accentColor.withValues(alpha: .15),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    face,
+                    if (busy)
+                      const ColoredBox(
+                        color: Color(0x99000000),
+                        child: Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.2, color: AppColor.ink),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-              child: Icon(icon, color: iconColor, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(label,
-                  style: AppType.text(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 19,
-                      color: AppColor.ink)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('@${profile.username}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.text(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColor.ink)),
+                  const SizedBox(height: 2),
+                  Text('tocca la foto per cambiarla',
+                      style: AppType.text(
+                          fontSize: 13, color: AppColor.inkMuted)),
+                ],
+              ),
             ),
-            if (swatch != null) ...[
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: swatch,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              const SizedBox(width: 10),
-            ],
-            if (value.isNotEmpty)
-              Flexible(
-                child: Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppType.text(
-                      fontSize: 15, color: AppColor.inkMuted),
-                ),
-              ),
-            if (showChevron && onTap != null) ...[
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColor.inkMuted),
-            ],
           ],
         ),
       ),
@@ -598,24 +643,80 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-class _RoundIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _RoundIconButton({required this.icon, required this.onTap});
+/// I sette accenti come piccoli parallelogrammi: quello attivo ha il
+/// bordo chiaro, i bloccati sono spenti con il lucchetto.
+class _AccentSwatches extends StatelessWidget {
+  const _AccentSwatches({required this.selected, required this.onPick});
+
+  final HeatAccent selected;
+  final ValueChanged<HeatAccent>? onPick;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xF0131A2D),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 52,
-          height: 52,
-          child: Icon(icon, color: AppColor.ink, size: 22),
-        ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final a in HeatAccent.values)
+          Semantics(
+            button: true,
+            selected: a == selected,
+            label: a.label,
+            child: GestureDetector(
+              key: ValueKey('accent_${a.name}'),
+              behavior: HitTestBehavior.opaque,
+              onTap: onPick == null ? null : () => onPick!(a),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                child: Opacity(
+                  opacity: a.locked ? .35 : 1,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.skewX(-.21),
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: a.color,
+                        border: Border.all(
+                          width: 2,
+                          color: a == selected
+                              ? AppColor.ink
+                              : const Color(0x00000000),
+                        ),
+                      ),
+                      child: a.locked
+                          ? const Icon(Icons.lock_rounded,
+                              size: 12, color: AppColor.onAccent)
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Interruttore inclinato HEAT; acceso = accento (unico della schermata).
+class _SkewToggle extends StatelessWidget {
+  const _SkewToggle({required this.on});
+  final bool on;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.skewX(-.21),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: 44,
+        height: 24,
+        color: on ? AppColor.accent : AppColor.line,
+        alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+        padding: const EdgeInsets.all(2),
+        child: Container(width: 20, height: 20, color: AppColor.ink),
       ),
     );
   }

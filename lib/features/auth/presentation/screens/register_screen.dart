@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/hrr_wordmark.dart';
-import '../../../../core/widgets/neon_cta_button.dart';
+import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_text_field.dart';
 
+/// REGISTRAZIONE (HEAT, handoff §3) — passo 1 di 3: username ≥ 3, email,
+/// password ≥ 6 ripetuta, accettazione termini; un'unica riga d'errore
+/// rossa. Dopo, il router porta a "il tuo ride" e "scegli il pilota".
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -18,15 +20,13 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
-  bool _obscurePassword = true;
-  bool _obscureConfirm = true;
-  bool _termsAccepted = false;
-  bool _termsError = false;
+  bool _obscure = true;
+  bool _terms = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -37,11 +37,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    final formValid = _formKey.currentState!.validate();
-    setState(() => _termsError = !_termsAccepted);
-    if (!formValid || !_termsAccepted) return;
+  String? _validate() {
+    final user = _usernameCtrl.text.trim();
+    if (user.length < 3) return 'lo username ha almeno 3 caratteri.';
+    if (user.length > 24) return 'lo username ha al massimo 24 caratteri.';
+    if (!isValidEmail(_emailCtrl.text)) return 'inserisci un\'email valida.';
+    if (_passwordCtrl.text.length < 6) {
+      return 'la password ha almeno 6 caratteri.';
+    }
+    if (_confirmCtrl.text != _passwordCtrl.text) {
+      return 'le password non coincidono.';
+    }
+    if (!_terms) return 'accetta termini e privacy per continuare.';
+    return null;
+  }
 
+  Future<void> _submit() async {
+    final err = _validate();
+    setState(() => _error = err);
+    if (err != null) return;
+    FocusScope.of(context).unfocus();
     await ref.read(authControllerProvider.notifier).signUpWithEmail(
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
@@ -49,249 +64,185 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
   }
 
+  static String _friendlyError(Object err) {
+    final msg = err.toString();
+    if (msg.contains('duplicate key') ||
+        msg.contains('unique') ||
+        msg.contains('already registered')) {
+      return 'username o email già in uso.';
+    }
+    return 'registrazione non riuscita. riprova.';
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(authControllerProvider, (prev, next) {
       next.whenOrNull(
-        error: (err, _) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_friendlyError(err)),
-            backgroundColor: AppColor.danger,
-          ),
-        ),
+        error: (err, _) => setState(() => _error = _friendlyError(err)),
       );
     });
-
-    final isLoading = ref.watch(authControllerProvider).isLoading;
+    final loading = ref.watch(authControllerProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: AppColor.void_,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, 30, 22, 30),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => context.pop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppColor.ink, size: 18),
-                    ),
-                    const SizedBox(width: 4),
-                    const HrrWordmark(fontSize: 30, showTagline: false),
-                  ],
-                ).animate().fadeIn(duration: 400.ms),
-                const SizedBox(height: 28),
-                Text(
-                  'Crea il tuo account',
-                  style: AppType.text(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 34,
-                    color: AppColor.ink,
-                  ),
-                ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.15, end: 0),
-                const SizedBox(height: 12),
-                Text(
-                  'Unisciti alla community e scala la classifica',
-                  style: AppType.text(
-                    fontSize: 17,
-                    color: AppColor.inkMuted,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                AuthTextField(
-                  label: 'Username',
-                  controller: _usernameCtrl,
-                  hint: 'il_tuo_nome',
-                  icon: Icons.person_outline_rounded,
-                  validator: (v) => (v == null || v.trim().length < 3)
-                      ? 'Minimo 3 caratteri'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                AuthTextField(
-                  label: 'Email',
-                  controller: _emailCtrl,
-                  hint: 'nome@esempio.com',
-                  icon: Icons.alternate_email_rounded,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (v) => (v == null || !v.contains('@'))
-                      ? 'Email non valida'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                AuthTextField(
-                  label: 'Password',
-                  controller: _passwordCtrl,
-                  hint: 'Almeno 6 caratteri',
-                  icon: Icons.lock_outline_rounded,
-                  obscureText: _obscurePassword,
-                  onToggleObscure: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                  validator: (v) =>
-                      (v == null || v.length < 6) ? 'Minimo 6 caratteri' : null,
-                ),
-                const SizedBox(height: 16),
-                AuthTextField(
-                  label: 'Conferma password',
-                  controller: _confirmCtrl,
-                  hint: 'Ripeti la password',
-                  icon: Icons.lock_outline_rounded,
-                  obscureText: _obscureConfirm,
-                  onToggleObscure: () =>
-                      setState(() => _obscureConfirm = !_obscureConfirm),
-                  validator: (v) => v != _passwordCtrl.text
-                      ? 'Le password non coincidono'
-                      : null,
-                ),
-                const SizedBox(height: 18),
-                _TermsCheckbox(
-                  checked: _termsAccepted,
-                  hasError: _termsError,
-                  onChanged: (v) => setState(() {
-                    _termsAccepted = v;
-                    if (v) _termsError = false;
-                  }),
-                ),
-                if (_termsError)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6, left: 4),
-                    child: Text(
-                      'Devi accettare i termini per continuare',
-                      style: AppType.text(
-                          fontSize: 13, color: AppColor.danger),
-                    ),
-                  ),
-                const SizedBox(height: 22),
-                NeonCtaButton(
-                  label: 'Crea account',
-                  onPressed: isLoading ? null : _submit,
-                ),
-                if (isLoading)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: Center(
-                      child: SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColor.cyan,
+      backgroundColor: AppColor.base,
+      body: HeatBackground(
+        glow: false,
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 30),
+                  child: AutofillGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () => context.canPop()
+                                ? context.pop()
+                                : context.go(AppRoutes.login),
+                            icon: const Icon(Icons.arrow_back_rounded,
+                                color: AppColor.ink),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        const AuthStepHeader(
+                          step: 'PASSO 1 DI 3',
+                          title: 'Nuovo\npilota',
+                          subtitle: 'il tuo nome di strada è quello che '
+                              'vedranno i rivali in classifica.',
+                        ),
+                        const SizedBox(height: 24),
+                        AuthTextField(
+                          placeholder: 'username',
+                          controller: _usernameCtrl,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.newUsername],
+                        ),
+                        const SizedBox(height: 10),
+                        AuthTextField(
+                          placeholder: 'email',
+                          controller: _emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.email],
+                        ),
+                        const SizedBox(height: 10),
+                        AuthTextField(
+                          placeholder: 'password · minimo 6 caratteri',
+                          controller: _passwordCtrl,
+                          obscureText: _obscure,
+                          onToggleObscure: () =>
+                              setState(() => _obscure = !_obscure),
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.newPassword],
+                        ),
+                        const SizedBox(height: 10),
+                        AuthTextField(
+                          placeholder: 'ripeti password',
+                          controller: _confirmCtrl,
+                          obscureText: _obscure,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _submit(),
+                        ),
+                        const SizedBox(height: 14),
+                        _TermsRow(
+                          checked: _terms,
+                          onChanged: (v) => setState(() => _terms = v),
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          AuthErrorRow(_error!),
+                        ],
+                        const Spacer(),
+                        const SizedBox(height: 20),
+                        HeatButton(
+                          label: loading ? 'UN ATTIMO…' : 'CREA ACCOUNT',
+                          icon: null,
+                          height: 58,
+                          fontSize: 24,
+                          onPressed: loading ? null : _submit,
+                        ),
+                      ],
                     ),
                   ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    children: [
-                      Text('Hai già un account? ',
-                          style: AppType.text(
-                              fontSize: 16,
-                              color: AppColor.inkMuted)),
-                      TextButton(
-                        onPressed: () => context.pop(),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColor.cyan,
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: Text('Accedi',
-                            style: AppType.text(
-                                fontSize: 16, fontWeight: FontWeight.w800)),
-                      ),
-                    ],
-                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  String _friendlyError(Object err) {
-    final msg = err.toString();
-    if (msg.contains('duplicate key') || msg.contains('unique')) {
-      return 'Username o email già in uso';
-    }
-    return 'Registrazione non riuscita, riprova';
-  }
 }
 
-class _TermsCheckbox extends StatelessWidget {
-  final bool checked;
-  final bool hasError;
-  final ValueChanged<bool> onChanged;
+class _TermsRow extends StatelessWidget {
+  const _TermsRow({required this.checked, required this.onChanged});
 
-  const _TermsCheckbox({
-    required this.checked,
-    required this.hasError,
-    required this.onChanged,
-  });
+  final bool checked;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = hasError
-        ? AppColor.danger
-        : (checked ? AppColor.cyan : const Color(0xFF3A3A3A));
-
-    return InkWell(
-      onTap: () => onChanged(!checked),
-      borderRadius: BorderRadius.circular(8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            margin: const EdgeInsets.only(top: 1),
-            decoration: BoxDecoration(
-              color: checked ? AppColor.cyan : Colors.transparent,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: checked
-                ? const Icon(Icons.check_rounded,
-                    size: 18, color: AppColor.void_)
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                style: AppType.text(
-                    fontSize: 14, color: const Color(0xFFC2D2E6), height: 1.45),
-                children: [
-                  const TextSpan(text: 'Accetto i '),
-                  TextSpan(
-                    text: 'Termini di servizio',
-                    style: AppType.text(
-                      fontSize: 14,
-                      color: AppColor.cyan,
-                      fontWeight: FontWeight.w600,
-                    ),
+    return Semantics(
+      checked: checked,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onChanged(!checked),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.skewX(-.21),
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: checked ? AppColor.ink : null,
+                    border: Border.all(
+                        color: checked ? AppColor.ink : AppColor.lineMuted,
+                        width: 1.5),
                   ),
-                  const TextSpan(text: ' e la '),
-                  TextSpan(
-                    text: 'Privacy policy',
-                    style: AppType.text(
-                      fontSize: 14,
-                      color: AppColor.cyan,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const TextSpan(text: '.'),
-                ],
+                  child: checked
+                      ? const Icon(Icons.check_rounded,
+                          size: 15, color: AppColor.base)
+                      : null,
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(children: [
+                    const TextSpan(text: 'accetto i '),
+                    TextSpan(
+                        text: 'termini di servizio',
+                        style: AppType.text(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColor.ink)),
+                    const TextSpan(text: ' e la '),
+                    TextSpan(
+                        text: 'privacy policy',
+                        style: AppType.text(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColor.ink)),
+                    const TextSpan(text: '.'),
+                  ]),
+                  style: AppType.text(
+                      fontSize: 13, color: AppColor.inkMuted, height: 1.45),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

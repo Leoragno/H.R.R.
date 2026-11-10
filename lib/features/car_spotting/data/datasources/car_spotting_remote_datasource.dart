@@ -18,7 +18,8 @@ class CarSpottingRemoteDatasource {
   // (author_id diretta + spot_reactions/spot_saves many-to-many), quindi
   // "profiles(username)" senza disambiguare fallisce con PGRST201
   // ("more than one relationship was found").
-  static const _selectWithAuthor = '*, profiles!spots_author_id_fkey(username)';
+  static const _selectWithAuthor =
+      '*, profiles!spots_author_id_fkey(username, mascot_id), spot_comments(count)';
 
   Future<List<SpotModel>> feed({int limit = 30}) async {
     final rows = await _client
@@ -38,6 +39,18 @@ class CarSpottingRemoteDatasource {
         .gt('rating_count', 0)
         .order('average_rating', ascending: false)
         .order('rating_count', ascending: false)
+        .limit(limit);
+    return (rows as List)
+        .map((r) => SpotModel.fromJson(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<SpotModel>> byAuthor(String authorId, {int limit = 50}) async {
+    final rows = await _client
+        .from('spots')
+        .select(_selectWithAuthor)
+        .eq('author_id', authorId)
+        .order('created_at', ascending: false)
         .limit(limit);
     return (rows as List)
         .map((r) => SpotModel.fromJson(r as Map<String, dynamic>))

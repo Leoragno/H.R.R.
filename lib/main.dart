@@ -10,6 +10,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/router/app_router.dart';
+import 'core/theme/accent_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/missions/presentation/providers/mission_event_bridge_provider.dart';
 import 'features/notifications/presentation/providers/local_notifications_service.dart';
@@ -64,11 +65,16 @@ class HrrApp extends ConsumerWidget {
     // giornaliero streak/inattività) — vedi rival_controller_provider.dart.
     ref.watch(rivalControllerProvider);
 
+    // L'accento è runtime (AppColor.accent non è const): al cambio la
+    // key forza la ricostruzione completa così ogni widget rilegge il colore.
+    final accent = ref.watch(accentProvider);
+
     return MaterialApp.router(
+      key: ValueKey(accent),
       title: 'H.R.R.',
       debugShowCheckedModeBanner: false,
-      theme: buildSmoothTheme(),
-      darkTheme: buildSmoothTheme(),
+      theme: buildHeatTheme(),
+      darkTheme: buildHeatTheme(),
       themeMode: ThemeMode.dark,
       routerConfig: router,
     );

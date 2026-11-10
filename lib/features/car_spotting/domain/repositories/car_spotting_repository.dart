@@ -14,6 +14,9 @@ abstract class CarSpottingRepository {
   /// numero voti a parità di media) — nessuna soglia minima di voti.
   Future<List<Spot>> topRated({int limit = 20});
 
+  /// Spot pubblicati da [authorId], più recenti prima (tab I MIEI).
+  Future<List<Spot>> byAuthor(String authorId, {int limit = 50});
+
   Future<Spot> spotById(String spotId);
 
   /// Carica la foto su Storage (bucket `car-photos`) e inserisce la riga

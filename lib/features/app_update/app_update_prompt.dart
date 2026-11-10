@@ -167,7 +167,7 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
             const SizedBox(height: AppSpace.md),
             LinearProgressIndicator(
               value: _installing ? null : progress / 100,
-              color: AppColor.cyan,
+              color: AppColor.accent,
               backgroundColor: AppColor.line,
             ),
             const SizedBox(height: AppSpace.xs),
@@ -195,7 +195,7 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
           TextButton(
             onPressed: _start,
             child: Text(_error == null ? 'Aggiorna' : 'Riprova',
-                style: const TextStyle(color: AppColor.cyan)),
+                style: TextStyle(color: AppColor.accent)),
           ),
       ],
     );

@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/heat_shapes.dart';
 import '../../../../core/widgets/car_glyph_icon.dart';
 import '../../../../core/widgets/draggable_sheet_scaffold.dart';
-import '../../../../core/widgets/neon_cta_button.dart';
+import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../data/car_catalog.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_text_field.dart';
 
-/// Onboarding "il tuo ride": scelta di marca/modello del veicolo
-/// principale, mostrata una volta dopo la registrazione (gate nel
-/// router — vedi app_router.dart). Vedi Guida.dc.html righe 51-99.
+/// Onboarding "il tuo ride" (HEAT, handoff §4 · PASSO 2 DI 3): marca e
+/// modello del veicolo principale, mostrata una volta dopo la
+/// registrazione (gate nel router — vedi app_router.dart).
 class RideOnboardingScreen extends ConsumerStatefulWidget {
   const RideOnboardingScreen({super.key});
 
@@ -68,35 +69,47 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
     final modelCtrl = TextEditingController(text: _model ?? '');
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1522),
-        title: Text('Il tuo modello',
-            style: AppType.text(
-                fontWeight: FontWeight.w800, color: AppColor.ink)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: brandCtrl,
-              style: const TextStyle(color: AppColor.ink),
-              decoration: const InputDecoration(labelText: 'Marca'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: modelCtrl,
-              style: const TextStyle(color: AppColor.ink),
-              decoration: const InputDecoration(labelText: 'Modello'),
-            ),
-          ],
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColor.surfaceHigh,
+        shape: const ChamferBorder(cut: 16, bottomLeft: true),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('IL TUO MODELLO',
+                  style: AppType.display(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: AppColor.ink)),
+              const SizedBox(height: 14),
+              AuthTextField(placeholder: 'marca', controller: brandCtrl),
+              const SizedBox(height: 8),
+              AuthTextField(placeholder: 'modello', controller: modelCtrl),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text('annulla',
+                        style: AppType.text(
+                            fontSize: 14, color: AppColor.inkMuted)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text('salva',
+                        style: AppType.text(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColor.ink)),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annulla')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Salva')),
-        ],
       ),
     );
     if (result == true &&
@@ -130,74 +143,66 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
     final canContinue = _brand != null && _model != null && !isLoading;
 
     return Scaffold(
-      backgroundColor: AppColor.void_,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Scegli il tuo ride principale',
-                textAlign: TextAlign.center,
-                style: AppType.text(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 30,
-                  color: AppColor.ink,
-                ),
-              ).animate().fadeIn().slideY(begin: 0.1, end: 0),
-              const SizedBox(height: 12),
-              Text(
-                "Scegli l'auto che guidi di più",
-                textAlign: TextAlign.center,
-                style: AppType.text(
-                  fontSize: 16,
-                  color: AppColor.inkMuted,
-                ),
-              ),
-              const Spacer(),
-              Center(
-                child: Container(
-                  width: 190,
-                  height: 190,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColor.cyan, width: 6),
-                  ),
-                  child: const Center(
-                    child: CarGlyphIcon(size: 130, color: Color(0xFF1D5C58)),
-                  ),
-                ),
-              ),
-              const Spacer(),
-              _RideSelectButton(
-                label: _brand ?? 'Marca',
-                filled: _brand != null,
-                onTap: _pickBrand,
-              ),
-              const SizedBox(height: 14),
-              _RideSelectButton(
-                label: _model ?? 'Modello',
-                filled: _model != null,
-                onTap: _brand == null ? null : _pickModel,
-              ),
-              const SizedBox(height: 14),
-              Center(
-                child: TextButton(
-                  onPressed: _pickCustom,
-                  style: TextButton.styleFrom(
-                      foregroundColor: AppColor.inkMuted),
-                  child: const Text(
-                    'non trovi il tuo modello?',
-                    style: TextStyle(decoration: TextDecoration.underline),
+      backgroundColor: AppColor.base,
+      body: HeatBackground(
+        glow: false,
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 24, 22, 30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const AuthStepHeader(
+                        step: 'PASSO 2 DI 3',
+                        title: 'Il tuo\nride',
+                        subtitle: "scegli l'auto che guidi di più.",
+                      ),
+                      const SizedBox(height: 22),
+                      Center(child: _RidePreview(brand: _brand, model: _model)),
+                      const SizedBox(height: 22),
+                      _RideSelect(
+                        label: 'MARCA',
+                        value: _brand,
+                        placeholder: 'scegli la marca',
+                        onTap: isLoading ? null : _pickBrand,
+                      ),
+                      const SizedBox(height: 10),
+                      _RideSelect(
+                        label: 'MODELLO',
+                        value: _model,
+                        placeholder: _brand == null
+                            ? 'prima la marca'
+                            : 'scegli il modello',
+                        onTap: _brand == null || isLoading ? null : _pickModel,
+                      ),
+                      Center(
+                        child: TextButton(
+                          onPressed: isLoading ? null : _pickCustom,
+                          child: Text(
+                            'non trovi il tuo modello?',
+                            style: AppType.text(
+                              fontSize: 13,
+                              color: AppColor.inkMuted,
+                            ).copyWith(decoration: TextDecoration.underline),
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      const SizedBox(height: 12),
+                      HeatButton(
+                        label: isLoading ? 'UN ATTIMO…' : 'CONTINUA',
+                        icon: null,
+                        height: 58,
+                        fontSize: 24,
+                        onPressed: canContinue ? _continue : null,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              NeonCtaButton(
-                label: 'Continua',
-                onPressed: canContinue ? _continue : null,
               ),
             ],
           ),
@@ -207,51 +212,124 @@ class _RideOnboardingScreenState extends ConsumerState<RideOnboardingScreen> {
   }
 }
 
-class _RideSelectButton extends StatelessWidget {
-  final String label;
-  final bool filled;
-  final VoidCallback? onTap;
+/// Riquadro smussato con marca e modello scelti (al posto del render).
+class _RidePreview extends StatelessWidget {
+  const _RidePreview({required this.brand, required this.model});
 
-  const _RideSelectButton({
-    required this.label,
-    required this.filled,
-    required this.onTap,
-  });
+  final String? brand;
+  final String? model;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColor.cyan, width: 2),
+    return Container(
+      width: 250,
+      height: 170,
+      decoration: const ShapeDecoration(
+        gradient: RadialGradient(
+          center: Alignment.topCenter,
+          radius: 1.2,
+          colors: [Color(0xFF231F2E), AppColor.surface],
+          stops: [0, .7],
+        ),
+        shape: ChamferBorder(cut: 22, bottomLeft: true),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Positioned(
+            right: 14,
+            bottom: 10,
+            child: CarGlyphIcon(size: 70, color: Color(0x14F4F1FA)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: AppType.text(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 19,
-                  color: filled
-                      ? const Color(0xFF111111)
-                      : const Color(0xFF68788F),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text((brand ?? 'marca').toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.display(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        italic: false,
+                        letterSpacing: 2,
+                        color: AppColor.inkMuted)),
+                Text((model ?? '—').toUpperCase(),
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.display(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        height: .95,
+                        color:
+                            model == null ? AppColor.inkFaint : AppColor.ink)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RideSelect extends StatelessWidget {
+  const _RideSelect({
+    required this.label,
+    required this.value,
+    required this.placeholder,
+    required this.onTap,
+  });
+
+  final String label;
+  final String? value;
+  final String placeholder;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(label,
+            style: AppType.display(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                italic: false,
+                letterSpacing: 2,
+                color: AppColor.inkMuted)),
+        const SizedBox(height: 6),
+        HeatPressable(
+          onTap: onTap,
+          child: Container(
+            height: 54,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            decoration: const BoxDecoration(
+              color: AppColor.surface,
+              border: Border.fromBorderSide(BorderSide(color: AppColor.line)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value ?? placeholder,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.text(
+                        fontSize: 15,
+                        color:
+                            value == null ? AppColor.inkFaint : AppColor.ink),
+                  ),
                 ),
-              ),
-              const Icon(Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF68788F)),
-            ],
+                Icon(Icons.expand_more_rounded,
+                    color:
+                        onTap == null ? AppColor.inkFaint : AppColor.inkMuted),
+              ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

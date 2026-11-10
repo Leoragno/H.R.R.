@@ -134,8 +134,8 @@ class MusicDrawer extends ConsumerWidget {
                               value: ratio,
                               minHeight: 5,
                               backgroundColor: const Color(0xFF1E1E1E),
-                              valueColor: const AlwaysStoppedAnimation(
-                                  AppColor.cyan),
+                              valueColor: AlwaysStoppedAnimation(
+                                  AppColor.accent),
                             ),
                           ),
                           const SizedBox(height: 7),
@@ -171,7 +171,7 @@ class MusicDrawer extends ConsumerWidget {
                         builder: (context, snapshot) {
                           final playing = snapshot.data?.playing ?? false;
                           return Material(
-                            color: AppColor.cyan,
+                            color: AppColor.accent,
                             shape: const CircleBorder(),
                             child: InkWell(
                               customBorder: const CircleBorder(),
@@ -218,7 +218,7 @@ class MusicDrawer extends ConsumerWidget {
                   final isCurrent = i == trackIndex;
                   return Material(
                     color: isCurrent
-                        ? AppColor.cyan.withValues(alpha: 0.1)
+                        ? AppColor.accent.withValues(alpha: 0.1)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
@@ -252,7 +252,7 @@ class MusicDrawer extends ConsumerWidget {
                                           fontWeight: FontWeight.w700,
                                           fontSize: 15,
                                           color: isCurrent
-                                              ? AppColor.cyan
+                                              ? AppColor.accent
                                               : AppColor.ink)),
                                   const SizedBox(height: 2),
                                   Text(t.artist,
@@ -270,7 +270,7 @@ class MusicDrawer extends ConsumerWidget {
                                       fontWeight: FontWeight.w800,
                                       fontSize: 11,
                                       letterSpacing: 1,
-                                      color: AppColor.cyan)),
+                                      color: AppColor.accent)),
                           ],
                         ),
                       ),

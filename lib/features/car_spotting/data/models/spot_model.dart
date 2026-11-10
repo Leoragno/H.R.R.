@@ -15,6 +15,8 @@ class SpotModel {
   final double averageRating;
   final int ratingCount;
   final DateTime createdAt;
+  final String? authorMascotId;
+  final int commentCount;
 
   const SpotModel({
     required this.id,
@@ -31,6 +33,8 @@ class SpotModel {
     required this.averageRating,
     required this.ratingCount,
     required this.createdAt,
+    this.authorMascotId,
+    this.commentCount = 0,
   });
 
   factory SpotModel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +54,12 @@ class SpotModel {
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0,
       ratingCount: json['rating_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
+      authorMascotId: author?['mascot_id'] as String?,
+      // `spot_comments(count)` → [{count: N}]; assente nelle select brevi.
+      commentCount: switch (json['spot_comments']) {
+        [{'count': final num n}, ...] => n.toInt(),
+        _ => 0,
+      },
     );
   }
 
@@ -68,5 +78,7 @@ class SpotModel {
         averageRating: averageRating,
         ratingCount: ratingCount,
         createdAt: createdAt,
+        authorMascotId: authorMascotId,
+        commentCount: commentCount,
       );
 }

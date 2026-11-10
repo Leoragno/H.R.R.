@@ -27,8 +27,8 @@ class CarSpottingLeaderboardScreen extends ConsumerWidget {
             style: AppType.display(fontSize: 16, letterSpacing: 0.5)),
       ),
       body: topRated.when(
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColor.cyan)),
+        loading: () =>
+            Center(child: CircularProgressIndicator(color: AppColor.accent)),
         error: (err, st) => Center(
             child: Text('Errore: $err',
                 style: AppType.text(color: AppColor.inkMuted))),

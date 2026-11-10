@@ -64,6 +64,24 @@ final spotsFeedProvider = AutoDisposeFutureProvider<List<Spot>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SpotsFeedRef = AutoDisposeFutureProviderRef<List<Spot>>;
+String _$mySpotsHash() => r'b7c1f0a4e2d94c3a8f6e5d1b2a3c4d5e6f708192';
+
+/// I miei spot (tab I MIEI); vuoto se non autenticato.
+///
+/// Copied from [mySpots].
+@ProviderFor(mySpots)
+final mySpotsProvider = AutoDisposeFutureProvider<List<Spot>>.internal(
+  mySpots,
+  name: r'mySpotsProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$mySpotsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef MySpotsRef = AutoDisposeFutureProviderRef<List<Spot>>;
 String _$spotByIdHash() => r'1d5e58e3e3ae66ea911e6b44395d5b5daa9159b2';
 
 /// Copied from Dart SDK

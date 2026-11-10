@@ -62,6 +62,10 @@ class GameMapBackground extends ConsumerStatefulWidget {
           double southLat, double westLon, double northLat, double eastLon)?
       onViewportChanged;
 
+  /// Tap su una cella colorata. Se nullo si mostra uno snackbar col
+  /// proprietario (comportamento storico).
+  final ValueChanged<TerritoryCell>? onCellTapped;
+
   const GameMapBackground({
     super.key,
     required this.lat,
@@ -70,6 +74,7 @@ class GameMapBackground extends ConsumerStatefulWidget {
     required this.mode,
     required this.myProfileId,
     this.onViewportChanged,
+    this.onCellTapped,
   });
 
   @override
@@ -104,6 +109,7 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
   // della feature GeoJSON (posizione nella lista): MapLibre GL JS scarta
   // gli id stringa, quindi sul web il tap non saprebbe quale cella è.
   final List<String> _ownerByFeatureId = [];
+  final List<String> _keyByFeatureId = [];
 
   /// Ricentra la camera sulla posizione live corrente — chiamato dal
   /// pulsante "centra" di GameScreen via GlobalKey, dato che la camera
@@ -199,11 +205,13 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
     try {
       final features = <Map<String, dynamic>>[];
       final owners = <String>[];
+      final keys = <String>[];
       for (final entry in widget.cells.entries) {
         final color = _colorFor(entry.value, widget.mode, widget.myProfileId);
         if (color == null) continue;
         final featureId = owners.length;
         owners.add(entry.value.ownerId);
+        keys.add(entry.key);
         final ring = [
           for (final (lat, lon) in HexGrid.polygonOf(entry.value.coord))
             [lon, lat],
@@ -228,6 +236,9 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
       _ownerByFeatureId
         ..clear()
         ..addAll(owners);
+      _keyByFeatureId
+        ..clear()
+        ..addAll(keys);
 
       final collection = _featureCollection(features);
       final signature = jsonEncode(collection);
@@ -261,6 +272,12 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
             ? _ownerByFeatureId[index]
             : null;
     if (ownerId == null) return;
+    final onTap = widget.onCellTapped;
+    if (onTap != null) {
+      final cell = widget.cells[_keyByFeatureId[index!]];
+      if (cell != null) onTap(cell);
+      return;
+    }
     unawaited(_showOwnerName(ownerId));
   }
 
@@ -299,7 +316,7 @@ class GameMapBackgroundState extends ConsumerState<GameMapBackground> {
       final options = CircleOptions(
         geometry: LatLng(lat, lon),
         circleRadius: 9,
-        circleColor: _colorToHex(AppColor.cyan),
+        circleColor: _colorToHex(AppColor.accent),
         circleStrokeColor: '#FFFFFF',
         circleStrokeWidth: 2.5,
         circleOpacity: 0.95,
@@ -393,7 +410,7 @@ Color? _colorFor(
 ) {
   final isMine = owned.ownerId == myProfileId;
   if (mode == GameMapMode.mineOnly) {
-    return isMine ? AppColor.cyan : null;
+    return isMine ? AppColor.accent : null;
   }
   return territoryIdentityColor(
     ownerId: owned.ownerId,

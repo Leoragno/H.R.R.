@@ -108,6 +108,7 @@ flutter:
     - assets/mascots/
     - assets/poses/
     - assets/emotes/
+    - assets/faces/
     - .env
   # Orbitron/Inter sono serviti via google_fonts (vedi core/theme/app_theme.dart)
   # invece di file .ttf committati — nessun binario di font da gestire.

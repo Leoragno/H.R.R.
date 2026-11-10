@@ -10,6 +10,8 @@ import '../../features/notifications/presentation/widgets/notification_presentat
 import '../router/app_router.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../theme/heat_shapes.dart';
+import 'heat/heat_widgets.dart';
 
 /// Toast "un po' simpatico" per una nuova notifica arrivata mentre l'app
 /// era già aperta, sopra qualunque tab (vedi MainShell) — non è uno stato
@@ -83,54 +85,49 @@ class _ToastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final presentation = presentationFor(notification);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpace.md),
-          decoration: BoxDecoration(
-            color: AppColor.surfaceHigh.withValues(alpha: 0.94),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: presentation.color, width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: presentation.color.withValues(alpha: 0.35),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+    final p = presentationFor(notification);
+    final body = p.body(notification);
+    return HeatPanel(
+      onTap: onTap,
+      shape: ChamferBorder(
+        cut: 14,
+        bottomLeft: true,
+        side: BorderSide(
+            color: p.rival ? AppColor.danger : AppColor.line, width: 1.2),
+      ),
+      color: AppColor.surfaceHigh,
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const ShapeDecoration(
+              color: AppColor.surface,
+              shape: SlantBorder(left: 6, right: 6),
+            ),
+            child: Icon(p.icon, color: p.color, size: 21),
           ),
-          child: Row(
-            children: [
-              Icon(presentation.icon, color: presentation.color, size: 26),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(presentation.title(notification),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.text(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColor.ink)),
-                    Text(presentation.body(notification),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.text(
-                            fontSize: 12.5,
-                            color: AppColor.inkMuted)),
-                  ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                  text: p.title(notification),
+                  style: AppType.text(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColor.ink),
                 ),
-              ),
-            ],
+                if (body.isNotEmpty) TextSpan(text: ' $body'),
+              ]),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.text(
+                  fontSize: 13.5, height: 1.35, color: AppColor.inkMuted),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

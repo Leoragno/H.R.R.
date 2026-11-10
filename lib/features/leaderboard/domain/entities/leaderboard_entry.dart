@@ -13,6 +13,15 @@ class LeaderboardEntry extends Equatable {
   final int periodRep;
   final double totalKm;
   final double topSpeedKmh;
+  final double avgSpeedKmh;
+  final double longestTripKm;
+
+  /// Miglior 0-100 in secondi; null = mai misurato.
+  final double? bestZeroToHundred;
+  final String? mascotId;
+
+  /// Codice ISO (IT, CH, …) per la bandiera della riga.
+  final String? country;
 
   const LeaderboardEntry({
     required this.rank,
@@ -25,7 +34,23 @@ class LeaderboardEntry extends Equatable {
     required this.periodRep,
     required this.totalKm,
     required this.topSpeedKmh,
+    this.avgSpeedKmh = 0,
+    this.longestTripKm = 0,
+    this.bestZeroToHundred,
+    this.mascotId,
+    this.country,
   });
+
+  /// Valore della [metric] per questa riga.
+  num valueFor(LeaderboardMetric metric) => switch (metric) {
+        LeaderboardMetric.xp => periodXp,
+        LeaderboardMetric.rep => periodRep,
+        LeaderboardMetric.km => totalKm,
+        LeaderboardMetric.speed => topSpeedKmh,
+        LeaderboardMetric.avg => avgSpeedKmh,
+        LeaderboardMetric.long => longestTripKm,
+        LeaderboardMetric.zero => bestZeroToHundred ?? 0,
+      };
 
   @override
   List<Object?> get props => [
@@ -39,6 +64,11 @@ class LeaderboardEntry extends Equatable {
         periodRep,
         totalKm,
         topSpeedKmh,
+        avgSpeedKmh,
+        longestTripKm,
+        bestZeroToHundred,
+        mascotId,
+        country,
       ];
 }
 
@@ -49,21 +79,34 @@ enum LeaderboardMetric {
   xp,
   rep,
   km,
-  speed;
+  speed,
+  avg,
+  long,
+  zero;
 
-  String get apiValue => switch (this) {
-        LeaderboardMetric.xp => 'xp',
-        LeaderboardMetric.rep => 'rep',
-        LeaderboardMetric.km => 'km',
-        LeaderboardMetric.speed => 'speed',
-      };
+  String get apiValue => name;
 
   String get label => switch (this) {
-        LeaderboardMetric.xp => 'XP guadagnati',
-        LeaderboardMetric.rep => 'Reputazione',
-        LeaderboardMetric.km => 'Km totali',
-        LeaderboardMetric.speed => 'Velocità massima',
+        LeaderboardMetric.xp => 'XP',
+        LeaderboardMetric.rep => 'REPUTAZIONE',
+        LeaderboardMetric.km => 'DISTANZA TOTALE',
+        LeaderboardMetric.speed => 'TOP SPEED',
+        LeaderboardMetric.avg => 'VELOCITÀ MEDIA',
+        LeaderboardMetric.long => 'GUIDA PIÙ LUNGA',
+        LeaderboardMetric.zero => '0-100 KM/H',
       };
+
+  /// Unità mostrata accanto al valore.
+  String get unit => switch (this) {
+        LeaderboardMetric.xp => ' XP',
+        LeaderboardMetric.rep => ' REP',
+        LeaderboardMetric.km || LeaderboardMetric.long => ' km',
+        LeaderboardMetric.speed || LeaderboardMetric.avg => ' km/h',
+        LeaderboardMetric.zero => ' s',
+      };
+
+  /// Per lo 0-100 vince il valore più basso.
+  bool get lowerIsBetter => this == LeaderboardMetric.zero;
 }
 
 /// Corrisponde a `p_period` della RPC `leaderboard_global`.

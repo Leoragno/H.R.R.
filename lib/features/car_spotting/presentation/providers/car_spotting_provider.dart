@@ -35,6 +35,14 @@ Future<List<Spot>> spotsFeed(SpotsFeedRef ref) {
   return ref.watch(carSpottingRepositoryProvider).feed();
 }
 
+/// I miei spot (tab I MIEI); vuoto se non autenticato.
+@riverpod
+Future<List<Spot>> mySpots(MySpotsRef ref) {
+  final userId = ref.watch(authStateProvider).valueOrNull?.id;
+  if (userId == null) return Future.value(const []);
+  return ref.watch(carSpottingRepositoryProvider).byAuthor(userId);
+}
+
 @riverpod
 Future<Spot> spotById(SpotByIdRef ref, String spotId) {
   return ref.watch(carSpottingRepositoryProvider).spotById(spotId);

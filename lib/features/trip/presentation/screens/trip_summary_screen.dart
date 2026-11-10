@@ -1,38 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/neon_cta_button.dart';
+import '../../../../core/theme/heat_shapes.dart';
+import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../pilots/presentation/widgets/pilot_emblem.dart';
+import '../../../progression/domain/progression.dart';
+import '../../../rival/domain/entities/mascot.dart';
+import '../../../rival/presentation/providers/active_mascot_provider.dart';
+import '../../domain/driver_archetype.dart';
+import '../../domain/entities/trip.dart';
 import '../providers/trip_live_provider.dart';
 import '../providers/trip_provider.dart';
-import '../widgets/line_area_chart.dart';
 import '../widgets/route_preview_painter.dart';
 import '../widgets/speed_distribution_bar.dart';
 import '../widgets/trip_rank_card.dart';
-import '../widgets/trip_stat_card.dart';
 
-/// Riepilogo di fine viaggio — versione ricca secondo Guida.dc.html righe
-/// 837-992 (report) + 994-1134 (card condivisibile "TripRank", dietro il
-/// bottone Condividi). Non include il confronto "previsto vs effettivo"
-/// del mockup: richiederebbe un motore di stima ETA che non esiste in
-/// questa app, e inventare quei numeri sarebbe fuorviante.
+/// Risultato di fine viaggio (handoff HEAT, schermata 8): banda FLOW con
+/// contatore e grado graffiti, tracciato, commento della mascotte, "OGGI
+/// HAI GUIDATO COME" con affinità, ricompense. L'unico elemento acceso è
+/// la banda FLOW; tutto il resto resta su superficie.
 ///
-/// Il protagonista della schermata è il punteggio di guida (DESIGN.md:
-/// "Report di fine viaggio → il punteggio"), rivelato con l'unica
-/// animazione elaborata dell'app (conteggio + glow che sale, vedi
-/// _DriveScoreReveal). Tutto il resto — anteprima percorso, reward,
-/// statistiche, grafici — resta grigio su superficie, senza accenti
-/// concorrenti: un solo elemento acceso per schermata.
+/// Il tracciato non evidenzia i tratti di frenata: le frenate sono contate
+/// ma non hanno una posizione registrata, e inventarla sarebbe falso.
 class TripSummaryScreen extends ConsumerWidget {
   const TripSummaryScreen({super.key});
 
-  String _hm(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  void _continue(BuildContext context, WidgetRef ref) {
+    ref.invalidate(myProfileProvider);
+    ref.invalidate(recentTripsProvider);
+    context.go(AppRoutes.home);
+  }
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, String tripId) async {
@@ -40,7 +42,7 @@ class TripSummaryScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColor.surfaceHigh,
-        title: const Text('Eliminare il trip?'),
+        title: const Text('Eliminare il viaggio?'),
         content: const Text(
             'Il viaggio verrà rimosso dal tuo storico. XP e REP già assegnati restano.'),
         actions: [
@@ -66,9 +68,7 @@ class TripSummaryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(lastTripSummaryControllerProvider);
     if (summary == null) {
-      // Nessun riepilogo in sospeso (es. refresh diretto su questa route):
-      // non c'è nulla da mostrare, torniamo alla Home invece di andare in
-      // crash su un dato che non esiste.
+      // Nessun riepilogo in sospeso (es. refresh diretto su questa route).
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go(AppRoutes.home);
       });
@@ -78,341 +78,151 @@ class TripSummaryScreen extends ConsumerWidget {
       );
     }
     final trip = summary.trip;
-    // La REP non arriva mai da un viaggio guidato da soli (0025_livello_
-    // rep_separation.sql): repEarned a 0 è la norma, non un segnale che
-    // "non è stato assegnato nulla" — solo xpEarned lo è.
-    final earnedNothing = trip.xpEarned == 0;
-    final speedSeries = summary.samples.map((s) => s.speedKmh).toList();
-    final elevationSeries = summary.samples
-        .where((s) => s.elevationM != null && s.elevationM != 0)
-        .map((s) => s.elevationM!)
-        .toList();
-    final speedBands = computeSpeedBands(summary.samples);
     final motion = summary.motionStats;
+    final mascot = ref.watch(activeMascotProvider);
+
+    // Storico SENZA questo viaggio (la lista recente potrebbe già
+    // contenerlo dopo il salvataggio).
+    final previous = [
+      for (final t in ref.watch(recentTripsProvider).valueOrNull ?? const <Trip>[])
+        if (t.id != trip.id) t,
+    ];
+    final prevScores = [
+      for (final t in previous)
+        if (t.drivingScore != null) t.drivingScore!,
+    ];
+    final avgFlow = prevScores.isEmpty
+        ? null
+        : prevScores.reduce((a, b) => a + b) / prevScores.length;
+
+    final match = matchDriverArchetype(DrivingStyleInput(
+      distanceKm: trip.distanceKm,
+      durationSeconds: trip.durationSeconds,
+      avgSpeedKmh: trip.avgSpeedKmh,
+      drivingScore: trip.drivingScore,
+      maxAccelerationMs2: motion.maxAccelerationMs2,
+      zeroToHundredSeconds: motion.zeroToHundredSeconds,
+      peakGForce: motion.peakGForce,
+      maxCorneringSpeedKmh: motion.maxCorneringSpeedKmh,
+      turns: motion.turnsLeft + motion.turnsRight,
+      laneChanges: motion.laneChanges,
+      brakingEvents: motion.brakingEvents,
+      totalStops: motion.totalStops,
+      stoppedSeconds: motion.stoppedTime.inSeconds,
+      elevationGainM: motion.elevationGainM,
+    ));
+    final prevArchetypes = archetypesOf(previous);
+    final before = buildPilotHistory(prevArchetypes);
+    final after = buildPilotHistory(
+        [if (match != null) match.archetype, ...prevArchetypes]);
+    final newPilot =
+        match != null && after.main != null && after.main != before.main;
+
+    final top = MediaQuery.paddingOf(context).top;
+    var i = 0;
 
     return Scaffold(
-      backgroundColor: AppColor.void_,
-      body: SafeArea(
+      backgroundColor: AppColor.base,
+      body: HeatBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
+          padding: EdgeInsets.fromLTRB(0, top + 4, 0, 0),
           children: [
-            Center(
-              child: Text(
-                earnedNothing ? 'VIAGGIO REGISTRATO' : 'DRIVE COMPLETED',
-                style: AppType.label.copyWith(fontSize: 16, color: AppColor.ink),
+            _Header(trip: trip, onClose: () => _continue(context, ref)),
+            const SizedBox(height: 4),
+            _FlowBand(score: trip.drivingScore, average: avgFlow),
+            HeatEnter(
+              index: i++,
+              child: _RouteBox(
+                points: summary.routePoints,
+                brakes: motion.brakingEvents,
               ),
-            ).animate().fadeIn().slideY(begin: -0.2, end: 0),
-            const SizedBox(height: AppSpace.md),
-
-            if (trip.drivingScore != null) ...[
-              Center(child: _DriveScoreReveal(score: trip.drivingScore!)),
-              const SizedBox(height: AppSpace.lg),
-            ],
-
-            // Hero: anteprima percorso (elemento firma, DESIGN.md) + top
-            // speed + condividi. Unico elemento acceso della schermata.
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: Container(
-                height: 220,
-                color: AppColor.surface,
-                child: Stack(
+            ),
+            if (trip.drivingScore != null)
+              HeatEnter(
+                index: i++,
+                child: _MascotComment(
+                    mascot: mascot, grade: flowGrade(trip.drivingScore!)),
+              ),
+            if (match != null)
+              HeatEnter(
+                index: i++,
+                child: _PilotCard(
+                  trip: trip,
+                  match: match,
+                  brakes: motion.brakingEvents,
+                  newMain: newPilot ? after.main : null,
+                  keeps: !newPilot &&
+                          after.main != null &&
+                          after.main != match.archetype
+                      ? after.main
+                      : null,
+                ),
+              ),
+            HeatEnter(
+              index: i++,
+              child: _Rewards(trip: trip),
+            ),
+            HeatEnter(
+              index: i++,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+                child: Row(
                   children: [
-                    if (summary.routePoints.length >= 2)
-                      Positioned.fill(
-                          child: RoutePreview(points: summary.routePoints)),
-                    Positioned(
-                      right: AppSpace.sm,
-                      top: AppSpace.sm,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpace.sm, vertical: AppSpace.xs),
-                        decoration: BoxDecoration(
-                          color: AppColor.surfaceHigh.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(AppRadius.control),
-                          border: Border.all(color: AppColor.line),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text('TOP SPEED', style: AppType.label),
-                            Text.rich(
-                              TextSpan(
-                                text:
-                                    trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—',
-                                style: AppType.metric.copyWith(fontSize: 17),
-                                children: [
-                                  TextSpan(
-                                    text: ' km/h',
-                                    style: AppType.caption,
-                                  ),
-                                ],
-                              ),
+                    SizedBox(
+                      width: 60,
+                      child: HeatGhostButton(
+                        icon: Icons.ios_share_rounded,
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            fullscreenDialog: true,
+                            builder: (_) => TripRankCard(
+                              trip: trip,
+                              routePoints: summary.routePoints,
+                              speedSeries: [
+                                for (final s in summary.samples) s.speedKmh
+                              ],
+                              speedBands: computeSpeedBands(summary.samples),
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                    Positioned(
-                      right: AppSpace.sm,
-                      bottom: AppSpace.sm,
-                      child: Material(
-                        color: AppColor.surfaceHigh.withValues(alpha: 0.85),
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              fullscreenDialog: true,
-                              builder: (_) => TripRankCard(
-                                trip: trip,
-                                routePoints: summary.routePoints,
-                                speedSeries: speedSeries,
-                                speedBands: speedBands,
-                              ),
-                            ),
-                          ),
-                          child: const SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: Icon(Icons.ios_share_rounded,
-                                color: AppColor.ink, size: 20),
-                          ),
-                        ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 10,
+                      child: HeatGhostButton(
+                        label: 'DETTAGLI',
+                        onPressed: () => context.push(
+                            AppRoutes.tripDetail.replaceFirst(':tripId', trip.id)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 13, // 1.3× DETTAGLI, come nel prototipo
+                      child: HeatButton(
+                        label: 'CONTINUA',
+                        height: 56,
+                        fontSize: 21,
+                        color: AppColor.ink,
+                        glow: false,
+                        icon: Icons.double_arrow_rounded,
+                        onPressed: () => _continue(context, ref),
                       ),
                     ),
                   ],
                 ),
               ),
-            ).animate().fadeIn(delay: 100.ms),
-            const SizedBox(height: AppSpace.md),
-
-            Row(
-              children: [
-                const Icon(Icons.calendar_today_rounded,
-                    size: 15, color: AppColor.inkMuted),
-                const SizedBox(width: AppSpace.sm),
-                Text(
-                    '${trip.startedAt.day.toString().padLeft(2, '0')}/${trip.startedAt.month.toString().padLeft(2, '0')}/${trip.startedAt.year}',
-                    style: AppType.caption),
-                const SizedBox(width: AppSpace.md),
-                const Icon(Icons.schedule_rounded,
-                    size: 15, color: AppColor.inkMuted),
-                const SizedBox(width: AppSpace.sm),
-                Text(
-                  trip.endedAt == null
-                      ? _hm(trip.startedAt)
-                      : '${_hm(trip.startedAt)} – ${_hm(trip.endedAt!)}',
-                  style: AppType.caption,
-                ),
-              ],
             ),
-            const SizedBox(height: AppSpace.md),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _RewardCard(label: 'XP', value: trip.xpEarned),
-                ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: _RewardCard(label: 'REP', value: trip.repEarned),
-                ),
-              ],
-            ).animate().fadeIn(delay: 200.ms),
-            if (earnedNothing) ...[
-              const SizedBox(height: AppSpace.sm),
-              Text(
-                'Nessun livello assegnato per questo viaggio (troppo corto, '
-                'velocità incompatibile con un\'auto, o hai già raggiunto il '
-                'tetto giornaliero/ripetuto lo stesso percorso più volte oggi).',
-                style: AppType.caption,
-                textAlign: TextAlign.center,
-              ),
-            ],
-            const SizedBox(height: AppSpace.lg),
-
-            // Hero stats (3 colonne) — tutto grigio, nessun accento: il
-            // protagonista resta l'anteprima del percorso sopra.
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  vertical: AppSpace.md, horizontal: AppSpace.sm),
-              decoration: AppGlow.card,
-              child: Row(
-                children: [
-                  Expanded(
-                      child: _HeroStat(
-                          label: 'DISTANZA',
-                          value: trip.distanceKm.toStringAsFixed(1),
-                          unit: 'km')),
-                  Expanded(
-                      child: _HeroStat(
-                          label: 'DURATA',
-                          value: formatTripDuration(trip.durationSeconds),
-                          unit: '')),
-                  Expanded(
-                      child: _HeroStat(
-                          label: 'VEL. MEDIA',
-                          value: trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—',
-                          unit: 'km/h')),
-                ],
-              ),
-            ).animate().fadeIn(delay: 250.ms),
-            const SizedBox(height: AppSpace.lg),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('SPEED DISTRIBUTION', style: AppType.label),
-                Text('KM/H', style: AppType.caption),
-              ],
-            ),
-            const SizedBox(height: AppSpace.sm),
-            SpeedDistributionBar(bands: speedBands),
-            const SizedBox(height: AppSpace.lg),
-
-            Text('Statistiche del trip', style: AppType.title),
-            const SizedBox(height: AppSpace.sm),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: AppSpace.sm,
-              mainAxisSpacing: AppSpace.sm,
-              childAspectRatio: 1.4,
-              children: [
-                TripStatCard('Distanza', trip.distanceKm.toStringAsFixed(1), 'km'),
-                TripStatCard(
-                    'Durata', formatTripDuration(trip.durationSeconds), ''),
-                TripStatCard('Velocità media',
-                    trip.avgSpeedKmh?.toStringAsFixed(0) ?? '—', 'km/h'),
-                TripStatCard('Velocità massima',
-                    trip.maxSpeedKmh?.toStringAsFixed(0) ?? '—', 'km/h'),
-                TripStatCard('XP guadagnati', '${trip.xpEarned}', ''),
-                TripStatCard('REP guadagnati', '${trip.repEarned}', ''),
-                if (trip.drivingScore != null)
-                  TripStatCard(
-                      'Punteggio di guida', '${trip.drivingScore}', '/100'),
-                TripStatCard('Tempo da fermo',
-                    formatStoppedTime(motion.stoppedTime), ''),
-                TripStatCard('Soste totali', '${motion.totalStops}', ''),
-                TripStatCard(
-                    'Tempo 0-100',
-                    motion.zeroToHundredSeconds != null
-                        ? motion.zeroToHundredSeconds!.toStringAsFixed(2)
-                        : '—',
-                    's'),
-                TripStatCard('Frenate', '${motion.brakingEvents}', ''),
-                TripStatCard('Svolte a sinistra', '${motion.turnsLeft}', ''),
-                TripStatCard('Svolte a destra', '${motion.turnsRight}', ''),
-                TripStatCard('Cambi di corsia', '${motion.laneChanges}', ''),
-                TripStatCard('Picco forza G', motion.peakGForce.toStringAsFixed(2),
-                    'G',
-                    hint: gForceHint(motion.peakGForce)),
-                TripStatCard(
-                    'Velocità max in curva',
-                    motion.maxCorneringSpeedKmh != null
-                        ? motion.maxCorneringSpeedKmh!.toStringAsFixed(0)
-                        : '—',
-                    'km/h'),
-                TripStatCard(
-                    'Accelerazione max',
-                    motion.maxAccelerationMs2 != null
-                        ? motion.maxAccelerationMs2!.toStringAsFixed(1)
-                        : '—',
-                    'm/s²',
-                    hint: motion.maxAccelerationMs2 != null
-                        ? accelHint(motion.maxAccelerationMs2!)
-                        : null),
-                TripStatCard(
-                    'Decelerazione max',
-                    motion.maxDecelerationMs2 != null
-                        ? motion.maxDecelerationMs2!.abs().toStringAsFixed(1)
-                        : '—',
-                    'm/s²',
-                    hint: motion.maxDecelerationMs2 != null
-                        ? decelHint(motion.maxDecelerationMs2!)
-                        : null),
-                TripStatCard('Dislivello',
-                    motion.elevationGainM.round().toString(), 'm'),
-                TripStatCard(
-                    'Altitudine max',
-                    motion.maxAltitudeM != null
-                        ? motion.maxAltitudeM!.round().toString()
-                        : '—',
-                    'm'),
-              ],
-            ),
-            const SizedBox(height: AppSpace.lg),
-
-            Text('Speed Over Time', style: AppType.title),
-            const SizedBox(height: AppSpace.sm),
-            Container(
-              padding: const EdgeInsets.all(AppSpace.sm),
-              decoration: AppGlow.card,
-              child: LineAreaChart(
-                values: speedSeries,
-                lineColor: AppColor.cyan,
-                fillColor: AppColor.cyan.withValues(alpha: 0.18),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => _confirmDelete(context, ref, trip.id),
+                icon: const Icon(Icons.delete_outline_rounded,
+                    size: 18, color: AppColor.inkFaint),
+                label: Text('Elimina viaggio',
+                    style: AppType.caption.copyWith(color: AppColor.inkFaint)),
               ),
             ),
-
-            if (elevationSeries.length >= 2) ...[
-              const SizedBox(height: AppSpace.lg),
-              Text('Elevation Over Time', style: AppType.title),
-              const SizedBox(height: AppSpace.sm),
-              Container(
-                padding: const EdgeInsets.all(AppSpace.sm),
-                decoration: AppGlow.card,
-                child: LineAreaChart(
-                  values: elevationSeries,
-                  lineColor: AppColor.cyan,
-                  fillColor: AppColor.inkMuted.withValues(alpha: 0.18),
-                ),
-              ),
-            ],
-            const SizedBox(height: AppSpace.xl),
-
-            Material(
-              color: AppColor.danger.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                onTap: () => _confirmDelete(context, ref, trip.id),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.card),
-                    border:
-                        Border.all(color: AppColor.danger.withValues(alpha: 0.35)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.delete_outline_rounded,
-                          color: AppColor.danger, size: 20),
-                      const SizedBox(width: AppSpace.sm),
-                      Text('Elimina trip',
-                          style: AppType.text(
-                              color: AppColor.danger,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpace.md),
-
-            NeonCtaButton(
-              label: 'Continua',
-              minHeight: 60,
-              onPressed: () {
-                ref.invalidate(myProfileProvider);
-                context.go(AppRoutes.home);
-              },
-            ),
+            SizedBox(height: 12 + MediaQuery.paddingOf(context).bottom),
           ],
         ),
       ),
@@ -420,111 +230,543 @@ class TripSummaryScreen extends ConsumerWidget {
   }
 }
 
-/// Rivelazione del punteggio di guida — l'unica animazione elaborata
-/// dell'app (DESIGN.md: "il numero conta da 0 al valore finale in
-/// AppMotion.reveal, il glow sale con lui"). Colore a soglie fisse, mai un
-/// gradiente: pulito/buono → ciano, scarso/sporco → magenta (stesso
-/// vocabolario di "km puliti" nel resto del prodotto), mediocre → grigio,
-/// niente da segnalare.
-class _DriveScoreReveal extends StatelessWidget {
-  final int score;
-  const _DriveScoreReveal({required this.score});
+String _two(int n) => n.toString().padLeft(2, '0');
 
-  Color get _accent {
-    if (score >= 75) return AppColor.cyan;
-    if (score <= 40) return AppColor.magenta;
-    return AppColor.inkMuted;
-  }
+class _Header extends StatelessWidget {
+  const _Header({required this.trip, required this.onClose});
+  final Trip trip;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    final accent = _accent;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: AppMotion.reveal,
-      curve: AppMotion.curve,
-      builder: (context, t, _) {
-        final shown = (score * t).round();
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('PUNTEGGIO DI GUIDA', style: AppType.label),
-            const SizedBox(height: AppSpace.sm),
-            Container(
-              padding: const EdgeInsets.all(AppSpace.md),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: accent.withValues(alpha: 0.50 * t),
-                      blurRadius: 40 * t),
-                  BoxShadow(
-                      color: accent.withValues(alpha: 0.20 * t),
-                      blurRadius: 90 * t),
-                ],
-              ),
-              child: Text('$shown',
-                  style: AppType.score.copyWith(color: accent, fontSize: 64)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _RewardCard extends StatelessWidget {
-  final String label;
-  final int value;
-  const _RewardCard({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
-      decoration: AppGlow.card,
-      child: Column(
+    final d = trip.startedAt;
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 8),
+      child: Row(
         children: [
-          Text('+$value', style: AppType.metric),
-          const SizedBox(height: AppSpace.xs),
-          Text(label, style: AppType.label),
+          Expanded(
+            child: Text(
+              trip.xpEarned == 0
+                  ? 'VIAGGIO REGISTRATO · ${_two(d.day)}/${_two(d.month)}'
+                  : 'GUIDA COMPLETATA · ${_two(d.day)}/${_two(d.month)} '
+                      '${_two(d.hour)}:${_two(d.minute)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.label.copyWith(fontSize: 14, letterSpacing: 1.8),
+            ),
+          ),
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close_rounded, color: AppColor.inkMuted),
+          ),
         ],
       ),
     );
   }
 }
 
-class _HeroStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
-  const _HeroStat(
-      {required this.label, required this.value, required this.unit});
+/// Banda FLOW: il numero conta da 0 al valore, il glow sale con lui, poi
+/// compare il grado graffiti.
+class _FlowBand extends StatelessWidget {
+  const _FlowBand({required this.score, required this.average});
+  final int? score;
+  final double? average;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Niente Flexible qui: la Column sta in una ListView (altezza non
-        // limitata) e un figlio flessibile manda in errore il layout
-        // dell'intera riga. L'ellissi orizzontale basta con maxLines: 1.
-        Text(label,
-            style: AppType.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
-        const SizedBox(height: AppSpace.xs),
-        Text.rich(
-          TextSpan(
-            text: value,
-            style: AppType.metric.copyWith(fontSize: 20),
+    final a = AppColor.accent;
+    final s = score;
+    final delta = s == null || average == null ? null : (s - average!).round();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [a.withValues(alpha: .3), a.withValues(alpha: 0)],
+          stops: const [0, .75],
+        ),
+        border: Border.symmetric(
+            horizontal: BorderSide(color: a.withValues(alpha: .5))),
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: AppMotion.reveal,
+        curve: AppMotion.curve,
+        builder: (context, t, _) => Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('FLOW',
+                      style: AppType.label.copyWith(
+                          fontSize: 16, letterSpacing: 3, color: a)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 14, top: 4),
+                      child: Text(
+                        s == null ? '—' : '${(s * t).round()}',
+                        style: AppType.score.copyWith(
+                          fontSize: 120,
+                          height: .92,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          shadows: [
+                            Shadow(
+                                color: a.withValues(alpha: .8 * t),
+                                blurRadius: 28 * t),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    s == null
+                        ? 'punteggio non disponibile per questo viaggio'
+                        : delta == null
+                            ? 'il tuo primo FLOW'
+                            : delta == 0
+                                ? 'IN LINEA CON LA TUA MEDIA'
+                                : '${delta > 0 ? '+' : ''}$delta SULLA TUA MEDIA',
+                    style: s == null
+                        ? AppType.caption
+                        : AppType.display(
+                            fontSize: 17,
+                            italic: false,
+                            letterSpacing: 1,
+                            color: delta == null || delta == 0
+                                ? AppColor.inkMuted
+                                : delta > 0
+                                    ? AppColor.success
+                                    : AppColor.danger,
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            if (s != null)
+              Opacity(
+                opacity: ((t - .6) / .4).clamp(0, 1),
+                child: Column(
+                  children: [
+                    Text('GRADO', style: AppType.label),
+                    const SizedBox(height: 6),
+                    Transform.rotate(
+                      angle: -0.14,
+                      child: Text(
+                        flowGrade(s),
+                        style: AppType.graffiti(fontSize: 96, color: a)
+                            .copyWith(height: 1.15, shadows: [
+                          Shadow(
+                              color: a.withValues(alpha: .5), blurRadius: 24),
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteBox extends StatelessWidget {
+  const _RouteBox({required this.points, required this.brakes});
+  final List<RoutePoint> points;
+  final int brakes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+      child: HeatPanel(
+        shape: const ChamferBorder(cut: 14, bottomLeft: true),
+        color: AppColor.deep,
+        borderColor: AppColor.line,
+        padding: EdgeInsets.zero,
+        child: SizedBox(
+          height: 140,
+          child: Stack(
             children: [
-              if (unit.isNotEmpty)
-                TextSpan(text: ' $unit', style: AppType.caption),
+              if (points.length >= 2)
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 18),
+                    child: RoutePreview(points: points),
+                  ),
+                ),
+              Positioned(
+                left: 12,
+                top: 10,
+                child: Text.rich(
+                  TextSpan(
+                    text: 'TRACCIATO · ',
+                    children: [
+                      TextSpan(
+                        text: brakes == 0
+                            ? 'NESSUNA FRENATA BRUSCA'
+                            : '$brakes ${brakes == 1 ? 'FRENATA' : 'FRENATE'}',
+                        style: TextStyle(
+                            color:
+                                brakes == 0 ? AppColor.inkMuted : AppColor.gold),
+                      ),
+                    ],
+                  ),
+                  style: AppType.label.copyWith(letterSpacing: 1.4),
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+String _gradeQuote(String grade) => switch (grade) {
+      'S' => 'pulitissima. così si guida, niente da aggiungere.',
+      'A' => 'bella guida. la prossima la voglio da S.',
+      'B' => 'niente male, ma qualche frenata di troppo.',
+      _ => 'mmh. la prossima volta con più calma, ok?',
+    };
+
+class _MascotComment extends StatelessWidget {
+  const _MascotComment({required this.mascot, required this.grade});
+  final Mascot mascot;
+  final String grade;
+
+  @override
+  Widget build(BuildContext context) {
+    final happy = grade == 'S' || grade == 'A';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          SizedBox(
+            width: 84,
+            height: 84,
+            child: Image.asset(
+              'assets/emotes/${mascot.id}_emote_${happy ? 'a' : 'b'}.png',
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: HeatPanel(
+                shape: const SlantBorder(left: 12, right: 0),
+                borderColor: AppColor.line,
+                padding: const EdgeInsets.fromLTRB(18, 11, 16, 11),
+                child: Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                      text: '${mascot.name} ',
+                      style: AppType.display(
+                          fontSize: 16,
+                          italic: false,
+                          letterSpacing: 1,
+                          color: mascot.accentColor),
+                    ),
+                    TextSpan(text: _gradeQuote(grade)),
+                  ]),
+                  style: AppType.body.copyWith(height: 1.4),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PilotCard extends StatelessWidget {
+  const _PilotCard({
+    required this.trip,
+    required this.match,
+    required this.brakes,
+    required this.newMain,
+    required this.keeps,
+  });
+  final Trip trip;
+  final DriverArchetypeMatch match;
+  final int brakes;
+
+  /// Pilota principale appena cambiato (banner NUOVO PILOTA).
+  final DriverArchetype? newMain;
+
+  /// Pilota principale che resta, se diverso da quello di oggi.
+  final DriverArchetype? keeps;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = match.archetype;
+    final accent = AppColor.accent;
+    final avg = trip.avgSpeedKmh;
+    final chips = <(IconData, String)>[
+      (Icons.route_rounded, '${trip.distanceKm.toStringAsFixed(1)} km'),
+      if (avg != null) (Icons.speed_rounded, '${avg.round()} km/h media'),
+      (Icons.do_not_step_rounded, '$brakes ${brakes == 1 ? 'frenata' : 'frenate'}'),
+    ];
+    final aff = match.affinities.take(3).toList();
+    void openPilots() => context.push(AppRoutes.pilots);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColor.surface,
+          border: Border.all(color: AppColor.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (newMain != null)
+              HeatPressable(
+                onTap: openPilots,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [
+                      accent.withValues(alpha: .3),
+                      accent.withValues(alpha: 0),
+                    ]),
+                    border: Border(bottom: BorderSide(color: accent)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.swap_vert_rounded, color: accent, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: 'NUOVO PILOTA',
+                              style: AppType.display(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                  letterSpacing: 1,
+                                  color: accent),
+                            ),
+                            TextSpan(text: ' · ora sei ${newMain!.name}'),
+                          ]),
+                          style: AppType.body.copyWith(fontSize: 13),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: AppColor.inkMuted),
+                    ],
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('OGGI HAI GUIDATO COME', style: AppType.label),
+                  const SizedBox(height: 10),
+                  HeatPressable(
+                    onTap: openPilots,
+                    child: Row(
+                      children: [
+                        PilotEmblem(monogram: a.monogram),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(a.name,
+                                  style: AppType.display(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 22,
+                                      height: 1)),
+                              Text(a.source, style: AppType.caption),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: AppColor.inkFaint),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(a.tagline, style: AppType.body.copyWith(height: 1.4)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final (icon, label) in chips)
+                        Container(
+                          height: 30,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppColor.surfaceHigh,
+                            border: Border.all(color: AppColor.line),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, size: 16, color: AppColor.inkMuted),
+                              const SizedBox(width: 6),
+                              Text(label,
+                                  style: AppType.display(
+                                      fontSize: 15,
+                                      italic: false,
+                                      letterSpacing: .5)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (aff.length > 1) ...[
+                    const SizedBox(height: 14),
+                    Text('AFFINITÀ',
+                        style: AppType.label
+                            .copyWith(fontSize: 12, letterSpacing: 1.6)),
+                    const SizedBox(height: 6),
+                    for (final (k, e) in aff.indexed)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _AffinityRow(
+                          name: e.key.name,
+                          value: e.value.clamp(0.0, 1.0),
+                          highlight: k == 0,
+                        ),
+                      ),
+                  ],
+                  if (keeps != null) ...[
+                    const SizedBox(height: 4),
+                    const Divider(color: AppColor.line, height: 1),
+                    const SizedBox(height: 8),
+                    Text.rich(
+                      TextSpan(children: [
+                        const TextSpan(text: 'il tuo pilota resta '),
+                        TextSpan(
+                          text: keeps!.name,
+                          style: AppType.display(
+                              fontSize: 15, italic: false, letterSpacing: 1),
+                        ),
+                      ]),
+                      style: AppType.body
+                          .copyWith(fontSize: 13, color: AppColor.inkMuted),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AffinityRow extends StatelessWidget {
+  const _AffinityRow(
+      {required this.name, required this.value, required this.highlight});
+  final String name;
+  final double value;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = highlight ? AppColor.ink : AppColor.inkMuted;
+    return Row(
+      children: [
+        SizedBox(
+          width: 118,
+          child: Text(name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.display(
+                  fontSize: 13, italic: false, letterSpacing: .6, color: c)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: value),
+            duration: const Duration(milliseconds: 1000),
+            curve: AppMotion.enterCurve,
+            builder: (_, v, __) => SkewBar(
+              value: v,
+              height: 6,
+              color: highlight ? AppColor.ink : AppColor.lineMuted,
+              track: AppColor.surfaceHigh,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 42,
+          child: Text('${(value * 100).round()}%',
+              textAlign: TextAlign.right,
+              style: AppType.display(fontSize: 14, italic: false, color: c)),
+        ),
       ],
+    );
+  }
+}
+
+class _Rewards extends StatelessWidget {
+  const _Rewards({required this.trip});
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = [
+      ('XP', '+${trip.xpEarned}', AppColor.gold),
+      ('REP', '+${trip.repEarned}', AppColor.ink),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (label, value, color) in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: HeatPanel(
+                shape: const SlantBorder.all(10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(label,
+                          style: AppType.label
+                              .copyWith(fontSize: 15, letterSpacing: 1.6)),
+                    ),
+                    Text(value,
+                        style: AppType.display(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 26,
+                            color: color)),
+                  ],
+                ),
+              ),
+            ),
+          if (trip.xpEarned == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Nessun XP per questo viaggio: troppo corto, velocità '
+                'incompatibile con un\'auto, tetto giornaliero raggiunto o '
+                'stesso percorso ripetuto troppe volte oggi.',
+                style: AppType.caption,
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

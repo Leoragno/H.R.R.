@@ -39,7 +39,7 @@ class NotificationBellButton extends ConsumerWidget {
                     ? Icons.notifications_active_rounded
                     : Icons.notifications_none_rounded,
                 color: unread > 0
-                    ? AppColor.cyan
+                    ? AppColor.accent
                     : AppColor.inkMuted,
                 size: size * 0.5,
               ),

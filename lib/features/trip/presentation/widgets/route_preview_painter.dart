@@ -59,7 +59,7 @@ class _RoutePainter extends CustomPainter {
     }
 
     final glowPaint = Paint()
-      ..color = AppColor.cyan.withValues(alpha: 0.35)
+      ..color = AppColor.accent.withValues(alpha: 0.35)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round
@@ -67,7 +67,7 @@ class _RoutePainter extends CustomPainter {
     canvas.drawPath(path, glowPaint);
 
     final linePaint = Paint()
-      ..color = AppColor.cyan
+      ..color = AppColor.accent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;

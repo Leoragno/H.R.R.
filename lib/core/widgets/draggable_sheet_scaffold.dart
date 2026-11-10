@@ -62,7 +62,7 @@ class DraggableSheetScaffold extends StatelessWidget {
             right: BorderSide(color: AppColor.line, width: 1),
           ),
           borderRadius:
-              BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+              const BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -199,7 +199,7 @@ class SheetOptionPicker<T> extends StatelessWidget {
                     ),
                   ),
                   if (isSelected)
-                    const Icon(Icons.check_rounded, color: AppColor.cyan),
+                    Icon(Icons.check_rounded, color: AppColor.accent),
                 ],
               ),
             ),

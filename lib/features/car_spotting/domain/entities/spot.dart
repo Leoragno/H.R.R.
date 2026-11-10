@@ -19,6 +19,10 @@ class Spot extends Equatable {
   final int ratingCount;
   final DateTime createdAt;
 
+  /// Mascotte dell'autore (volto nella card); null se non scelta.
+  final String? authorMascotId;
+  final int commentCount;
+
   const Spot({
     required this.id,
     required this.authorId,
@@ -34,6 +38,8 @@ class Spot extends Equatable {
     required this.averageRating,
     required this.ratingCount,
     required this.createdAt,
+    this.authorMascotId,
+    this.commentCount = 0,
   });
 
   @override
@@ -52,5 +58,7 @@ class Spot extends Equatable {
         averageRating,
         ratingCount,
         createdAt,
+        authorMascotId,
+        commentCount,
       ];
 }

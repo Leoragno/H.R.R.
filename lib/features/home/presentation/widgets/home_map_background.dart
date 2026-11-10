@@ -326,10 +326,10 @@ class _HomeMapBackgroundState extends ConsumerState<HomeMapBackground> {
 
     final center = _cameraCenter;
     if (center == null) {
-      return const ColoredBox(
+      return ColoredBox(
         color: AppColor.void_,
         child: Center(
-          child: CircularProgressIndicator(color: AppColor.cyan),
+          child: CircularProgressIndicator(color: AppColor.accent),
         ),
       );
     }

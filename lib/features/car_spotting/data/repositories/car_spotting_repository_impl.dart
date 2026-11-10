@@ -25,6 +25,12 @@ class CarSpottingRepositoryImpl implements CarSpottingRepository {
   }
 
   @override
+  Future<List<Spot>> byAuthor(String authorId, {int limit = 50}) async {
+    final spots = await _remote.byAuthor(authorId, limit: limit);
+    return spots.map((s) => s.toEntity()).toList();
+  }
+
+  @override
   Future<Spot> spotById(String spotId) async =>
       (await _remote.spotById(spotId)).toEntity();
 
