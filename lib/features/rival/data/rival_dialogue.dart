@@ -91,12 +91,73 @@ const _genericFallback = <RivalMood, String>{
   RivalMood.inactivityTaunt: 'Ti aspettiamo in strada.',
 };
 
+/// Frasi in più sbloccate dal legame LV3 ("frasi nuove in radio"): più
+/// confidenziali, la mascotte ti conosce.
+final Map<String, Map<RivalMood, List<String>>> _bondPools = {
+  'nitro': {
+    RivalMood.greeting: [
+      'Socio. Il motore è caldo, manchi solo tu.',
+      'Ormai ti riconosco dal rumore delle frenate. Poche, bravo.',
+    ],
+    RivalMood.missionCelebration: [
+      'Noi due insieme siamo un problema per tutti.'
+    ],
+    RivalMood.personalRecordHype: [
+      'Questo lo racconto ai box per una settimana.'
+    ],
+    RivalMood.inactivityTaunt: ['Il casco ti aspetta. Anche io, un po\'.'],
+  },
+  'r3x': {
+    RivalMood.greeting: [
+      'Ammettilo: senza di me ti annoieresti.',
+      'Oggi rubiamo qualche esagono? Dai che lo vuoi.',
+    ],
+    RivalMood.missionCelebration: ['Ok, questa te la riconosco. Solo questa.'],
+    RivalMood.personalRecordHype: ['Mi stai quasi facendo paura. Quasi.'],
+    RivalMood.inactivityTaunt: ['I tuoi esagoni piangono. Io rido.'],
+  },
+  'volt': {
+    RivalMood.greeting: [
+      'La notte è nostra. I dati lo confermano.',
+      'Varianza in calo da quando guidiamo insieme. Interessante.',
+    ],
+    RivalMood.missionCelebration: ['Previsto. Ma comunque piacevole.'],
+    RivalMood.personalRecordHype: ['Fuori scala. Devo ricalibrare.'],
+    RivalMood.inactivityTaunt: ['Zero campioni da giorni. Inaccettabile.'],
+  },
+  'spark': {
+    RivalMood.greeting: [
+      'Eccoci! Oggi foto, curve e caos. Nell\'ordine che vuoi.',
+      'Ho già pronto il filtro per il tuo prossimo spot.',
+    ],
+    RivalMood.missionCelebration: ['Questa la condivido con TUTTI.'],
+    RivalMood.personalRecordHype: [
+      'Ma sei serio?! Fammi un video la prossima.'
+    ],
+    RivalMood.inactivityTaunt: ['Il feed è noioso senza di te.'],
+  },
+  'dust': {
+    RivalMood.greeting: [
+      'Quack. Ancora qui, ancora noi. Non si molla.',
+      'Un giorno alla volta. Lo sai come la penso.',
+    ],
+    RivalMood.missionCelebration: ['Testardi si nasce. Noi lo siamo.'],
+    RivalMood.personalRecordHype: ['QUACK. Ok, mi hai stupito.'],
+    RivalMood.inactivityTaunt: ['La serie non si allunga da sola. Quack.'],
+  },
+};
+
 /// Non lancia mai per un (mascotId, mood) senza contenuto dedicato: prova
 /// prima il pool specifico, poi [_genericFallback] — stesso principio di
 /// `notification_presentation.dart` (mai un'eccezione per un caso non
-/// ancora mappato).
-List<String> phrasesFor(String mascotId, RivalMood mood) {
+/// ancora mappato). Con [bonded] (legame LV3) si aggiungono le frasi del
+/// legame.
+List<String> phrasesFor(String mascotId, RivalMood mood,
+    {bool bonded = false}) {
   final pool = _pools[mascotId]?[mood];
-  if (pool != null && pool.isNotEmpty) return pool;
-  return [_genericFallback[mood] ?? '...'];
+  final base = pool != null && pool.isNotEmpty
+      ? pool
+      : [_genericFallback[mood] ?? '...'];
+  final extra = bonded ? (_bondPools[mascotId]?[mood]) : null;
+  return extra == null ? base : [...base, ...extra];
 }

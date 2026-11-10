@@ -23,6 +23,7 @@ import '../../../radar/presentation/providers/radar_provider.dart';
 import '../../../radar/presentation/providers/radar_proximity_provider.dart';
 import '../../../radar/presentation/widgets/radar_icons.dart';
 import '../../../rival/presentation/providers/active_mascot_provider.dart';
+import '../../../missions/presentation/providers/economy_providers.dart';
 import '../providers/live_map_provider.dart';
 import '../providers/trip_live_provider.dart';
 import '../providers/voice_channel_provider.dart';
@@ -338,8 +339,7 @@ class _SlantIconButton extends StatelessWidget {
           height: 50,
           decoration: const ShapeDecoration(
             color: AppColor.surface,
-            shape: SlantBorder.all(10,
-                side: BorderSide(color: AppColor.line)),
+            shape: SlantBorder.all(10, side: BorderSide(color: AppColor.line)),
           ),
           child: Icon(icon, color: color ?? AppColor.ink, size: 24),
         ),
@@ -359,8 +359,8 @@ class _LiveBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: ShapeDecoration(
         color: AppColor.danger.withValues(alpha: .14),
-        shape: const SlantBorder.all(8,
-            side: BorderSide(color: AppColor.danger)),
+        shape:
+            const SlantBorder.all(8, side: BorderSide(color: AppColor.danger)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -741,10 +741,14 @@ class _MapViewState extends ConsumerState<_MapView> {
     ];
     final line = _routeLine;
     if (line == null) {
+      // Legame LV7: la scia prende il colore della mascotte.
+      final trail = ref.read(activeBondProvider).unlocked(7)
+          ? ref.read(activeMascotProvider).accentColor
+          : AppColor.accent;
       _routeLine = await controller.addLine(
         LineOptions(
           geometry: geometry,
-          lineColor: _hex(AppColor.accent),
+          lineColor: _hex(trail),
           lineWidth: 4,
           lineOpacity: 0.9,
         ),
@@ -912,8 +916,7 @@ class _MapViewState extends ConsumerState<_MapView> {
     final points = widget.state.routePoints;
     if (points.isEmpty) return;
     final last = points.last;
-    await _onMapLongPress(
-        const math.Point(0, 0), LatLng(last.lat, last.lng));
+    await _onMapLongPress(const math.Point(0, 0), LatLng(last.lat, last.lng));
   }
 
   Future<void> _onStyleLoaded() async {
@@ -1105,8 +1108,8 @@ class _MapStatsChip extends StatelessWidget {
                 style: AppType.display(
                     fontWeight: FontWeight.w900, fontSize: 22, height: 1)),
             Text(l,
-                style: AppType.caption
-                    .copyWith(fontSize: 10, letterSpacing: 1)),
+                style:
+                    AppType.caption.copyWith(fontSize: 10, letterSpacing: 1)),
           ],
         );
     return Container(
@@ -1126,7 +1129,6 @@ class _MapStatsChip extends StatelessWidget {
     );
   }
 }
-
 
 /// Foglio "SEGNALA QUI" (velox / pattuglia), stesso aspetto del prototipo:
 /// pannello scuro con bordo superiore oro.
@@ -1153,8 +1155,8 @@ Future<RadarCategory?> _showReportSheet(BuildContext context) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('SEGNALA QUI',
-                style: AppType.display(
-                    fontWeight: FontWeight.w900, fontSize: 24)),
+                style:
+                    AppType.display(fontWeight: FontWeight.w900, fontSize: 24)),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -1172,8 +1174,7 @@ Future<RadarCategory?> _showReportSheet(BuildContext context) {
                     icon: Icons.shield_rounded,
                     color: AppColor.info,
                     label: 'PATTUGLIA',
-                    onTap: () =>
-                        Navigator.of(ctx).pop(RadarCategory.pattuglia),
+                    onTap: () => Navigator.of(ctx).pop(RadarCategory.pattuglia),
                   ),
                 ),
               ],
@@ -1209,8 +1210,7 @@ class _ReportOption extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(width: 10),
-            Text(label,
-                style: AppType.display(fontSize: 18, italic: false)),
+            Text(label, style: AppType.display(fontSize: 18, italic: false)),
           ],
         ),
       ),
@@ -1294,9 +1294,7 @@ class _AutoAmicheBar extends ConsumerWidget {
                     children: [
                       Text('AUTO AMICHE',
                           style: AppType.display(
-                              fontSize: 15,
-                              italic: false,
-                              letterSpacing: 1.4)),
+                              fontSize: 15, italic: false, letterSpacing: 1.4)),
                       if (canOpen)
                         const Icon(Icons.keyboard_arrow_up_rounded,
                             color: AppColor.inkMuted, size: 18),

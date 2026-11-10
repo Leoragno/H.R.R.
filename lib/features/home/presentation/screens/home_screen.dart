@@ -16,6 +16,7 @@ import '../../../radar/presentation/providers/radar_provider.dart';
 import '../../../rival/data/rival_dialogue.dart';
 import '../../../rival/domain/entities/rival_popup.dart';
 import '../../../rival/presentation/providers/active_mascot_provider.dart';
+import '../../../missions/presentation/providers/economy_providers.dart';
 import '../../../trip/domain/entities/trip.dart';
 import '../../../trip/presentation/providers/trip_live_provider.dart';
 import '../../../trip/presentation/providers/trip_provider.dart';
@@ -191,7 +192,8 @@ class _TopBar extends ConsumerWidget {
             onTap: () => Scaffold.maybeOf(context)?.openDrawer(),
             child: SizedBox(
               width: 50,
-              child: Icon(Icons.radio_rounded, color: AppColor.accent, size: 22),
+              child:
+                  Icon(Icons.radio_rounded, color: AppColor.accent, size: 22),
             ),
           ),
           const SizedBox(width: 6),
@@ -203,7 +205,8 @@ class _TopBar extends ConsumerWidget {
               child: Row(
                 children: [
                   ClipPath(
-                    clipper: const ShapeBorderClipper(shape: SlantBorder.all(6)),
+                    clipper:
+                        const ShapeBorderClipper(shape: SlantBorder.all(6)),
                     child: Image.asset(
                       'assets/faces/${mascot.id}.png',
                       width: 40,
@@ -530,6 +533,7 @@ class _RivalCard extends ConsumerWidget {
     final pool = phrasesFor(
       mascot.id,
       drovenToday ? RivalMood.greeting : RivalMood.inactivityTaunt,
+      bonded: ref.watch(activeBondProvider).unlocked(3),
     );
     // Stessa frase per tutto il giorno: niente sfarfallio ai rebuild.
     final line = pool[now.day % pool.length];
@@ -806,8 +810,7 @@ void _showTripRecoveryDialog(
                 .read(tripLiveControllerProvider.notifier)
                 .discardPersistedTrip(saved);
           },
-          child:
-              const Text('Scarta', style: TextStyle(color: AppColor.danger)),
+          child: const Text('Scarta', style: TextStyle(color: AppColor.danger)),
         ),
         TextButton(
           onPressed: () async {
@@ -826,8 +829,7 @@ void _showTripRecoveryDialog(
                 .resumeTrip(saved);
             if (context.mounted) context.push(AppRoutes.tripLive);
           },
-          child: Text('Riprendi',
-              style: TextStyle(color: AppColor.accent)),
+          child: Text('Riprendi', style: TextStyle(color: AppColor.accent)),
         ),
       ],
     ),
@@ -850,10 +852,7 @@ class _RadarModeSection extends ConsumerWidget {
         Row(
           children: [
             Icon(Icons.radar_rounded,
-                size: 20,
-                color: enabled
-                    ? AppColor.accent
-                    : AppColor.inkMuted),
+                size: 20, color: enabled ? AppColor.accent : AppColor.inkMuted),
             const SizedBox(width: 10),
             Expanded(
               child: Text('Rilevamento Velox/Pattuglia',
@@ -877,8 +876,7 @@ class _RadarModeSection extends ConsumerWidget {
           Text(
             'Tutti i dati sono aggiornati in tempo reale.',
             textAlign: TextAlign.center,
-            style: AppType.text(
-                fontSize: 11.5, color: AppColor.inkMuted),
+            style: AppType.text(fontSize: 11.5, color: AppColor.inkMuted),
           ),
         ],
       ],
@@ -1033,8 +1031,8 @@ class _RadarCard extends StatelessWidget {
                 Text(subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppType.text(
-                        fontSize: 11, color: AppColor.inkMuted)),
+                    style:
+                        AppType.text(fontSize: 11, color: AppColor.inkMuted)),
               ],
             ),
           ),
@@ -1043,4 +1041,3 @@ class _RadarCard extends StatelessWidget {
     );
   }
 }
-

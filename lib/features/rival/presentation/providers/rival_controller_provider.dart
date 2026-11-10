@@ -14,6 +14,7 @@ import '../../data/rival_local_store.dart';
 import '../../domain/entities/mascot.dart';
 import '../../domain/entities/rival_popup.dart';
 import 'active_mascot_provider.dart';
+import '../../../missions/presentation/providers/economy_providers.dart';
 
 part 'rival_controller_provider.g.dart';
 
@@ -89,8 +90,9 @@ class RivalController extends _$RivalController {
     await _store.write(profileId, daily.copyWith(lastTripAt: at));
     // L'utente si è già fatto vivo oggi: il promemoria delle 22:00
     // eventualmente schedulato stamattina non serve più.
-    unawaited(
-        ref.read(localNotificationsServiceProvider.notifier).cancelStreakReminder());
+    unawaited(ref
+        .read(localNotificationsServiceProvider.notifier)
+        .cancelStreakReminder());
   }
 
   Future<void> _runDailyAndInactivityCheck(String profileId) async {
@@ -111,7 +113,9 @@ class RivalController extends _$RivalController {
         final newStreak = daily.streakCount + 1;
         final mood = now.hour >= _lateHour && newStreak > 1
             ? RivalMood.streakUrgent
-            : (newStreak >= 2 ? RivalMood.streakEncouraging : RivalMood.greeting);
+            : (newStreak >= 2
+                ? RivalMood.streakEncouraging
+                : RivalMood.greeting);
         await _store.write(profileId,
             daily.copyWith(lastActiveDate: today, streakCount: newStreak));
         _emit(mood, seed: '$profileId|$today');
@@ -154,7 +158,11 @@ class RivalController extends _$RivalController {
 
   void _emit(RivalMood mood, {required String seed}) {
     final mascot = ref.read(activeMascotProvider);
-    final phrase = pickDeterministic(seed, mascot.id, phrasesFor(mascot.id, mood));
+    // Legame LV3: frasi nuove. Il valore è in cache finché la Home lo
+    // osserva; se non è ancora caricato si usano le frasi base.
+    final bonded = ref.read(activeBondProvider).unlocked(3);
+    final phrase = pickDeterministic(
+        seed, mascot.id, phrasesFor(mascot.id, mood, bonded: bonded));
     _publish(mascot, mood, phrase);
   }
 
@@ -171,7 +179,8 @@ class RivalController extends _$RivalController {
       'Sorpasso su $rivalName — ora è al #$newRank.',
       '$rivalName alle tue spalle. Posizione #$newRank per lui.',
     ];
-    final phrase = pickDeterministic('$rivalName|$newRank', mascot.id, templates);
+    final phrase =
+        pickDeterministic('$rivalName|$newRank', mascot.id, templates);
     _publish(mascot, RivalMood.leaderboardOvertake, phrase);
   }
 

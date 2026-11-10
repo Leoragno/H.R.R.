@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrr_app/features/progression/domain/bond.dart';
+import 'package:hrr_app/features/rival/data/rival_dialogue.dart';
+import 'package:hrr_app/features/rival/domain/entities/rival_popup.dart';
 
 void main() {
   test('livello del legame con le soglie di bond_level', () {
@@ -28,5 +30,15 @@ void main() {
     expect(b.toNext, 0);
     expect(b.fraction, 1);
     expect(b.nextUnlock, isNull);
+  });
+
+  test('legame LV3: frasi in più in radio, base sempre presenti', () {
+    for (final id in ['nitro', 'r3x', 'volt', 'spark', 'dust']) {
+      final base = phrasesFor(id, RivalMood.greeting);
+      final bonded = phrasesFor(id, RivalMood.greeting, bonded: true);
+      expect(bonded.length, greaterThan(base.length), reason: id);
+      expect(bonded.take(base.length), base);
+    }
+    expect(phrasesFor('ignota', RivalMood.greeting, bonded: true), isNotEmpty);
   });
 }
