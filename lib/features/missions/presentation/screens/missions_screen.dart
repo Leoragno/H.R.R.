@@ -10,9 +10,11 @@ import '../../../../core/theme/hrr_icons.dart';
 import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../progression/presentation/progression_providers.dart';
 import '../../../rival/presentation/providers/active_mascot_provider.dart';
+import '../../domain/entities/drive_pass.dart';
 import '../../domain/entities/mission.dart';
 import '../../domain/entities/mission_progress.dart';
 import '../../domain/entities/mission_reward.dart';
+import '../providers/economy_providers.dart';
 import '../providers/mission_controller.dart';
 import '../providers/mission_provider.dart';
 
@@ -27,15 +29,15 @@ enum _Tab {
   final MissionType type;
 }
 
-/// MISSIONI (HEAT, handoff §23): testata con mascotte e alone oro, livello
-/// in corso, tab OGGI / SETTIMANA / (STAGIONE) / SEGRETE, righe con barra
-/// di avanzamento e RISCUOTI. Le segrete non ancora scoperte restano "???".
+/// MISSIONI E PASS (HEAT, handoff §23): testata con mascotte e alone oro,
+/// tier del pass di guida, pista premi con PRENDI / RISCUOTI TUTTO, tab
+/// OGGI / SETTIMANA / (STAGIONE) / SEGRETE, righe con barra e RISCUOTI,
+/// un cambio missione al giorno (↻) e il forziere del periodo.
+/// Le segrete non ancora scoperte restano "???".
 ///
-/// Rinviati alla fase "economia XP" (servono tabelle e RPC lato server):
-/// Pass di guida a tier con premi, cambio missione giornaliero (↻) e
-/// forzieri per aver riscattato tutto.
+/// Senza pass (migrazione 0041 assente) la testata mostra il livello.
 ///
-/// Colori: niente accento — il riscatto usa l'oro (XP) come nel design.
+/// Colori: oro per XP e riscatti; l'accento solo sul prossimo tier.
 class MissionsScreen extends ConsumerStatefulWidget {
   const MissionsScreen({super.key});
 
@@ -46,12 +48,82 @@ class MissionsScreen extends ConsumerStatefulWidget {
 class _MissionsScreenState extends ConsumerState<MissionsScreen> {
   _Tab _tab = _Tab.today;
   final _claiming = <String>{};
+  String? _rerolling;
+  bool _passBusy = false;
+  bool _chestBusy = false;
+
+  void _say(String text) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  /// Toglie "Exception: " e il prefisso di Postgres dai messaggi RPC.
+  String _err(Object e) {
+    final m = RegExp(r'message: ([^,]+)').firstMatch(e.toString());
+    return (m?.group(1) ?? 'non riuscito. riprova.').toLowerCase();
+  }
+
+  Future<void> _reroll(Mission m) async {
+    setState(() => _rerolling = m.id);
+    try {
+      await ref.read(missionRemoteDatasourceProvider).rerollDailyMission(m.id);
+      ref.invalidate(activeMissionsProvider);
+      ref.invalidate(missionSwapDaysProvider);
+      if (mounted) _say('missione cambiata');
+    } catch (e) {
+      if (mounted) _say(_err(e));
+    } finally {
+      if (mounted) setState(() => _rerolling = null);
+    }
+  }
+
+  Future<void> _claimPass({int? tier}) async {
+    setState(() => _passBusy = true);
+    try {
+      final got =
+          await ref.read(missionRemoteDatasourceProvider).claimPass(tier: tier);
+      ref.invalidate(drivePassProvider);
+      ref.invalidate(unlocksProvider);
+      if (!mounted) return;
+      final xp =
+          got.fold<int>(0, (a, r) => a + ((r['xp'] as num?)?.toInt() ?? 0));
+      final items = got.where((r) => r['item'] != null).length;
+      _say([
+        if (got.length == 1) 'tier ${got.first['tier']}',
+        if (got.length > 1) '${got.length} tier riscossi',
+        if (xp > 0) '+$xp XP',
+        if (items > 0) items == 1 ? '1 sblocco' : '$items sblocchi',
+      ].join(' · '));
+    } catch (e) {
+      if (mounted) _say(_err(e));
+    } finally {
+      if (mounted) setState(() => _passBusy = false);
+    }
+  }
+
+  Future<void> _openChest(String kind) async {
+    setState(() => _chestBusy = true);
+    try {
+      final xp = await ref
+          .read(missionRemoteDatasourceProvider)
+          .claimMissionChest(kind);
+      ref.invalidate(openedChestsProvider);
+      ref.invalidate(drivePassProvider);
+      if (mounted) _say('forziere aperto · +$xp XP');
+    } catch (e) {
+      if (mounted) _say(_err(e));
+    } finally {
+      if (mounted) setState(() => _chestBusy = false);
+    }
+  }
 
   Future<void> _claim(Mission m) async {
     setState(() => _claiming.add(m.id));
     final claim =
         await ref.read(missionControllerProvider.notifier).claim(m.id);
     if (!mounted) return;
+    ref.invalidate(drivePassProvider);
     setState(() => _claiming.remove(m.id));
     final xp = claim?.rewards
             .where((r) => r.type == MissionRewardType.xp)
@@ -73,6 +145,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
     ref.invalidate(ensureMissionPeriodsProvider);
     ref.invalidate(activeMissionsProvider);
     ref.invalidate(myClaimedMissionIdsProvider);
+    ref.invalidate(drivePassProvider);
+    ref.invalidate(openedChestsProvider);
+    ref.invalidate(missionSwapDaysProvider);
     await ref.read(activeMissionsProvider(type: _tab.type).future);
   }
 
@@ -99,6 +174,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
           padding: const EdgeInsets.only(bottom: 30),
           children: [
             const _Header(),
+            _PassTrack(
+              busy: _passBusy,
+              onClaim: (t) => _claimPass(tier: t),
+              onClaimAll: () => _claimPass(),
+            ),
             const SizedBox(height: 18),
             _Tabs(
               tabs: tabs,
@@ -109,6 +189,10 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
               tab: tab,
               claiming: _claiming,
               onClaim: _claim,
+              rerolling: _rerolling,
+              onReroll: _reroll,
+              chestBusy: _chestBusy,
+              onOpenChest: _openChest,
             ),
           ],
         ),
@@ -126,8 +210,14 @@ class _Header extends ConsumerWidget {
     final mascot = ref.watch(activeMascotProvider);
     final season = ref.watch(activeSeasonProvider).valueOrNull;
     final level = ref.watch(levelProgressProvider);
+    final pass = ref.watch(drivePassProvider).valueOrNull;
     final daysLeft =
         season?.endsAt.difference(DateTime.now()).inDays.clamp(0, 999);
+    final kicker = pass != null
+        ? 'PASS DI GUIDA · −${pass.daysLeft(DateTime.now())} GIORNI'
+        : season != null
+            ? '${season.name.toUpperCase()} · −$daysLeft GIORNI'
+            : null;
 
     return Container(
       decoration: const BoxDecoration(
@@ -174,9 +264,9 @@ class _Header extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (season != null)
+                    if (kicker != null)
                       Text(
-                        '${season.name.toUpperCase()} · −$daysLeft GIORNI',
+                        kicker,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppType.display(
@@ -187,7 +277,8 @@ class _Header extends ConsumerWidget {
                           color: AppColor.gold,
                         ),
                       ),
-                    const ScreenTitle('Missioni', fontSize: 46),
+                    ScreenTitle(pass != null ? 'Missioni\ne pass' : 'Missioni',
+                        fontSize: 46),
                   ],
                 ),
               ),
@@ -199,50 +290,315 @@ class _Header extends ConsumerWidget {
                   color: AppColor.surface.withValues(alpha: .94),
                   border: Border.all(color: AppColor.line),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          level == null
-                              ? 'LIVELLO –'
-                              : 'LIVELLO ${level.level}',
-                          style: AppType.display(
-                              fontSize: 26, fontWeight: FontWeight.w900),
-                        ),
-                        const Spacer(),
-                        if (level != null)
-                          Text(
-                            '${level.xpInLevel} / ${level.xpNeeded} XP',
-                            style: AppType.display(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              italic: false,
-                              color: AppColor.inkMuted,
-                            ),
+                child: pass != null
+                    ? _PassCard(pass: pass)
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                level == null
+                                    ? 'LIVELLO –'
+                                    : 'LIVELLO ${level.level}',
+                                style: AppType.display(
+                                    fontSize: 26, fontWeight: FontWeight.w900),
+                              ),
+                              const Spacer(),
+                              if (level != null)
+                                Text(
+                                  '${level.xpInLevel} / ${level.xpNeeded} XP',
+                                  style: AppType.display(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    italic: false,
+                                    color: AppColor.inkMuted,
+                                  ),
+                                ),
+                            ],
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SkewBar(
-                      value: level?.fraction ?? 0,
-                      segments: 20,
-                      gap: 2,
-                      height: 7,
-                      color: AppColor.gold,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'ogni missione riscattata ti avvicina al prossimo livello.',
-                      style:
-                          AppType.text(fontSize: 13, color: AppColor.inkMuted),
-                    ),
-                  ],
+                          const SizedBox(height: 10),
+                          SkewBar(
+                            value: level?.fraction ?? 0,
+                            segments: 20,
+                            gap: 2,
+                            height: 7,
+                            color: AppColor.gold,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'ogni missione riscattata ti avvicina al prossimo livello.',
+                            style: AppType.text(
+                                fontSize: 13, color: AppColor.inkMuted),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _fmt(int n) {
+  final s = n.toString();
+  return s.length > 3
+      ? '${s.substring(0, s.length - 3)}.${s.substring(s.length - 3)}'
+      : s;
+}
+
+class _PassCard extends StatelessWidget {
+  const _PassCard({required this.pass});
+  final DrivePass pass;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('TIER ${pass.tier}',
+                style:
+                    AppType.display(fontSize: 26, fontWeight: FontWeight.w900)),
+            const Spacer(),
+            Text(
+              '${_fmt(pass.xpInTier)} / ${_fmt(kPassXpPerTier)} XP',
+              style: AppType.display(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                italic: false,
+                color: AppColor.inkMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SkewBar(
+          value: pass.xpInTier / kPassXpPerTier,
+          segments: 20,
+          gap: 2,
+          height: 7,
+          color: AppColor.gold,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '${pass.nextRewardLabel()}. ogni XP che guadagni riempie anche il pass.',
+          style: AppType.text(fontSize: 13, color: AppColor.inkMuted),
+        ),
+      ],
+    );
+  }
+}
+
+IconData _rewardIcon(PassRewardKind k) => switch (k) {
+      PassRewardKind.xp150 => Icons.military_tech_rounded,
+      PassRewardKind.xp250 => Icons.bolt_rounded,
+      PassRewardKind.accent => Icons.palette_rounded,
+      PassRewardKind.emote => Icons.sentiment_very_satisfied_rounded,
+      PassRewardKind.skin => Icons.auto_awesome_rounded,
+      PassRewardKind.title => Icons.workspace_premium_rounded,
+    };
+
+/// PREMI DEL PASS: 12 tier intorno a quello attuale. Pronti = oro con
+/// PRENDI, presi = spenti con ✓, bloccati = lucchetto; il prossimo tier ha
+/// il bordo accento (unico accento della schermata).
+class _PassTrack extends ConsumerWidget {
+  const _PassTrack({
+    required this.busy,
+    required this.onClaim,
+    required this.onClaimAll,
+  });
+
+  final bool busy;
+  final ValueChanged<int> onClaim;
+  final VoidCallback onClaimAll;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pass = ref.watch(drivePassProvider).valueOrNull;
+    if (pass == null) return const SizedBox.shrink();
+    final toClaim = pass.toClaim;
+    final tiers = pass.trackTiers();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'PREMI DEL PASS',
+                  style: AppType.display(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    italic: false,
+                    letterSpacing: 2,
+                    color: AppColor.inkMuted,
+                  ),
                 ),
               ),
+              if (toClaim > 0)
+                HeatPressable(
+                  onTap: busy ? null : onClaimAll,
+                  child: Container(
+                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    alignment: Alignment.center,
+                    decoration: const ShapeDecoration(
+                      color: AppColor.gold,
+                      shape: SlantBorder(left: 7, right: 7),
+                    ),
+                    child: Text(
+                      'RISCUOTI TUTTO · $toClaim',
+                      style: AppType.display(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                        color: AppColor.onAccent,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 128,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            itemCount: tiers.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (context, i) {
+              final t = tiers[i];
+              return _TierTile(
+                tier: t,
+                got: pass.claimed.contains(t),
+                can: pass.canClaim(t),
+                next: t == pass.tier + 1,
+                busy: busy,
+                onClaim: () => onClaim(t),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TierTile extends StatelessWidget {
+  const _TierTile({
+    required this.tier,
+    required this.got,
+    required this.can,
+    required this.next,
+    required this.busy,
+    required this.onClaim,
+  });
+
+  final int tier;
+  final bool got;
+  final bool can;
+  final bool next;
+  final bool busy;
+  final VoidCallback onClaim;
+
+  @override
+  Widget build(BuildContext context) {
+    final kind = passRewardKind(tier);
+    final locked = !got && !can;
+    final c = got
+        ? AppColor.inkFaint
+        : can
+            ? AppColor.gold
+            : AppColor.inkMuted;
+    final border = can
+        ? AppColor.gold
+        : next
+            ? AppColor.accent
+            : AppColor.line;
+
+    return Container(
+      width: 88,
+      padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
+      decoration: ShapeDecoration(
+        color: can
+            ? AppColor.gold.withValues(alpha: .14)
+            : got
+                ? AppColor.deep
+                : AppColor.surface,
+        shape: ChamferBorder(cut: 10, side: BorderSide(color: border)),
+      ),
+      child: Stack(
+        children: [
+          if (got || locked)
+            Positioned(
+              top: 0,
+              right: 2,
+              child: Icon(got ? Icons.check_rounded : Icons.lock_rounded,
+                  size: 13, color: c),
+            ),
+          Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 2),
+                  child: Text(
+                    '$tier',
+                    style: AppType.display(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: AppColor.inkMuted,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Icon(_rewardIcon(kind), size: 28, color: c),
+              const SizedBox(height: 6),
+              Text(
+                passRewardLabel(kind),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: AppType.text(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: c,
+                  height: 1.2,
+                ),
+              ),
+              const Spacer(),
+              if (can)
+                GestureDetector(
+                  onTap: busy ? null : onClaim,
+                  child: Container(
+                    height: 24,
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    color: AppColor.gold,
+                    child: Text(
+                      'PRENDI',
+                      style: AppType.display(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        italic: false,
+                        letterSpacing: 1,
+                        color: AppColor.onAccent,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
@@ -334,11 +690,19 @@ class _MissionList extends ConsumerWidget {
     required this.tab,
     required this.claiming,
     required this.onClaim,
+    required this.rerolling,
+    required this.onReroll,
+    required this.chestBusy,
+    required this.onOpenChest,
   });
 
   final _Tab tab;
   final Set<String> claiming;
   final ValueChanged<Mission> onClaim;
+  final String? rerolling;
+  final ValueChanged<Mission> onReroll;
+  final bool chestBusy;
+  final ValueChanged<String> onOpenChest;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -351,6 +715,8 @@ class _MissionList extends ConsumerWidget {
     final claimed =
         (ref.watch(myClaimedMissionIdsProvider).valueOrNull ?? const [])
             .toSet();
+    final swapDays = ref.watch(missionSwapDaysProvider).valueOrNull;
+    final chests = ref.watch(openedChestsProvider).valueOrNull;
     final secretSlots = tab == _Tab.secret
         ? ref.watch(secretMissionSlotCountProvider).valueOrNull ?? 0
         : 0;
@@ -391,6 +757,28 @@ class _MissionList extends ConsumerWidget {
           ..sort((a, b) => order(a).compareTo(order(b)));
         final hiddenSecrets = (secretSlots - missions.length).clamp(0, 20);
 
+        // Cambio missione: solo OGGI, uno al giorno, solo se la tabella
+        // esiste (swapDays != null dopo il caricamento).
+        final dayStart = missions
+            .map((m) => m.startsAt)
+            .whereType<DateTime>()
+            .fold<DateTime?>(null, (a, b) => a ?? b);
+        final rerollUsed = dayStart != null &&
+            (swapDays ?? const {}).contains(dayKey(dayStart.toUtc()));
+        final canReroll =
+            tab == _Tab.today && swapDays != null && dayStart != null;
+
+        // Forziere del periodo (OGGI / SETTIMANA).
+        final chestKind = switch (tab) {
+          _Tab.today => 'daily',
+          _Tab.week => 'weekly',
+          _ => null,
+        };
+        final done = missions.where((m) => claimed.contains(m.id)).length;
+        final chestOpen = chestKind != null &&
+            dayStart != null &&
+            (chests ?? const {}).contains(chestPeriodKey(chestKind, dayStart));
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -413,6 +801,14 @@ class _MissionList extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  if (canReroll)
+                    Text(
+                      rerollUsed
+                          ? 'cambio usato · torna domani'
+                          : '1 cambio missione disponibile oggi',
+                      style:
+                          AppType.text(fontSize: 11, color: AppColor.inkFaint),
+                    ),
                 ],
               ),
             ),
@@ -433,6 +829,14 @@ class _MissionList extends ConsumerWidget {
                     claimed: claimed.contains(m.id),
                     busy: claiming.contains(m.id),
                     onClaim: () => onClaim(m),
+                    rerolling: rerolling == m.id,
+                    onReroll: canReroll &&
+                            !rerollUsed &&
+                            rerolling == null &&
+                            !(progress[m.id]?.completed ?? false) &&
+                            !claimed.contains(m.id)
+                        ? () => onReroll(m)
+                        : null,
                   ),
                 ),
               ),
@@ -440,6 +844,18 @@ class _MissionList extends ConsumerWidget {
               const Padding(
                 padding: EdgeInsets.fromLTRB(14, 0, 14, 5),
                 child: _SecretRow(),
+              ),
+            if (chestKind != null && chests != null && missions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 5, 14, 0),
+                child: _ChestCard(
+                  daily: chestKind == 'daily',
+                  done: done,
+                  total: missions.length,
+                  open: chestOpen,
+                  busy: chestBusy,
+                  onOpen: () => onOpenChest(chestKind),
+                ),
               ),
           ],
         );
@@ -462,6 +878,8 @@ class MissionRow extends StatelessWidget {
     required this.claimed,
     required this.onClaim,
     this.busy = false,
+    this.onReroll,
+    this.rerolling = false,
   });
 
   final Mission mission;
@@ -470,6 +888,10 @@ class MissionRow extends StatelessWidget {
   final bool claimed;
   final bool busy;
   final VoidCallback onClaim;
+
+  /// Cambio missione (↻); null = non disponibile.
+  final VoidCallback? onReroll;
+  final bool rerolling;
 
   @override
   Widget build(BuildContext context) {
@@ -563,6 +985,140 @@ class MissionRow extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                   color: AppColor.gold,
                 ),
+              ),
+            ),
+          if (onReroll != null || rerolling) ...[
+            const SizedBox(width: 8),
+            Semantics(
+              button: true,
+              label: 'cambia missione',
+              child: GestureDetector(
+                onTap: onReroll,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  color: AppColor.surfaceHigh,
+                  alignment: Alignment.center,
+                  child: rerolling
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppColor.inkMuted),
+                        )
+                      : const Icon(Icons.autorenew_rounded,
+                          size: 18, color: AppColor.inkMuted),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// FORZIERE DEL GIORNO / DELLA SETTIMANA: si apre quando tutte le missioni
+/// del periodo sono riscosse.
+class _ChestCard extends StatelessWidget {
+  const _ChestCard({
+    required this.daily,
+    required this.done,
+    required this.total,
+    required this.open,
+    required this.busy,
+    required this.onOpen,
+  });
+
+  final bool daily;
+  final int done;
+  final int total;
+  final bool open;
+  final bool busy;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = !open && total > 0 && done >= total;
+    final xp = daily ? 200 : 600;
+    final c = open
+        ? AppColor.inkFaint
+        : ready
+            ? AppColor.gold
+            : AppColor.inkMuted;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: ShapeDecoration(
+        color: ready ? AppColor.gold.withValues(alpha: .12) : AppColor.surface,
+        shape: ChamferBorder(
+          side: BorderSide(color: ready ? AppColor.gold : AppColor.line),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(open ? Icons.inventory_2_rounded : Icons.redeem_rounded,
+              size: 36, color: c),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  daily ? 'FORZIERE DEL GIORNO' : 'FORZIERE DELLA SETTIMANA',
+                  style: AppType.display(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .6,
+                  ),
+                ),
+                Text(
+                  'completa e riscuoti tutte le missioni · $done/$total riscosse',
+                  style: AppType.text(fontSize: 12, color: AppColor.inkMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          if (ready)
+            HeatPressable(
+              onTap: busy ? null : onOpen,
+              child: Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.center,
+                decoration: const ShapeDecoration(
+                  color: AppColor.gold,
+                  shape: SlantBorder(left: 7, right: 7),
+                ),
+                child: Text(
+                  'APRI +$xp XP',
+                  style: AppType.display(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppColor.onAccent,
+                  ),
+                ),
+              ),
+            )
+          else if (open)
+            Text(
+              'APERTO',
+              style: AppType.display(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                italic: false,
+                letterSpacing: 1.2,
+                color: AppColor.inkFaint,
+              ),
+            )
+          else
+            Text(
+              '+$xp XP',
+              style: AppType.display(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: AppColor.inkFaint,
               ),
             ),
         ],

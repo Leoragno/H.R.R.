@@ -28,9 +28,92 @@ class MissionRemoteDatasource {
         .or('starts_at.is.null,starts_at.lte.$nowIso')
         .or('ends_at.is.null,ends_at.gte.$nowIso')
         .order('created_at', ascending: false);
+    final swaps = await mySwaps();
+    final swappedOut = {for (final s in swaps) s.oldId};
+    final swappedIn = {for (final s in swaps) s.newId};
     return (rows as List)
-        .map((r) => MissionModel.fromJson(r as Map<String, dynamic>))
+        .cast<Map<String, dynamic>>()
+        // Cambio missione (0041): la giornaliera sostituita sparisce, quelle
+        // del pool compaiono solo a chi le ha pescate.
+        .where((r) =>
+            !swappedOut.contains(r['id']) &&
+            (r['pool'] != true || swappedIn.contains(r['id'])))
+        .map(MissionModel.fromJson)
         .toList();
+  }
+
+  /// Cambi missione dell'utente (tabella mission_swaps, 0041). Vuoto se la
+  /// migrazione non c'è ancora.
+  Future<List<({String oldId, String newId, DateTime day})>> mySwaps() async {
+    try {
+      final rows = await _client
+          .from('mission_swaps')
+          .select('old_mission_id, new_mission_id, day');
+      return [
+        for (final r in (rows as List).cast<Map<String, dynamic>>())
+          (
+            oldId: r['old_mission_id'] as String,
+            newId: r['new_mission_id'] as String,
+            day: DateTime.parse(r['day'] as String),
+          ),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> rerollDailyMission(String missionId) =>
+      _client.rpc('reroll_daily_mission', params: {'p_mission_id': missionId});
+
+  /// Forzieri già aperti: "kind:period" (es. "daily:20261110").
+  Future<Set<String>> myChests() async {
+    try {
+      final rows = await _client.from('mission_chests').select('kind, period');
+      return {
+        for (final r in (rows as List).cast<Map<String, dynamic>>())
+          '${r['kind']}:${r['period']}',
+      };
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  Future<int> claimMissionChest(String kind) async {
+    final res =
+        await _client.rpc('claim_mission_chest', params: {'p_kind': kind});
+    return (res as num).toInt();
+  }
+
+  Future<Map<String, dynamic>?> myPass() async {
+    final res = await _client.rpc('my_pass');
+    final list = res is List ? res : [res];
+    if (list.isEmpty || list.first == null) return null;
+    return Map<String, dynamic>.from(list.first as Map);
+  }
+
+  /// Riscuote un tier o, con [tier] null, tutti quelli pronti. Restituisce
+  /// i premi assegnati ({tier, kind, item, xp}).
+  Future<List<Map<String, dynamic>>> claimPass({int? tier}) async {
+    final res = await _client.rpc('claim_pass', params: {'p_tier': tier});
+    return [
+      for (final r in (res as List? ?? const []))
+        Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  Future<Set<String>> myUnlocks(String profileId) async {
+    try {
+      final rows = await _client
+          .from('profile_unlocks')
+          .select('item')
+          .eq('profile_id', profileId);
+      return {
+        for (final r in (rows as List).cast<Map<String, dynamic>>())
+          r['item'] as String,
+      };
+    } catch (_) {
+      return const {};
+    }
   }
 
   /// Richiama i tre generatori idempotenti (0003_mission_engine.sql):

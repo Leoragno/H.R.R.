@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../domain/entities/territory_cell.dart';
 import '../../domain/territory_decay.dart';
+import '../../../rival/presentation/providers/active_mascot_provider.dart';
 import '../providers/territory_location_provider.dart';
 import '../providers/territory_provider.dart';
 
@@ -25,6 +26,8 @@ class MyTerritoriesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final territoriesAsync = ref.watch(myTerritoriesProvider);
     final locations = ref.watch(territoryCellLocationsProvider).valueOrNull;
+    final decay =
+        territoryDecayDaysForMascot(ref.watch(activeMascotProvider).id);
 
     return Scaffold(
       backgroundColor: AppColor.base,
@@ -89,13 +92,13 @@ class MyTerritoriesScreen extends ConsumerWidget {
                           'guida per rivendicare i primi esagoni.'),
                     ];
                   }
-                  final zones = _zones(cells, locations);
+                  final zones = _zones(cells, locations, decay);
                   return [
                     if (locations == null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
-                        child: Text('raggruppo per zona…',
-                            style: AppType.caption),
+                        child:
+                            Text('raggruppo per zona…', style: AppType.caption),
                       ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -125,6 +128,7 @@ class MyTerritoriesScreen extends ConsumerWidget {
   static List<_Zone> _zones(
     List<TerritoryCell> cells,
     Map<String, TerritoryLocation>? locations,
+    int decay,
   ) {
     final now = DateTime.now();
     final byZone = <String, List<TerritoryCell>>{};
@@ -141,14 +145,16 @@ class MyTerritoriesScreen extends ConsumerWidget {
           name: e.key,
           region: regionOf[e.key],
           cells: e.value
-            ..sort((a, b) =>
-                territoryDaysLeft(a, now).compareTo(territoryDaysLeft(b, now))),
+            ..sort((a, b) => territoryDaysLeft(a, now, decay)
+                .compareTo(territoryDaysLeft(b, now, decay))),
           minDays: territoryDaysLeft(
-              e.value.reduce((a, b) =>
-                  territoryDaysLeft(a, now) < territoryDaysLeft(b, now)
-                      ? a
-                      : b),
-              now),
+              e.value.reduce((a, b) => territoryDaysLeft(a, now, decay) <
+                      territoryDaysLeft(b, now, decay)
+                  ? a
+                  : b),
+              now,
+              decay),
+          decayDays: decay,
         ),
     ]..sort((a, b) => a.minDays.compareTo(b.minDays));
     return zones;
@@ -161,12 +167,14 @@ class _Zone {
     required this.region,
     required this.cells,
     required this.minDays,
+    required this.decayDays,
   });
 
   final String name;
   final String? region;
   final List<TerritoryCell> cells;
   final double minDays;
+  final int decayDays;
 }
 
 Color _daysColor(double days) => days < 1
@@ -296,7 +304,8 @@ class _ZoneTileState extends State<_ZoneTile> {
                       padding: const EdgeInsets.only(top: 10),
                       child: Column(
                         children: [
-                          for (final cell in z.cells) _CellLine(cell: cell),
+                          for (final cell in z.cells)
+                            _CellLine(cell: cell, decayDays: z.decayDays),
                         ],
                       ),
                     ),
@@ -309,13 +318,14 @@ class _ZoneTileState extends State<_ZoneTile> {
 }
 
 class _CellLine extends StatelessWidget {
-  const _CellLine({required this.cell});
+  const _CellLine({required this.cell, required this.decayDays});
 
   final TerritoryCell cell;
+  final int decayDays;
 
   @override
   Widget build(BuildContext context) {
-    final days = territoryDaysLeft(cell);
+    final days = territoryDaysLeft(cell, null, decayDays);
     final d = cell.claimedAt;
     final date =
         '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
@@ -360,7 +370,8 @@ class _Message extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 40, 32, 32),
       child: Column(
         children: [
-          const Icon(Icons.hexagon_outlined, size: 44, color: AppColor.inkFaint),
+          const Icon(Icons.hexagon_outlined,
+              size: 44, color: AppColor.inkFaint),
           const SizedBox(height: 14),
           Text(
             text,

@@ -52,7 +52,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final myId = ref.watch(authStateProvider).valueOrNull?.id;
     final mascot = ref.watch(activeMascotProvider);
 
-    final counts = _Counts.of(state.visibleCells.values, myId);
+    final counts = _Counts.of(state.visibleCells.values, myId,
+        territoryDecayDaysForMascot(mascot.id));
     final selected = _selected;
     const bottomInset = kTerritoryPanelCollapsedHeight + 10;
 
@@ -198,7 +199,8 @@ class _Counts {
   final int atRisk;
   final String zoneTitle;
 
-  static _Counts of(Iterable<TerritoryCell> cells, String? myId) {
+  static _Counts of(
+      Iterable<TerritoryCell> cells, String? myId, int myDecayDays) {
     final byOwner = <String, int>{};
     var mine = 0, rivals = 0, atRisk = 0;
     final now = DateTime.now();
@@ -206,7 +208,9 @@ class _Counts {
       byOwner[c.ownerId] = (byOwner[c.ownerId] ?? 0) + 1;
       if (c.ownerId == myId) {
         mine++;
-        if (territoryDaysLeft(c, now) <= kTerritoryWarningDays) atRisk++;
+        if (territoryDaysLeft(c, now, myDecayDays) <= kTerritoryWarningDays) {
+          atRisk++;
+        }
       } else {
         rivals++;
       }
@@ -237,9 +241,8 @@ class _PlayerBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final area = areaKm2 < .1
-        ? areaKm2.toStringAsFixed(3)
-        : areaKm2.toStringAsFixed(1);
+    final area =
+        areaKm2 < .1 ? areaKm2.toStringAsFixed(3) : areaKm2.toStringAsFixed(1);
     return HeatPanel(
       shape: const SlantBorder(left: 0, right: 12),
       color: const Color(0xEB14121C),
@@ -265,7 +268,8 @@ class _PlayerBadge extends StatelessWidget {
                 name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppType.display(fontSize: 22, fontWeight: FontWeight.w900),
+                style:
+                    AppType.display(fontSize: 22, fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -395,12 +399,16 @@ class _CellCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = isMine ? AppColor.accent : rivalColorFor(cell.ownerId);
-    final days = territoryDaysLeft(cell);
+    final days = territoryDaysLeft(
+        cell,
+        null,
+        isMine
+            ? territoryDecayDaysForMascot(ref.watch(activeMascotProvider).id)
+            : kTerritoryDecayDays);
     final daysText = territoryDaysLabel(days).toLowerCase();
     final atRisk = days <= kTerritoryWarningDays;
-    final ownerName = isMine
-        ? null
-        : ref.watch(_ownerNameProvider(cell.ownerId)).valueOrNull;
+    final ownerName =
+        isMine ? null : ref.watch(_ownerNameProvider(cell.ownerId)).valueOrNull;
 
     return HeatEnter(
       child: Container(

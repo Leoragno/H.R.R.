@@ -49,6 +49,11 @@ class Trip extends Equatable {
   final int? totalStops;
   final int? stoppedSeconds;
 
+  /// Righe XP della schermata Risultato (trips.xp_breakdown, 0041): resa
+  /// base, guida pulita, prima guida, serie, mascotte, HEAT. Vuota sui
+  /// viaggi precedenti.
+  final List<XpLine> xpBreakdown;
+
   const Trip({
     required this.id,
     required this.driverId,
@@ -77,6 +82,7 @@ class Trip extends Equatable {
     this.brakingEvents,
     this.totalStops,
     this.stoppedSeconds,
+    this.xpBreakdown = const [],
   });
 
   @override
@@ -108,5 +114,18 @@ class Trip extends Equatable {
         brakingEvents,
         totalStops,
         stoppedSeconds,
+        xpBreakdown,
       ];
+}
+
+class XpLine extends Equatable {
+  const XpLine({required this.key, required this.label, required this.xp});
+
+  /// base · clean · first · streak · mascot · heat
+  final String key;
+  final String label;
+  final int xp;
+
+  @override
+  List<Object?> get props => [key, label, xp];
 }

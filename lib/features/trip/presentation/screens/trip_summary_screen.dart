@@ -51,8 +51,8 @@ class TripSummaryScreen extends ConsumerWidget {
               child: const Text('Annulla')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Elimina',
-                style: TextStyle(color: AppColor.danger)),
+            child:
+                const Text('Elimina', style: TextStyle(color: AppColor.danger)),
           ),
         ],
       ),
@@ -84,7 +84,8 @@ class TripSummaryScreen extends ConsumerWidget {
     // Storico SENZA questo viaggio (la lista recente potrebbe già
     // contenerlo dopo il salvataggio).
     final previous = [
-      for (final t in ref.watch(recentTripsProvider).valueOrNull ?? const <Trip>[])
+      for (final t
+          in ref.watch(recentTripsProvider).valueOrNull ?? const <Trip>[])
         if (t.id != trip.id) t,
     ];
     final prevScores = [
@@ -192,8 +193,8 @@ class TripSummaryScreen extends ConsumerWidget {
                       flex: 10,
                       child: HeatGhostButton(
                         label: 'DETTAGLI',
-                        onPressed: () => context.push(
-                            AppRoutes.tripDetail.replaceFirst(':tripId', trip.id)),
+                        onPressed: () => context.push(AppRoutes.tripDetail
+                            .replaceFirst(':tripId', trip.id)),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -299,8 +300,8 @@ class _FlowBand extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('FLOW',
-                      style: AppType.label.copyWith(
-                          fontSize: 16, letterSpacing: 3, color: a)),
+                      style: AppType.label
+                          .copyWith(fontSize: 16, letterSpacing: 3, color: a)),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
@@ -411,8 +412,9 @@ class _RouteBox extends StatelessWidget {
                             ? 'NESSUNA FRENATA BRUSCA'
                             : '$brakes ${brakes == 1 ? 'FRENATA' : 'FRENATE'}',
                         style: TextStyle(
-                            color:
-                                brakes == 0 ? AppColor.inkMuted : AppColor.gold),
+                            color: brakes == 0
+                                ? AppColor.inkMuted
+                                : AppColor.gold),
                       ),
                     ],
                   ),
@@ -513,7 +515,10 @@ class _PilotCard extends StatelessWidget {
     final chips = <(IconData, String)>[
       (Icons.route_rounded, '${trip.distanceKm.toStringAsFixed(1)} km'),
       if (avg != null) (Icons.speed_rounded, '${avg.round()} km/h media'),
-      (Icons.do_not_step_rounded, '$brakes ${brakes == 1 ? 'frenata' : 'frenate'}'),
+      (
+        Icons.do_not_step_rounded,
+        '$brakes ${brakes == 1 ? 'frenata' : 'frenate'}'
+      ),
     ];
     final aff = match.affinities.take(3).toList();
     void openPilots() => context.push(AppRoutes.pilots);
@@ -752,6 +757,44 @@ class _Rewards extends StatelessWidget {
                             color: color)),
                   ],
                 ),
+              ),
+            ),
+          if (trip.xpBreakdown.length > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
+              child: Column(
+                children: [
+                  for (final l in trip.xpBreakdown)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l.label,
+                              style: AppType.display(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                italic: false,
+                                letterSpacing: 1.2,
+                                color: AppColor.inkMuted,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            l.xp < 0 ? '−${-l.xp}' : '+${l.xp}',
+                            style: AppType.display(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: l.xp < 0
+                                  ? AppColor.danger
+                                  : AppColor.inkMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ),
           if (trip.xpEarned == 0)

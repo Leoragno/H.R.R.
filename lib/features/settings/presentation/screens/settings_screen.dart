@@ -15,6 +15,8 @@ import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/data/car_catalog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../missions/domain/entities/drive_pass.dart';
+import '../../../missions/presentation/providers/economy_providers.dart';
 import '../../../radar/presentation/providers/radar_provider.dart';
 import '../../../rival/domain/entities/mascot.dart';
 import '../../../rival/presentation/widgets/mascot_avatar.dart';
@@ -160,7 +162,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _pickAccent(AppUser profile, HeatAccent a) async {
-    if (a.locked) {
+    if (_accentLocked(a, ref.read(unlocksProvider).valueOrNull)) {
       _snack('${a.label.toLowerCase()} si sblocca con il pass di guida.');
       return;
     }
@@ -182,7 +184,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final (icon, label, src) in [
-              (Icons.photo_camera_rounded, 'scatta una foto', ImageSource.camera),
+              (
+                Icons.photo_camera_rounded,
+                'scatta una foto',
+                ImageSource.camera
+              ),
               (
                 Icons.photo_library_rounded,
                 'scegli dalla galleria',
@@ -298,6 +304,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         label: 'Colore accento',
                         trailing: _AccentSwatches(
                           selected: accent,
+                          unlocks: ref.watch(unlocksProvider).valueOrNull,
                           onPick: busy ? null : (a) => _pickAccent(profile, a),
                         ),
                       ),
@@ -499,8 +506,8 @@ class _Row extends StatelessWidget {
                   Text(sub!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppType.text(
-                          fontSize: 12, color: AppColor.inkMuted)),
+                      style:
+                          AppType.text(fontSize: 12, color: AppColor.inkMuted)),
               ],
             ),
           ),
@@ -631,8 +638,8 @@ class _ProfileTile extends StatelessWidget {
                           color: AppColor.ink)),
                   const SizedBox(height: 2),
                   Text('tocca la foto per cambiarla',
-                      style: AppType.text(
-                          fontSize: 13, color: AppColor.inkMuted)),
+                      style:
+                          AppType.text(fontSize: 13, color: AppColor.inkMuted)),
                 ],
               ),
             ),
@@ -645,10 +652,20 @@ class _ProfileTile extends StatelessWidget {
 
 /// I sette accenti come piccoli parallelogrammi: quello attivo ha il
 /// bordo chiaro, i bloccati sono spenti con il lucchetto.
+bool _accentLocked(HeatAccent a, Unlocks? unlocks) =>
+    a.locked && !(unlocks?.accent(a.name) ?? false);
+
 class _AccentSwatches extends StatelessWidget {
-  const _AccentSwatches({required this.selected, required this.onPick});
+  const _AccentSwatches({
+    required this.selected,
+    required this.unlocks,
+    required this.onPick,
+  });
 
   final HeatAccent selected;
+
+  /// Sblocchi del pass di guida (null = non ancora caricati).
+  final Unlocks? unlocks;
   final ValueChanged<HeatAccent>? onPick;
 
   @override
@@ -668,7 +685,7 @@ class _AccentSwatches extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
                 child: Opacity(
-                  opacity: a.locked ? .35 : 1,
+                  opacity: _accentLocked(a, unlocks) ? .35 : 1,
                   child: Transform(
                     alignment: Alignment.center,
                     transform: Matrix4.skewX(-.21),
@@ -684,7 +701,7 @@ class _AccentSwatches extends StatelessWidget {
                               : const Color(0x00000000),
                         ),
                       ),
-                      child: a.locked
+                      child: _accentLocked(a, unlocks)
                           ? const Icon(Icons.lock_rounded,
                               size: 12, color: AppColor.onAccent)
                           : null,

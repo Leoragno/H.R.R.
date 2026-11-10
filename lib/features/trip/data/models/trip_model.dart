@@ -33,6 +33,7 @@ class TripModel {
   final int? brakingEvents;
   final int? totalStops;
   final int? stoppedSeconds;
+  final List<XpLine> xpBreakdown;
 
   const TripModel({
     required this.id,
@@ -62,6 +63,7 @@ class TripModel {
     this.brakingEvents,
     this.totalStops,
     this.stoppedSeconds,
+    this.xpBreakdown = const [],
   });
 
   factory TripModel.fromJson(Map<String, dynamic> json) {
@@ -97,6 +99,15 @@ class TripModel {
       brakingEvents: json['braking_events'] as int?,
       totalStops: json['total_stops'] as int?,
       stoppedSeconds: json['stopped_seconds'] as int?,
+      xpBreakdown: [
+        for (final l in (json['xp_breakdown'] as List? ?? const []))
+          if (l is Map)
+            XpLine(
+              key: l['k'] as String? ?? '',
+              label: l['label'] as String? ?? '',
+              xp: (l['xp'] as num?)?.toInt() ?? 0,
+            ),
+      ],
     );
   }
 
@@ -141,5 +152,6 @@ class TripModel {
         brakingEvents: brakingEvents,
         totalStops: totalStops,
         stoppedSeconds: stoppedSeconds,
+        xpBreakdown: xpBreakdown,
       );
 }
