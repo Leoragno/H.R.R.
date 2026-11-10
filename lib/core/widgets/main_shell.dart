@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/app_update/app_update_prompt.dart';
 import '../../features/app_update/web_update_banner.dart';
 import '../../features/music/presentation/widgets/music_drawer.dart';
+import '../../features/progression/presentation/level_up_overlay.dart';
 import '../../features/rival/presentation/widgets/rival_overlay.dart';
 import '../../features/social/presentation/widgets/presence_touch.dart';
 import '../router/app_router.dart';
@@ -70,7 +71,10 @@ class MainShell extends StatelessWidget {
       body: WebUpdateBanner(
         child: AppUpdatePrompt(
           child: PresenceTouch(
-            child: RivalOverlay(child: NotificationToastOverlay(child: child)),
+            child: LevelUpWatcher(
+              child:
+                  RivalOverlay(child: NotificationToastOverlay(child: child)),
+            ),
           ),
         ),
       ),
