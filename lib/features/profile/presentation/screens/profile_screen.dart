@@ -13,10 +13,13 @@ import '../../../achievements/domain/entities/achievement.dart';
 import '../../../achievements/presentation/providers/achievement_provider.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../missions/presentation/providers/economy_providers.dart';
 import '../../../pilots/presentation/widgets/pilot_emblem.dart';
+import '../../../progression/domain/bond.dart';
 import '../../../progression/presentation/progression_providers.dart';
 import '../../../rival/domain/entities/mascot.dart';
 import '../../../rival/presentation/providers/active_mascot_provider.dart';
+import '../../../rival/presentation/widgets/neon_skin.dart';
 import '../../../trip/domain/driver_archetype.dart';
 
 /// Profilo (handoff HEAT, schermata 17): hero con la mascotte, username,
@@ -39,6 +42,8 @@ class ProfileScreen extends ConsumerWidget {
     }
     final mascot = ref.watch(activeMascotProvider);
     final level = ref.watch(levelProgressProvider);
+    final bond = ref.watch(activeBondProvider);
+    final cosmetics = ref.watch(cosmeticsProvider);
     final pilots = ref.watch(pilotHistoryProvider);
     final achievements =
         ref.watch(myAchievementsProvider).valueOrNull ?? const <Achievement>[];
@@ -53,6 +58,8 @@ class ProfileScreen extends ConsumerWidget {
           _Hero(
             profile: profile,
             mascot: mascot,
+            neon: cosmetics.neonSkin,
+            title: cosmetics.title,
             levelLabel: level == null
                 ? 'LV ${profile.level}'
                 : 'LV ${level.level} · ${level.title}',
@@ -81,7 +88,15 @@ class ProfileScreen extends ConsumerWidget {
             actionIcon: Icons.sync_alt_rounded,
             onAction: () => context.push(AppRoutes.settings),
           ),
-          HeatEnter(index: i++, child: _CompanionCard(mascot: mascot)),
+          HeatEnter(
+            index: i++,
+            child: _CompanionCard(
+                mascot: mascot, bond: bond, neon: cosmetics.neonSkin),
+          ),
+          HeatEnter(
+            index: i++,
+            child: _BondUnlocks(mascot: mascot, bond: bond),
+          ),
           _Header(
             'CHE PILOTA SEI',
             action: 'TUTTI I PILOTI',
@@ -158,11 +173,20 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero(
-      {required this.profile, required this.mascot, required this.levelLabel});
+  const _Hero({
+    required this.profile,
+    required this.mascot,
+    required this.levelLabel,
+    this.neon = false,
+    this.title,
+  });
   final AppUser profile;
   final Mascot mascot;
   final String levelLabel;
+  final bool neon;
+
+  /// Titolo sbloccato ("LEGGENDA DI …" / "RE DELLA STAGIONE").
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -189,11 +213,15 @@ class _Hero extends StatelessWidget {
             bottom: 34,
             width: 250,
             height: 284,
-            child: Image.asset(
-              'assets/mascots/${mascot.id}_hero.png',
-              fit: BoxFit.contain,
-              alignment: Alignment.bottomRight,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            child: NeonSkin(
+              on: neon,
+              color: c,
+              child: Image.asset(
+                'assets/mascots/${mascot.id}_hero.png',
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomRight,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ).animate(onPlay: (ctl) => ctl.repeat(reverse: true)).moveY(
                 begin: 0, end: -8, duration: 2250.ms, curve: Curves.easeInOut),
           ),
@@ -253,6 +281,23 @@ class _Hero extends StatelessWidget {
                           letterSpacing: 1.4,
                           color: AppColor.onAccent)),
                 ),
+                if (title != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.workspace_premium_rounded,
+                          size: 16, color: AppColor.gold),
+                      const SizedBox(width: 4),
+                      Text(title!,
+                          style: AppType.display(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                              letterSpacing: 1.4,
+                              color: AppColor.gold)),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 6),
                 FittedBox(
                   fit: BoxFit.scaleDown,
@@ -350,8 +395,11 @@ class _Header extends StatelessWidget {
 }
 
 class _CompanionCard extends StatelessWidget {
-  const _CompanionCard({required this.mascot});
+  const _CompanionCard(
+      {required this.mascot, required this.bond, required this.neon});
   final Mascot mascot;
+  final BondProgress bond;
+  final bool neon;
 
   @override
   Widget build(BuildContext context) {
@@ -381,11 +429,15 @@ class _CompanionCard extends StatelessWidget {
                 bottom: 0,
                 width: 124,
                 height: 140,
-                child: Image.asset(
-                  'assets/mascots/${mascot.id}_hero.png',
-                  fit: BoxFit.contain,
-                  alignment: Alignment.bottomCenter,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                child: NeonSkin(
+                  on: neon,
+                  color: c,
+                  child: Image.asset(
+                    'assets/mascots/${mascot.id}_hero.png',
+                    fit: BoxFit.contain,
+                    alignment: Alignment.bottomCenter,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
                 ),
               ),
               Padding(
@@ -393,11 +445,41 @@ class _CompanionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(mascot.name,
-                        style: AppType.display(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 24,
-                            height: 1)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Expanded(
+                          child: Text(mascot.name,
+                              style: AppType.display(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 24,
+                                  height: 1)),
+                        ),
+                        Text('LEGAME LV ${bond.level}',
+                            style: AppType.label.copyWith(
+                                fontSize: 12, letterSpacing: 1.4, color: c)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    SkewBar(
+                      value: bond.fraction,
+                      height: 6,
+                      color: c,
+                      track: AppColor.surfaceHigh,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        bond.maxed
+                            ? 'legame massimo'
+                            : '${bond.toNext} punti al livello ${bond.level + 1}',
+                        '+${bond.bonusPercent}% bonus mascotte',
+                      ].join(' · '),
+                      style:
+                          AppType.text(fontSize: 11, color: AppColor.inkMuted),
+                    ),
+                    const SizedBox(height: 8),
                     const SizedBox(height: 4),
                     Text(mascot.personalityTag.toUpperCase(),
                         style: AppType.label.copyWith(
@@ -411,6 +493,118 @@ class _CompanionCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+IconData _bondIcon(int lv) => switch (lv) {
+      2 => Icons.sentiment_very_satisfied_rounded,
+      3 => Icons.graphic_eq_rounded,
+      5 => Icons.auto_awesome_rounded,
+      7 => Icons.timeline_rounded,
+      _ => Icons.military_tech_rounded,
+    };
+
+/// Sblocchi del legame (LV 2/3/5/7/10): accesi nel colore della mascotte,
+/// gli altri spenti col lucchetto. Sotto, il prossimo sblocco.
+class _BondUnlocks extends StatelessWidget {
+  const _BondUnlocks({required this.mascot, required this.bond});
+  final Mascot mascot;
+  final BondProgress bond;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = mascot.accentColor;
+    final next = bond.nextUnlock;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 5, 14, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              for (final (i, e) in kBondUnlocks.entries.indexed) ...[
+                if (i > 0) const SizedBox(width: 4),
+                Expanded(
+                  child: _BondTile(
+                    level: e.key,
+                    label: e.key == 10 ? 'titolo' : e.value,
+                    on: bond.unlocked(e.key),
+                    color: c,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (next != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 2),
+              child: Text(
+                'PROSSIMO SBLOCCO · a LV ${next.$1}: '
+                '${next.$1 == 10 ? 'titolo «leggenda di ${mascot.name.toLowerCase()}»' : next.$2}',
+                style: AppType.label.copyWith(
+                    fontSize: 11, letterSpacing: 1.2, color: AppColor.gold),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BondTile extends StatelessWidget {
+  const _BondTile({
+    required this.level,
+    required this.label,
+    required this.on,
+    required this.color,
+  });
+  final int level;
+  final String label;
+  final bool on;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = on ? color : AppColor.inkFaint;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(2, 8, 2, 6),
+      decoration: BoxDecoration(
+        color: on ? color.withValues(alpha: .15) : AppColor.deep,
+        border: Border.all(color: on ? color : AppColor.line),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -4,
+            right: 1,
+            child: Icon(on ? Icons.check_rounded : Icons.lock_rounded,
+                size: 11, color: c),
+          ),
+          Column(
+            children: [
+              Icon(_bondIcon(level), size: 20, color: c),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.text(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: c,
+                    height: 1.15),
+              ),
+              Text('LV $level',
+                  style: AppType.label.copyWith(
+                      fontSize: 10,
+                      letterSpacing: 1,
+                      color: AppColor.inkFaint)),
+            ],
+          ),
+        ],
       ),
     );
   }

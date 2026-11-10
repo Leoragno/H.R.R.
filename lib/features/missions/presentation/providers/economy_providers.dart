@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../progression/domain/bond.dart';
+import '../../../rival/presentation/providers/active_mascot_provider.dart';
 import '../../domain/entities/drive_pass.dart';
 import 'mission_provider.dart';
 
@@ -39,7 +41,7 @@ final openedChestsProvider = FutureProvider.autoDispose<Set<String>>((ref) {
   return ref.watch(missionRemoteDatasourceProvider).myChests();
 });
 
-final unlocksProvider = FutureProvider<Unlocks>((ref) async {
+final unlocksProvider = FutureProvider.autoDispose<Unlocks>((ref) async {
   final uid = ref.watch(authStateProvider).valueOrNull?.id;
   if (uid == null) return const Unlocks({});
   return Unlocks(
@@ -53,3 +55,49 @@ String chestPeriodKey(String kind, DateTime startsAt) {
   String two(int n) => n.toString().padLeft(2, '0');
   return '$kind:${u.year}${two(u.month)}${two(u.day)}';
 }
+
+final bondPointsProvider =
+    FutureProvider.autoDispose<Map<String, int>>((ref) async {
+  final uid = ref.watch(authStateProvider).valueOrNull?.id;
+  if (uid == null) return const {};
+  return ref.watch(missionRemoteDatasourceProvider).myBond(uid);
+});
+
+/// Legame con la mascotte attiva.
+final activeBondProvider = Provider.autoDispose<BondProgress>((ref) {
+  final id = ref.watch(activeMascotProvider).id;
+  return BondProgress(ref.watch(bondPointsProvider).valueOrNull?[id] ?? 0);
+});
+
+/// Cosmetici attivi: dal pass (profile_unlocks) o dal legame.
+class Cosmetics {
+  const Cosmetics({
+    required this.celebration,
+    required this.neonSkin,
+    required this.title,
+  });
+
+  /// Emote esultanza nel Risultato (pass o legame LV2).
+  final bool celebration;
+
+  /// Bagliore neon sull'arte della mascotte (pass o legame LV5).
+  final bool neonSkin;
+
+  /// "LEGGENDA DI NITRO" (legame LV10) o "RE DELLA STAGIONE" (pass).
+  final String? title;
+}
+
+final cosmeticsProvider = Provider.autoDispose<Cosmetics>((ref) {
+  final unlocks = ref.watch(unlocksProvider).valueOrNull ?? const Unlocks({});
+  final bond = ref.watch(activeBondProvider);
+  final mascot = ref.watch(activeMascotProvider);
+  return Cosmetics(
+    celebration: unlocks.emote || bond.unlocked(2),
+    neonSkin: unlocks.neonSkin || bond.unlocked(5),
+    title: bond.unlocked(10)
+        ? 'LEGGENDA DI ${mascot.name.toUpperCase()}'
+        : unlocks.seasonTitle
+            ? 'RE DELLA STAGIONE'
+            : null,
+  );
+});

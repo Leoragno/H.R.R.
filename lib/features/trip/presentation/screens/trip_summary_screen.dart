@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/heat_shapes.dart';
 import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../missions/presentation/providers/economy_providers.dart';
 import '../../../pilots/presentation/widgets/pilot_emblem.dart';
 import '../../../progression/domain/progression.dart';
 import '../../../rival/domain/entities/mascot.dart';
@@ -142,7 +143,9 @@ class TripSummaryScreen extends ConsumerWidget {
               HeatEnter(
                 index: i++,
                 child: _MascotComment(
-                    mascot: mascot, grade: flowGrade(trip.drivingScore!)),
+                    mascot: mascot,
+                    grade: flowGrade(trip.drivingScore!),
+                    celebration: ref.watch(cosmeticsProvider).celebration),
               ),
             if (match != null)
               HeatEnter(
@@ -161,7 +164,7 @@ class TripSummaryScreen extends ConsumerWidget {
               ),
             HeatEnter(
               index: i++,
-              child: _Rewards(trip: trip),
+              child: _Rewards(trip: trip, mascot: mascot),
             ),
             HeatEnter(
               index: i++,
@@ -437,9 +440,14 @@ String _gradeQuote(String grade) => switch (grade) {
     };
 
 class _MascotComment extends StatelessWidget {
-  const _MascotComment({required this.mascot, required this.grade});
+  const _MascotComment(
+      {required this.mascot, required this.grade, this.celebration = false});
   final Mascot mascot;
   final String grade;
+
+  /// Emote esultanza sbloccata (pass o legame LV2): sulle guide da S/A la
+  /// mascotte festeggia con la posa più carica.
+  final bool celebration;
 
   @override
   Widget build(BuildContext context) {
@@ -453,7 +461,7 @@ class _MascotComment extends StatelessWidget {
             width: 84,
             height: 84,
             child: Image.asset(
-              'assets/emotes/${mascot.id}_emote_${happy ? 'a' : 'b'}.png',
+              'assets/emotes/${mascot.id}_emote_${happy && !celebration ? 'a' : 'b'}.png',
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
@@ -722,13 +730,17 @@ class _AffinityRow extends StatelessWidget {
 }
 
 class _Rewards extends StatelessWidget {
-  const _Rewards({required this.trip});
+  const _Rewards({required this.trip, required this.mascot});
   final Trip trip;
+  final Mascot mascot;
 
   @override
   Widget build(BuildContext context) {
+    final bondGain = (trip.xpEarned * 0.10).round();
     final rows = [
       ('XP', '+${trip.xpEarned}', AppColor.gold),
+      if (bondGain > 0 && trip.xpBreakdown.isNotEmpty)
+        ('LEGAME ${mascot.name}', '+$bondGain', mascot.accentColor),
       ('REP', '+${trip.repEarned}', AppColor.ink),
     ];
     return Padding(

@@ -101,6 +101,22 @@ class MissionRemoteDatasource {
     ];
   }
 
+  /// Punti legame per mascotte (tabella mascot_bond, 0041).
+  Future<Map<String, int>> myBond(String profileId) async {
+    try {
+      final rows = await _client
+          .from('mascot_bond')
+          .select('mascot_id, points')
+          .eq('profile_id', profileId);
+      return {
+        for (final r in (rows as List).cast<Map<String, dynamic>>())
+          r['mascot_id'] as String: (r['points'] as num).toInt(),
+      };
+    } catch (_) {
+      return const {};
+    }
+  }
+
   Future<Set<String>> myUnlocks(String profileId) async {
     try {
       final rows = await _client
