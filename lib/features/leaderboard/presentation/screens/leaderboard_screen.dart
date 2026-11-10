@@ -241,6 +241,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           text: 'nessun pilota in classifica per questo periodo.\n'
               'guida e torna a vedere chi comanda.',
         ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(14, 8, 14, 0),
+          child: _ChallengeEntry(),
+        ),
       ];
     }
     final leader = list.first;
