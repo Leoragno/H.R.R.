@@ -8,9 +8,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/heat_shapes.dart';
 import '../../../../core/widgets/heat/heat_widgets.dart';
+import '../../../missions/presentation/providers/economy_providers.dart';
 import '../../../progression/presentation/progression_providers.dart';
 import '../../../rival/domain/entities/mascot.dart';
 import '../../../rival/presentation/providers/active_mascot_provider.dart';
+import '../../../rival/presentation/widgets/neon_skin.dart';
 import '../../../trip/presentation/providers/trip_provider.dart';
 import '../../../trip/presentation/widgets/trip_stat_card.dart'
     show formatStoppedTime;
@@ -224,7 +226,8 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
         final balance = s.territoryGrowth - s.territoryDecline;
         final area = s.territoryAreaKm2;
         return [
-          _Row(Icons.hexagon_rounded, 'esagoni tuoi', _int(s.territoryCellCount)),
+          _Row(Icons.hexagon_rounded, 'esagoni tuoi',
+              _int(s.territoryCellCount)),
           _Row(Icons.square_foot_rounded, 'area',
               '${_dec(area, area < .1 ? 3 : 2)} km²'),
           _Row(Icons.my_location_rounded, 'rubati agli altri',
@@ -269,30 +272,33 @@ class _Row {
 
 // ---------------------------------------------------------------------------
 
-class _ScoreCard extends StatelessWidget {
+class _ScoreCard extends ConsumerWidget {
   const _ScoreCard({required this.score, required this.mascot});
 
   final int score;
   final Mascot mascot;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final a = AppColor.accent;
     final shape = ChamferBorder(
       cut: 20,
       bottomLeft: true,
       side: BorderSide(color: a.withValues(alpha: .5)),
     );
-    Widget hero = Image.asset(
-      'assets/mascots/${mascot.id}_hero.png',
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    Widget hero = NeonSkin(
+      on: ref.watch(cosmeticsProvider).neonSkin,
+      color: mascot.accentColor,
+      child: Image.asset(
+        'assets/mascots/${mascot.id}_hero.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      ),
     );
     if (!MediaQuery.disableAnimationsOf(context)) {
       hero = hero
           .animate(onPlay: (c) => c.repeat(reverse: true))
-          .moveY(
-              begin: 0, end: -8, duration: 2250.ms, curve: Curves.easeInOut);
+          .moveY(begin: 0, end: -8, duration: 2250.ms, curve: Curves.easeInOut);
     }
 
     return Container(
@@ -356,7 +362,8 @@ class _ScoreCard extends StatelessWidget {
                         letterSpacing: -2,
                         color: a,
                         shadows: [
-                          Shadow(color: a.withValues(alpha: .5), blurRadius: 22),
+                          Shadow(
+                              color: a.withValues(alpha: .5), blurRadius: 22),
                         ],
                       ),
                     ),
@@ -463,7 +470,8 @@ class _LevelRow extends ConsumerWidget {
               padding: const EdgeInsets.only(right: 4),
               child: Text(
                 'LV ${lp.level}',
-                style: AppType.display(fontSize: 26, fontWeight: FontWeight.w900),
+                style:
+                    AppType.display(fontSize: 26, fontWeight: FontWeight.w900),
               ),
             ),
             const SizedBox(width: 8),

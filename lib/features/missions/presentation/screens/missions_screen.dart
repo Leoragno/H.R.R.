@@ -15,6 +15,7 @@ import '../../domain/entities/mission.dart';
 import '../../domain/entities/mission_progress.dart';
 import '../../domain/entities/mission_reward.dart';
 import '../providers/economy_providers.dart';
+import '../../../rival/presentation/widgets/neon_skin.dart';
 import '../providers/mission_controller.dart';
 import '../providers/mission_provider.dart';
 
@@ -236,11 +237,15 @@ class _Header extends ConsumerWidget {
             top: top + 46,
             width: 170,
             height: 194,
-            child: Image.asset(
-              'assets/mascots/${mascot.id}_hero.png',
-              fit: BoxFit.contain,
-              alignment: Alignment.bottomCenter,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            child: NeonSkin(
+              on: ref.watch(cosmeticsProvider).neonSkin,
+              color: mascot.accentColor,
+              child: Image.asset(
+                'assets/mascots/${mascot.id}_hero.png',
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ),
           ),
           Column(
