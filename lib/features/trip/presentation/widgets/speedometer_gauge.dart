@@ -14,23 +14,29 @@ class SpeedometerGauge extends StatelessWidget {
   final double speed;
   final double maxSpeed;
 
+  /// false finché il GPS non ha un fix buono recente: solo allora la fascia
+  /// dice "IN ATTESA GPS". Da fermi col segnale buono dice "FERMO".
+  final bool hasGpsFix;
+
   const SpeedometerGauge({
     super.key,
     required this.speed,
     this.maxSpeed = 200,
+    this.hasGpsFix = true,
   });
 
-  static (String, Color) zoneFor(double kmh) {
+  static (String, Color) zoneFor(double kmh, {bool hasGpsFix = true}) {
+    if (!hasGpsFix) return ('IN ATTESA GPS', AppColor.inkMuted);
     if (kmh > 130) return ('OLTRE IL LIMITE', AppColor.danger);
     if (kmh > 90) return ('EXTRAURBANO', AppColor.gold);
     if (kmh > 0.5) return ('URBANO', AppColor.info);
-    return ('IN ATTESA GPS', AppColor.inkMuted);
+    return ('FERMO', AppColor.inkMuted);
   }
 
   @override
   Widget build(BuildContext context) {
     final a = AppColor.accent;
-    final (zone, zoneColor) = zoneFor(speed);
+    final (zone, zoneColor) = zoneFor(speed, hasGpsFix: hasGpsFix);
     return AspectRatio(
       aspectRatio: 300 / 262,
       child: LayoutBuilder(builder: (context, c) {

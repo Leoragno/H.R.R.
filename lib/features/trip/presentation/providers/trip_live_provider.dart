@@ -45,6 +45,11 @@ class TripLiveState {
   // per mostrare l'avviso una sola volta, non ad ogni rebuild.
   final bool batterySaverActive;
 
+  /// Ora (del telefono) dell'ultimo fix GPS abbastanza preciso. Serve al
+  /// tachimetro per dire "IN ATTESA GPS" solo quando il segnale manca
+  /// davvero, e "FERMO" quando c'è ma la velocità è zero.
+  final DateTime? lastGoodFixAt;
+
   const TripLiveState({
     this.status = TripLiveStatus.idle,
     this.tripId,
@@ -55,7 +60,13 @@ class TripLiveState {
     this.errorMessage,
     this.routePoints = const [],
     this.batterySaverActive = false,
+    this.lastGoodFixAt,
   });
+
+  /// Fix buono negli ultimi 15 s.
+  bool hasGpsFix(DateTime now) =>
+      lastGoodFixAt != null &&
+      now.difference(lastGoodFixAt!) < const Duration(seconds: 15);
 
   double get avgSpeedKmh =>
       elapsed.inSeconds > 0 ? distanceKm / (elapsed.inSeconds / 3600) : 0;
@@ -70,6 +81,7 @@ class TripLiveState {
     String? errorMessage,
     List<RoutePoint>? routePoints,
     bool? batterySaverActive,
+    DateTime? lastGoodFixAt,
   }) {
     return TripLiveState(
       status: status ?? this.status,
@@ -81,6 +93,7 @@ class TripLiveState {
       errorMessage: errorMessage,
       routePoints: routePoints ?? this.routePoints,
       batterySaverActive: batterySaverActive ?? this.batterySaverActive,
+      lastGoodFixAt: lastGoodFixAt ?? this.lastGoodFixAt,
     );
   }
 }
@@ -913,6 +926,10 @@ class TripLiveController extends _$TripLiveController {
     // conta la qualità del segnale, non il movimento) — gate di qualità
     // per Fluidità/Anticipo del punteggio di guida, vedi finishTrip().
     _gpsAcceptedFixCount++;
+    if (state.lastGoodFixAt == null ||
+        now.difference(state.lastGoodFixAt!) > const Duration(seconds: 2)) {
+      state = state.copyWith(lastGoodFixAt: now);
+    }
 
     // Orario del fix, non di consegna: in background Android recapita i
     // fix a raffica (anche decine insieme al risveglio della CPU). Con

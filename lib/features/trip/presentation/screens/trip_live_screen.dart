@@ -554,7 +554,10 @@ class _SpeedView extends StatelessWidget {
         children: [
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 300),
-            child: SpeedometerGauge(speed: state.currentSpeedKmh),
+            child: SpeedometerGauge(
+              speed: state.currentSpeedKmh,
+              hasGpsFix: state.hasGpsFix(DateTime.now()),
+            ),
           ).animate().fadeIn(),
           const SizedBox(height: 14),
           // Due righe di due: ogni cella prende l'altezza che le serve (mai
