@@ -57,3 +57,6 @@ app.*.map.json
 # Tenerne una copia di backup fuori da questo PC.
 /android/keystore/
 /android/key.properties
+
+# Handoff di design (zip locale, non va nel repo pubblico)
+/Redesign dell'app SMOOTH.zip
