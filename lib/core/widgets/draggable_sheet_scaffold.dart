@@ -121,12 +121,16 @@ class SheetOption<T> {
   final String? emoji;
   final Widget? leading;
 
+  /// Riga secondaria sotto l'etichetta (es. bonus/malus della mascotte).
+  final String? sub;
+
   const SheetOption({
     required this.value,
     required this.label,
     this.swatch,
     this.emoji,
     this.leading,
+    this.sub,
   });
 }
 
@@ -189,13 +193,28 @@ class SheetOptionPicker<T> extends StatelessWidget {
                     const SizedBox(width: 14),
                   ],
                   Expanded(
-                    child: Text(
-                      opt.label,
-                      style: AppType.text(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 17,
-                        color: AppColor.ink,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          opt.label,
+                          style: AppType.text(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17,
+                            color: AppColor.ink,
+                          ),
+                        ),
+                        if (opt.sub != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            opt.sub!,
+                            style: AppType.text(
+                                fontSize: 12.5,
+                                color: AppColor.inkMuted,
+                                height: 1.35),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   if (isSelected)

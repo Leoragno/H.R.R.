@@ -15,6 +15,8 @@ import '../../../../core/widgets/heat/heat_widgets.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/data/car_catalog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/screens/mascot_onboarding_screen.dart'
+    show mascotPerks;
 import '../../../home/presentation/widgets/whats_new_overlay.dart';
 import '../../../missions/domain/entities/drive_pass.dart';
 import '../../../missions/presentation/providers/economy_providers.dart';
@@ -148,6 +150,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             SheetOption(
               value: m.id,
               label: m.name,
+              sub: switch (mascotPerks[m.id]) {
+                (final bonus, final malus) => '↑ $bonus\n↓ $malus',
+                _ => null,
+              },
               leading: MascotAvatar(mascot: m, size: 36),
             ),
         ],
