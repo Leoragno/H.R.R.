@@ -122,20 +122,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-            Positioned(
-              left: 14,
-              top: top + 238,
-              child: _HeatPanel(night: night),
-            ),
-            Positioned(
-              right: 14,
-              top: top + 308,
-              child: _SquareButton(
-                icon: Icons.my_location_rounded,
-                onTap: _recenter,
-                semantics: 'centra la mappa',
-              ),
-            ),
             Padding(
               padding: EdgeInsets.fromLTRB(14, top + 8, 14, 0),
               child: Column(
@@ -150,7 +136,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const _RadarChip(),
                     ],
                   ),
-                  const SizedBox(height: 248 + 104),
+                  // Pannello HEAT e "centra" ancorati in basso sulla mappa,
+                  // appena sopra AVVIA GUIDA (come nel prototipo), non a
+                  // un'altezza fissa che su schermi diversi li fa galleggiare.
+                  SizedBox(
+                    height: 248 + 104,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _HeatPanel(night: night),
+                            const Spacer(),
+                            _SquareButton(
+                              icon: Icons.my_location_rounded,
+                              onTap: _recenter,
+                              semantics: 'centra la mappa',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   HeatEnter(
                     child: HeatButton(
                       label: 'AVVIA GUIDA',
@@ -458,6 +467,7 @@ class _HeatPanel extends ConsumerWidget {
       borderColor: null,
       padding: const EdgeInsets.fromLTRB(12, 10, 20, 10),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(

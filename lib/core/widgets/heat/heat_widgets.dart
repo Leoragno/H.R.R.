@@ -199,18 +199,23 @@ class HeatButton extends StatelessWidget {
               children: [
                 if (!disabled && !_reduceMotion(context))
                   const Positioned.fill(child: _Shine()),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: alignStart ? cut + 12 : cut,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: alignStart
-                        ? MainAxisAlignment.spaceBetween
-                        : MainAxisAlignment.center,
-                    children: [
-                      Flexible(child: text),
-                      if (ic != null) ...[const SizedBox(width: 8), ic],
-                    ],
+                // Positioned.fill: senza, lo Stack mette la riga in alto a
+                // sinistra con la sua altezza naturale e il testo risulta
+                // spostato verso il bordo superiore del bottone.
+                Positioned.fill(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: alignStart ? cut + 12 : cut,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: alignStart
+                          ? MainAxisAlignment.spaceBetween
+                          : MainAxisAlignment.center,
+                      children: [
+                        Flexible(child: text),
+                        if (ic != null) ...[const SizedBox(width: 8), ic],
+                      ],
+                    ),
                   ),
                 ),
               ],
