@@ -1,4 +1,76 @@
+import 'dart:math' as math;
+
 import '../../domain/entities/route_point.dart';
+
+/// Riduce il tracciato a [maxPoints] punti al massimo con Douglas-Peucker:
+/// toglie i punti quasi allineati (rettilinei) e tiene quelli che danno
+/// forma alle curve. La tolleranza parte da 2m e raddoppia finché il
+/// risultato non sta nel limite. Primo e ultimo punto restano sempre.
+List<RoutePoint> simplifyRoute(List<RoutePoint> points, int maxPoints) {
+  if (points.length <= maxPoints || points.length < 3) {
+    return List.of(points);
+  }
+  var tolerance = 2.0;
+  var result = _douglasPeucker(points, tolerance);
+  while (result.length > maxPoints) {
+    tolerance *= 2;
+    result = _douglasPeucker(points, tolerance);
+  }
+  return result;
+}
+
+List<RoutePoint> _douglasPeucker(List<RoutePoint> points, double toleranceM) {
+  // Proiezione equirettangolare locale in metri: su distanze di pochi km
+  // l'errore è trascurabile rispetto alla tolleranza.
+  final refLat = points.first.lat * math.pi / 180;
+  const mPerDeg = 111320.0;
+  final mPerDegLng = mPerDeg * math.cos(refLat);
+  final xs = [for (final p in points) p.lng * mPerDegLng];
+  final ys = [for (final p in points) p.lat * mPerDeg];
+
+  final keep = List<bool>.filled(points.length, false);
+  keep[0] = true;
+  keep[points.length - 1] = true;
+
+  // Iterativo (stack esplicito): niente ricorsione profonda su tracciati
+  // lunghi e quasi dritti.
+  final stack = <(int, int)>[(0, points.length - 1)];
+  while (stack.isNotEmpty) {
+    final (start, end) = stack.removeLast();
+    if (end - start < 2) continue;
+    final ax = xs[start], ay = ys[start];
+    final dx = xs[end] - ax, dy = ys[end] - ay;
+    final lenSq = dx * dx + dy * dy;
+    var maxDist = -1.0;
+    var maxIdx = start;
+    for (var i = start + 1; i < end; i++) {
+      final px = xs[i] - ax, py = ys[i] - ay;
+      double dist;
+      if (lenSq == 0) {
+        dist = math.sqrt(px * px + py * py);
+      } else {
+        final t = ((px * dx + py * dy) / lenSq).clamp(0.0, 1.0);
+        final ex = px - t * dx, ey = py - t * dy;
+        dist = math.sqrt(ex * ex + ey * ey);
+      }
+      if (dist > maxDist) {
+        maxDist = dist;
+        maxIdx = i;
+      }
+    }
+    if (maxDist > toleranceM) {
+      keep[maxIdx] = true;
+      stack
+        ..add((start, maxIdx))
+        ..add((maxIdx, end));
+    }
+  }
+
+  return [
+    for (var i = 0; i < points.length; i++)
+      if (keep[i]) points[i]
+  ];
+}
 
 /// Interpola una curva morbida (Catmull-Rom) attraverso i punti GPS grezzi,
 /// solo ai fini del disegno — i punti sorgente (usati per distanza/stat)

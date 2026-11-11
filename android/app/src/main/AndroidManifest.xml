@@ -15,6 +15,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Esclusione dall'ottimizzazione batteria: senza, molti produttori
+         (Xiaomi, Samsung, Huawei, Oppo) sospendono il GPS in background
+         anche col foreground service attivo. Chiesta in Guida live, vedi
+         TripLiveScreen._checkBackgroundAccess. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <application
         android:label="H.R.R."
         android:name="${applicationName}"

@@ -68,14 +68,81 @@ class _TripLiveScreenState extends ConsumerState<TripLiveScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Se il tracking è già "tracking" (guida ripristinata da
       // resumeTrip() prima di navigare qui, vedi la Home), non avviarne
       // una seconda sopra quella recuperata.
       if (ref.read(tripLiveControllerProvider).status == TripLiveStatus.idle) {
-        ref.read(tripLiveControllerProvider.notifier).startTrip();
+        // Atteso: il popup sotto non deve sovrapporsi ai prompt dei
+        // permessi di posizione chiesti da startTrip().
+        await ref.read(tripLiveControllerProvider.notifier).startTrip();
+      }
+      if (!mounted) return;
+      if (ref.read(tripLiveControllerProvider).status ==
+          TripLiveStatus.tracking) {
+        await _checkBackgroundAccess();
       }
     });
+  }
+
+  /// Registrazione in background: su Android l'ottimizzazione batteria
+  /// (soprattutto Xiaomi/Samsung/Huawei/Oppo) può fermare il GPS anche col
+  /// foreground service attivo; su iOS serve il permesso "Sempre". Se
+  /// manca, un popup spiega cosa abilitare. Ricompare ad ogni guida finché
+  /// l'accesso non è concesso.
+  Future<void> _checkBackgroundAccess() async {
+    if (kIsWeb) return;
+    try {
+      final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+      final ok = isAndroid
+          ? await ph.Permission.ignoreBatteryOptimizations.isGranted
+          : await ph.Permission.locationAlways.isGranted;
+      if (ok || !mounted) return;
+
+      final allow = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColor.surfaceHigh,
+          title: const Text('Abilita l\'app in background'),
+          content: Text(
+            isAndroid
+                ? 'Per registrare il percorso anche a schermo spento o con '
+                    'un\'altra app aperta (es. il navigatore), H.R.R. deve '
+                    'poter funzionare in background senza limiti di batteria.'
+                    '\n\nTocca "Consenti" e conferma. Su Xiaomi, Huawei e '
+                    'Oppo controlla anche in Impostazioni › App › H.R.R. › '
+                    'Batteria che sia su "Nessuna restrizione" e che l\'avvio '
+                    'automatico sia attivo.'
+                : 'Per registrare il percorso anche a schermo spento o con '
+                    'un\'altra app aperta (es. il navigatore), H.R.R. deve '
+                    'poter usare la posizione "Sempre".\n\nApri le '
+                    'impostazioni › Posizione e scegli "Sempre".',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Più tardi'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(isAndroid ? 'Consenti' : 'Apri impostazioni',
+                  style: TextStyle(color: AppColor.accent)),
+            ),
+          ],
+        ),
+      );
+      if (allow != true) return;
+      if (isAndroid) {
+        final status = await ph.Permission.ignoreBatteryOptimizations.request();
+        // Alcune ROM non mostrano il prompt di sistema: si ripiega sulle
+        // impostazioni dell'app.
+        if (!status.isGranted) await ph.openAppSettings();
+      } else {
+        await ph.openAppSettings();
+      }
+    } catch (_) {
+      // Mai bloccare la guida per un controllo di permessi.
+    }
   }
 
   @override
@@ -725,9 +792,11 @@ class _MapViewState extends ConsumerState<_MapView> {
   @override
   void didUpdateWidget(covariant _MapView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.state.routePoints.length != oldWidget.state.routePoints.length) {
-      _updateRouteLine();
-      _updateMeMarker();
+    // Identità, non lunghezza: dopo la semplificazione del tracciato la
+    // lunghezza può tornare uguale a prima anche se i punti sono cambiati.
+    // Il controller crea una lista nuova solo quando il tracciato cambia.
+    if (!identical(widget.state.routePoints, oldWidget.state.routePoints)) {
+      unawaited(_syncRoute());
       final points = widget.state.routePoints;
       if (points.isNotEmpty) {
         _setCameraCenter(LatLng(points.last.lat, points.last.lng));
@@ -735,12 +804,44 @@ class _MapViewState extends ConsumerState<_MapView> {
     }
   }
 
+  bool _routeSyncing = false;
+  bool _routeDirty = false;
+
+  /// Linea + marker in coda: le chiamate al plugin mappa sono asincrone e,
+  /// se una è lenta, prima se ne accumulavano diverse in parallelo (una per
+  /// fix), tutte con l'intero tracciato. Ora al massimo una in volo, più
+  /// un ultimo giro con lo stato più recente.
+  Future<void> _syncRoute() async {
+    if (_routeSyncing) {
+      _routeDirty = true;
+      return;
+    }
+    _routeSyncing = true;
+    try {
+      do {
+        _routeDirty = false;
+        await _updateRouteLine();
+        await _updateMeMarker();
+      } while (_routeDirty && mounted);
+    } catch (_) {
+      // Vedi _syncLiveDrivers: mai far risalire errori della mappa.
+    } finally {
+      _routeSyncing = false;
+    }
+  }
+
   Future<void> _updateRouteLine() async {
     final controller = _controller;
     final points = widget.state.routePoints;
     if (controller == null || points.length < 2) return;
+    // Prima: fino a 1000 punti × 6 sottodivisioni = ~6000 coordinate
+    // spedite al plugin ogni secondo, causa principale del lag. Ora il
+    // tracciato da disegnare è semplificato (curve preservate) e la spline
+    // usa 3 sottodivisioni: ~1500 coordinate al massimo.
     final geometry = [
-      for (final p in smoothRouteForDisplay(points)) LatLng(p.lat, p.lng)
+      for (final p
+          in smoothRouteForDisplay(simplifyRoute(points, 500), subdivisions: 3))
+        LatLng(p.lat, p.lng)
     ];
     final line = _routeLine;
     if (line == null) {
@@ -923,9 +1024,8 @@ class _MapViewState extends ConsumerState<_MapView> {
   }
 
   Future<void> _onStyleLoaded() async {
-    await _updateRouteLine();
-    await _updateMeMarker();
-    await _syncLiveDrivers(ref.read(liveMapControllerProvider));
+    await _syncRoute();
+    await _queueLiveDrivers(ref.read(liveMapControllerProvider));
     try {
       final icons = await RadarIconSet.render();
       for (final entry in icons.entries) {
@@ -938,6 +1038,28 @@ class _MapViewState extends ConsumerState<_MapView> {
       // un'eccezione della piattaforma mappa da qui.
     }
     unawaited(_updateVisibleBounds());
+  }
+
+  bool _driversSyncing = false;
+  Map<String, LiveDriver>? _pendingDrivers;
+
+  /// Come _syncRoute: ogni broadcast degli altri piloti (1/s ciascuno)
+  /// lanciava un giro completo di chiamate alla mappa, anche se il
+  /// precedente non era finito. Ora un giro alla volta, sempre con lo
+  /// stato più recente.
+  Future<void> _queueLiveDrivers(Map<String, LiveDriver> drivers) async {
+    _pendingDrivers = drivers;
+    if (_driversSyncing) return;
+    _driversSyncing = true;
+    try {
+      while (_pendingDrivers != null && mounted) {
+        final next = _pendingDrivers!;
+        _pendingDrivers = null;
+        await _syncLiveDrivers(next);
+      }
+    } finally {
+      _driversSyncing = false;
+    }
   }
 
   /// Allinea marker+percorso degli altri driver allo stato del canale
@@ -1030,7 +1152,7 @@ class _MapViewState extends ConsumerState<_MapView> {
   @override
   Widget build(BuildContext context) {
     ref.listen(liveMapControllerProvider, (_, drivers) {
-      _syncLiveDrivers(drivers);
+      unawaited(_queueLiveDrivers(drivers));
     });
     ref.listen<AsyncValue<List<RadarEvent>>>(homeMapMarkersProvider,
         (previous, next) {

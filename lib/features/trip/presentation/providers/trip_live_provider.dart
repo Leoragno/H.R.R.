@@ -21,6 +21,7 @@ import '../../../game/domain/hex_grid.dart';
 import '../../../game/presentation/providers/territory_provider.dart';
 import '../../domain/entities/route_point.dart';
 import '../../domain/entities/trip.dart';
+import '../utils/route_smoothing.dart';
 import 'trip_provider.dart';
 
 export '../../domain/entities/route_point.dart' show RoutePoint;
@@ -307,6 +308,11 @@ const _kMaxPlausibleSpeedKmh = 300.0;
 // attraversato. Oltre questa soglia la retta taglierebbe isolati/curve e
 // assegnerebbe celle fuori strada, quindi si prendono solo gli estremi.
 const _kMaxCellInterpolationM = 200.0;
+// Tetto di punti del tracciato in memoria (salvato su disco ogni 5s e
+// inviato al server a fine guida): oltre si semplifica fino a
+// _kSimplifyTarget, vedi simplifyRoute.
+const _kMaxRoutePoints = 2000;
+const _kSimplifyTarget = 1400;
 
 /// Esagoni attraversati lungo un tracciato già registrato (ripresa dopo
 /// kill del processo), con lo stesso riempimento dei buchi di _onPosition.
@@ -1022,34 +1028,35 @@ class TripLiveController extends _$TripLiveController {
       _crossedCells.add(HexGrid.cellOf(position.latitude, position.longitude));
     }
 
-    _lastPosition = position;
-    _lastPositionAt = fixAt;
-
-    // Aggiunge il punto al tracciato solo su movimento reale: i fix
-    // scartati come jitter (sopra) altrimenti si accumulano come punti
-    // quasi duplicati e rendono la linea disegnata più frastagliata.
+    // L'ancora avanza solo su movimento reale. Prima avanzava ad ogni fix:
+    // sotto ~18 km/h (5m/s, coda, città, rotonde) ogni fix distava <5m dal
+    // precedente di 1s fa, veniva scartato come jitter e il successivo si
+    // confrontava di nuovo col fix appena scartato — percorso e distanza
+    // non avanzavano mai. Confrontando con l'ultimo punto accettato, lo
+    // spostamento lento si accumula finché supera la soglia.
     if (hadRealMotion) {
+      _lastPosition = position;
+      _lastPositionAt = fixAt;
       _points.add(RoutePoint(position.latitude, position.longitude));
-    }
-    if (_points.length > 1000) {
-      // +1 sul limite superiore per includere sempre l'ultimo indice
-      // anche quando la lunghezza è pari — altrimenti il punto appena
-      // aggiunto sopra (sempre l'ultimo della lista) sparirebbe subito
-      // dal diradamento invece di restarci fino al prossimo fix.
-      final thinned = <RoutePoint>[
-        for (var i = 0; i < _points.length; i += 2) _points[i],
-        if (_points.length.isEven) _points.last,
-      ];
-      _points
-        ..clear()
-        ..addAll(thinned);
+      if (_points.length > _kMaxRoutePoints) {
+        // Douglas-Peucker invece del vecchio "un punto su due": quello
+        // dimezzava ogni volta tutto il tracciato, anche le curve, che
+        // dopo un'ora di guida diventavano scorciatoie dritte. Così si
+        // tolgono solo i punti allineati sui rettilinei.
+        final simplified = simplifyRoute(_points, _kSimplifyTarget);
+        _points
+          ..clear()
+          ..addAll(simplified);
+      }
     }
 
     state = state.copyWith(
       distanceKm: distanceKm,
       currentSpeedKmh: speedKmh,
       maxSpeedKmh: speedKmh > state.maxSpeedKmh ? speedKmh : state.maxSpeedKmh,
-      routePoints: List.unmodifiable(_points),
+      // Nuova lista solo se il tracciato è cambiato: la mappa ridisegna la
+      // linea quando cambia l'istanza, non ad ogni fix da fermo.
+      routePoints: hadRealMotion ? List.unmodifiable(_points) : null,
     );
 
     final livePayload = {
