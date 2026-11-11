@@ -184,6 +184,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         _mapKey.currentState?.focusOn(lat, lon);
                       },
                     ),
+                if (selected == null &&
+                    !state.panelExpanded &&
+                    state.cellsLoaded &&
+                    state.visibleCells.isEmpty &&
+                    ref.watch(territoryAttackProvider).valueOrNull == null)
+                  const _EmptyAreaHint(),
                 if (selected != null && !state.panelExpanded)
                   _CellCard(
                     key: ValueKey(selected.coord.key),
@@ -622,6 +628,38 @@ class _GpsBanner extends StatelessWidget {
                 letterSpacing: 1.2,
                 color: AppColor.gold,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Zona senza esagoni attivi (nessuno ci ha guidato negli ultimi giorni,
+/// o sono decaduti): lo dice, invece di lasciare una mappa muta.
+class _EmptyAreaHint extends StatelessWidget {
+  const _EmptyAreaHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xF2141019),
+        border: Border.fromBorderSide(BorderSide(color: AppColor.line)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.hexagon_outlined,
+              size: 20, color: AppColor.inkMuted),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'nessun esagono attivo in questa zona.\n'
+              'guida per prenderli: chi non ci passa da 14 giorni li perde.',
+              style: AppType.text(
+                  fontSize: 13, color: AppColor.inkMuted, height: 1.4),
             ),
           ),
         ],

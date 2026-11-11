@@ -39,6 +39,10 @@ class GameState {
   final int myCellCount;
   final GameGpsStatus gpsStatus;
 
+  /// Almeno una risposta di territory_cells_near arrivata: distingue
+  /// "zona senza esagoni" da "sto ancora caricando".
+  final bool cellsLoaded;
+
   const GameState({
     this.mapMode = GameMapMode.solo,
     this.panelTab = TerritoryMetric.general,
@@ -49,6 +53,7 @@ class GameState {
     this.visibleCells = const {},
     this.myCellCount = 0,
     this.gpsStatus = GameGpsStatus.idle,
+    this.cellsLoaded = false,
   });
 
   GameState copyWith({
@@ -61,6 +66,7 @@ class GameState {
     Map<String, TerritoryCell>? visibleCells,
     int? myCellCount,
     GameGpsStatus? gpsStatus,
+    bool? cellsLoaded,
   }) {
     return GameState(
       mapMode: mapMode ?? this.mapMode,
@@ -72,6 +78,7 @@ class GameState {
       visibleCells: visibleCells ?? this.visibleCells,
       myCellCount: myCellCount ?? this.myCellCount,
       gpsStatus: gpsStatus ?? this.gpsStatus,
+      cellsLoaded: cellsLoaded ?? this.cellsLoaded,
     );
   }
 
@@ -212,7 +219,12 @@ class GameController extends _$GameController {
         ),
       ).timeout(const Duration(seconds: 10));
       final accuracy = position.accuracy;
-      if (accuracy.isFinite && accuracy > _kMinGpsAccuracyM) {
+      // Un fix impreciso (tipico al chiuso) non sposta una mappa già
+      // centrata, ma se non c'è ancora nessun centro basta per mostrarla:
+      // altrimenti Gioca resta sullo spinner finché non si esce all'aperto.
+      if (accuracy.isFinite &&
+          accuracy > _kMinGpsAccuracyM &&
+          state.focusLat != null) {
         state = state.copyWith(gpsStatus: GameGpsStatus.tracking);
         return;
       }
@@ -229,6 +241,21 @@ class GameController extends _$GameController {
         unawaited(_refreshVisibleCells());
       }
     } catch (_) {
+      // Nessun fix entro 10 s: se la mappa non ha ancora un centro usa
+      // l'ultima posizione nota del telefono (non esiste sul web).
+      if (state.focusLat == null) {
+        try {
+          final last = await Geolocator.getLastKnownPosition();
+          if (last != null) {
+            state = state.copyWith(
+              focus: HexGrid.cellOf(last.latitude, last.longitude),
+              focusLat: last.latitude,
+              focusLon: last.longitude,
+            );
+            if (_viewCenter == null) unawaited(_refreshVisibleCells());
+          }
+        } catch (_) {}
+      }
       state = state.copyWith(gpsStatus: GameGpsStatus.tracking);
       // GPS momentaneamente non disponibile: l'utente può ritentare col
       // pulsante "Centra", nessun errore bloccante da mostrare.
@@ -286,6 +313,7 @@ class GameController extends _$GameController {
       if (focus != (_viewCenter ?? state.focus)) return;
       state = state.copyWith(
         visibleCells: {for (final c in cells) c.coord.key: c},
+        cellsLoaded: true,
       );
     } catch (_) {
       // Mappa non aggiornata per un errore di rete transitorio: il
