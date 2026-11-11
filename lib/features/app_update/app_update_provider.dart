@@ -39,6 +39,13 @@ const _kFallbackAbis = ['arm64-v8a', 'armeabi-v7a'];
 ///
 /// Provider scritto a mano (non @riverpod): un solo FutureProvider non
 /// giustifica un giro di build_runner, lento su questo progetto.
+/// Numero di build senza il prefisso ABI. Con `--split-per-abi` Flutter
+/// scrive nel versionCode Android `abi * 1000 + build` (armeabi-v7a 1,
+/// arm64-v8a 2, x86_64 4): la 0.1.1+2 installata su arm64 risponde 2002.
+/// Confrontare i numeri grezzi con il build della release (es. 3) faceva
+/// credere a ogni telefono di essere già aggiornato.
+int buildNumberOf(int versionCode) => versionCode % 1000;
+
 final availableAppUpdateProvider =
     FutureProvider.autoDispose<AppUpdate?>(_availableAppUpdate);
 
@@ -48,19 +55,22 @@ Future<AppUpdate?> _availableAppUpdate(Ref ref) async {
   if (ref.watch(authStateProvider).valueOrNull == null) return null;
 
   final info = await PackageInfo.fromPlatform();
-  final installed = int.tryParse(info.buildNumber) ?? 0;
+  final installed = buildNumberOf(int.tryParse(info.buildNumber) ?? 0);
 
   final row = await ref
       .read(supabaseClientProvider)
       .from('app_releases')
       .select('version_code, version_name, apks, notes')
-      .order('version_code', ascending: false)
+      // Per data, non per version_code: la release 0.1.3 ha anche una riga
+      // con codice alto (9004) per le app 0.1.1/0.1.2, che confrontano i
+      // numeri grezzi; le release successive hanno codici normali.
+      .order('created_at', ascending: false)
       .limit(1)
       .maybeSingle();
   if (row == null) return null;
 
   final versionCode = (row['version_code'] as num).toInt();
-  if (versionCode <= installed) return null;
+  if (buildNumberOf(versionCode) <= installed) return null;
 
   final apks = Map<String, dynamic>.from(row['apks'] as Map);
   final abi = await OtaUpdate().getAbi();
