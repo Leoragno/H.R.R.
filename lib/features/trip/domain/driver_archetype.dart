@@ -441,3 +441,31 @@ List<DriverArchetype> archetypesOf(Iterable<Trip> tripsNewestFirst) => [
         if (DrivingStyleInput.fromTrip(t) case final i?)
           if (matchDriverArchetype(i) case final m?) m.archetype,
     ];
+
+// ---------------------------------------------------------------------------
+// PERK — li paga il server in complete_trip (0043) al pilota principale con
+// maestria ≥ 2 stelle. Se cambi una soglia qui, cambiala anche in SQL.
+// ---------------------------------------------------------------------------
+
+/// Stelle di maestria con cui il perk del pilota principale si attiva.
+const kPerkMastery = 2;
+
+/// Bonus SINERGIA quando la guida abbina il pilota principale.
+const kSynergyText = '+15% XP quando la guida abbina il tuo pilota';
+
+extension DriverArchetypePerk on DriverArchetype {
+  String get perk => switch (this) {
+        DriverArchetype.brianOConner => '+10% XP a ogni guida',
+        DriverArchetype.theDriver => '+25% XP sulle guide di notte',
+        DriverArchetype.hokeColburn => '+30 XP a ogni guida',
+        DriverArchetype.dominicToretto =>
+          '+20% XP se fai lo 0-100 sotto gli 8 s',
+        DriverArchetype.hanLue => '+20% XP se in curva superi 0,8 G',
+        DriverArchetype.frankMartin => '+40 XP se chiudi con FLOW 85 o più',
+        DriverArchetype.saettaMcQueen => '+15% XP sulle guide oltre 15 km',
+        DriverArchetype.baby => '+5 XP per ogni cambio corsia (max 50)',
+        DriverArchetype.maxRockatansky => '+20% XP sulle guide oltre 60 km',
+        DriverArchetype.ugoFantozzi => 'ogni guida vale almeno 60 XP',
+        DriverArchetype.mrBean => 'da 10 a 80 XP a sorpresa a ogni guida',
+      };
+}

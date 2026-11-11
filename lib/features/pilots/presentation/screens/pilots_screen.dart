@@ -190,6 +190,17 @@ class _MainPilotCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    history.mastery(a) >= kPerkMastery
+                        ? 'PERK ATTIVO · ${a.perk}'
+                        : 'PERK a $kPerkMastery stelle · ${a.perk}',
+                    style: AppType.caption.copyWith(
+                        fontSize: 12,
+                        color: history.mastery(a) >= kPerkMastery
+                            ? AppColor.gold
+                            : AppColor.inkMuted),
+                  ),
                 ],
               ],
             ),
@@ -429,12 +440,61 @@ class _PilotSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
+          _PerkBox(archetype: a, history: history),
+          const SizedBox(height: 14),
           HeatGhostButton(
             label: 'CHIUDI',
             height: 50,
             fontSize: 17,
             onPressed: () => Navigator.of(context).pop(),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// PERK del pilota: lo paga il server solo al pilota principale con
+/// maestria ≥ [kPerkMastery]. Oro = XP (significato fisso).
+class _PerkBox extends StatelessWidget {
+  const _PerkBox({required this.archetype, required this.history});
+  final DriverArchetype archetype;
+  final PilotHistory history;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMain = archetype == history.main;
+    final active = isMain && history.mastery(archetype) >= kPerkMastery;
+    final status = active
+        ? 'attivo: lo prendi a ogni guida in cui vale la condizione.'
+        : isMain
+            ? 'si attiva a $kPerkMastery stelle di maestria.'
+            : 'si attiva quando è il tuo pilota, con $kPerkMastery stelle '
+                'di maestria.';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColor.deep,
+        border: Border(
+            left: BorderSide(
+                color: active ? AppColor.gold : AppColor.line, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('PERK',
+              style: AppType.label.copyWith(
+                  fontSize: 12, color: active ? AppColor.gold : AppColor.ink)),
+          const SizedBox(height: 4),
+          Text(archetype.perk, style: AppType.body.copyWith(height: 1.4)),
+          const SizedBox(height: 4),
+          Text(status, style: AppType.caption),
+          if (isMain) ...[
+            const SizedBox(height: 8),
+            Text('SINERGIA', style: AppType.label.copyWith(fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(kSynergyText, style: AppType.body.copyWith(height: 1.4)),
+          ],
         ],
       ),
     );

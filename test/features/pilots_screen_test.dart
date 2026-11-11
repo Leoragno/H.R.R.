@@ -49,6 +49,24 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('COME SI OTTIENE'), findsOneWidget);
     expect(find.text(DriverArchetype.baby.howToGet), findsOneWidget);
+    // Baby non è il principale: perk descritto ma non attivo.
+    expect(find.text(DriverArchetype.baby.perk), findsOneWidget);
+    expect(find.text('SINERGIA'), findsNothing);
+  });
+
+  testWidgets('perk attivo sul pilota principale con 2 stelle', (tester) async {
+    final h = buildPilotHistory(
+        [for (var i = 0; i < 3; i++) DriverArchetype.hokeColburn]);
+    await pump(tester, h);
+    expect(tester.takeException(), isNull);
+    expect(find.text('PERK ATTIVO · ${DriverArchetype.hokeColburn.perk}'),
+        findsOneWidget);
+  });
+
+  test('ogni pilota ha un perk', () {
+    for (final a in DriverArchetype.values) {
+      expect(a.perk, isNotEmpty);
+    }
   });
 
   testWidgets('nessun viaggio: tutto bloccato, nessuna eccezione',
